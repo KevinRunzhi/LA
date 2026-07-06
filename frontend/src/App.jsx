@@ -451,18 +451,17 @@ function InputStage({ input, loading, activeStep, onInput, onSelectStep, onStart
           <section className="equipment-option-grid">
             {equipmentOptionGroups.map((group) => (
               <article className="option-group" key={group.label}>
-                <div>
+                <label>
                   <span>{group.helper}</span>
                   <strong>{group.label}</strong>
-                </div>
-                <div className="option-list">
+                  <select defaultValue={group.options[0]} aria-label={group.label}>
                   {group.options.map((option, index) => (
-                    <button className={classNames("option-row", index === 0 && "active")} key={`${group.label}-${option}-${index}`}>
-                      <span>{index === 0 ? <Check size={14} /> : index + 1}</span>
-                      <p>{option}</p>
-                    </button>
+                    <option value={option} key={`${group.label}-${option}-${index}`}>
+                      {option}
+                    </option>
                   ))}
-                </div>
+                  </select>
+                </label>
               </article>
             ))}
           </section>

@@ -360,9 +360,9 @@ h2 {
   gap: 12px;
 }
 
-.option-group > div:first-child {
+.option-group label {
   display: grid;
-  gap: 5px;
+  gap: 8px;
 }
 
 .option-group span,
@@ -371,49 +371,21 @@ h2 {
   font-size: 12px;
 }
 
-.option-list {
-  display: grid;
-  gap: 8px;
-}
-
-.option-row {
-  border: 1px solid var(--color-border);
+.option-group select {
+  width: 100%;
+  border: 1px solid #c8d6ea;
   border-radius: 8px;
   background: #fff;
   color: var(--color-text);
-  min-height: 42px;
-  padding: 8px 10px;
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  align-items: center;
-  gap: 9px;
-  text-align: left;
-}
-
-.option-row.active {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft);
-}
-
-.option-row span {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  display: grid;
-  place-items: center;
-  color: var(--color-muted);
-  background: #eef2f7;
   font-weight: 700;
+  min-height: 42px;
+  padding: 9px 12px;
+  outline: none;
 }
 
-.option-row.active span {
-  color: #fff;
-  background: var(--color-primary);
-}
-
-.option-row p {
-  margin-bottom: 0;
-  line-height: 1.4;
+.option-group select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .selection-card {
