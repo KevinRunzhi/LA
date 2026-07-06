@@ -245,11 +245,15 @@ h2 {
   line-height: 1.7;
 }
 
-.intake-workspace {
+.intake-step-screen {
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 14px;
+}
+
+.intake-step-screen.single-panel {
+  grid-template-columns: minmax(0, 1fr) 300px;
 }
 
 .input-stage textarea {
@@ -270,39 +274,101 @@ h2 {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
-.intake-confirm-panel {
+.intake-side-note,
+.operation-note {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 14px;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.intake-side-note span {
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #334155;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.selection-panel,
+.threshold-grid,
+.intake-summary,
+.diagnosis-step-screen {
+  min-height: 0;
   display: grid;
   gap: 12px;
   align-content: start;
 }
 
-.intake-confirm-panel article {
+.selection-panel {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.selection-card {
   border: 1px solid #d7e4ff;
+  border-radius: 8px;
+  background: #fbfdff;
+  color: var(--color-text);
+  display: grid;
+  gap: 10px;
+  min-height: 150px;
+  padding: 16px;
+  text-align: left;
+}
+
+.selection-card.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.selection-card span,
+.selection-card small,
+.threshold-grid span,
+.intake-summary span,
+.handoff-grid span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.selection-card small,
+.operation-note p,
+.threshold-grid p,
+.intake-summary p {
+  margin-bottom: 0;
+  line-height: 1.55;
+}
+
+.threshold-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.threshold-grid article,
+.intake-summary section,
+.handoff-grid article {
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   background: #fbfdff;
   padding: 14px;
 }
 
-.intake-confirm-panel span,
-.intake-confirm-panel small {
-  color: var(--color-muted);
-  font-size: 12px;
-}
-
-.intake-confirm-panel span {
+.threshold-grid strong {
   display: block;
-  margin-bottom: 8px;
-}
-
-.intake-confirm-panel p {
   margin: 8px 0;
   color: var(--color-primary);
-  font-weight: 700;
+  font-size: 20px;
 }
 
-.intake-confirm-panel small {
-  display: block;
-  line-height: 1.5;
+.intake-summary {
+  grid-template-columns: 1fr;
+}
+
+.intake-summary p {
+  margin-top: 8px;
+  color: var(--color-text);
+  font-weight: 700;
 }
 
 .agent-run-list {
@@ -440,6 +506,12 @@ h2 {
   background: var(--color-primary-hover);
 }
 
+.primary-button:disabled,
+.ghost-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
 .ghost-button {
   color: var(--color-text);
   background: #fff;
@@ -459,8 +531,14 @@ h2 {
   min-height: 0;
 }
 
-.diagnosis-support {
+.diagnosis-step-screen {
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.handoff-grid {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -963,7 +1041,10 @@ h2 {
   .stage-layout,
   .graph-page,
   .guide-screen,
-  .intake-workspace,
+  .intake-step-screen,
+  .selection-panel,
+  .threshold-grid,
+  .handoff-grid,
   .diagnosis-report {
     grid-template-columns: 1fr;
   }

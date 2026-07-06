@@ -32,6 +32,11 @@ const navItems = [
 
 const intakeTasks = [
   {
+    title: "描述现场现象",
+    value: "温度告警、风扇声音异常",
+    detail: "记录一线人员看到的告警、声音、温度和数据上传状态，作为后续诊断输入。",
+  },
+  {
     title: "补充设备型号",
     value: "研华 ACP-4000 / IPC-610",
     detail: "确认主演示设备为站控柜内工控机整机，不进入 PLC 控制柜完整诊断。",
@@ -40,6 +45,11 @@ const intakeTasks = [
     title: "确认灯值和阈值",
     value: "TEMP/FAN 告警，风扇转速偏低",
     detail: "重点确认风扇 <500 rpm、系统温度 >55°C、CPU 温度 >70°C 等判断条件。",
+  },
+  {
+    title: "接入信息确认",
+    value: "准备触发诊断",
+    detail: "确认现场现象、设备型号和阈值信息后，启动多 Agent 分析诊断。",
   },
 ];
 
@@ -64,7 +74,7 @@ const diagnosisTasks = [
 const phaseSteps = [
   {
     title: "异常接入",
-    items: ["描述现场现象", "上传入口预留", ...intakeTasks.map((item) => item.title)],
+    items: intakeTasks.map((item) => item.title),
   },
   {
     title: "分析诊断",
@@ -94,6 +104,7 @@ export default function App() {
   const [diagnosis, setDiagnosis] = useState(null);
   const [steps, setSteps] = useState([]);
   const [activeStep, setActiveStep] = useState(0);
+  const [activeIntakeStep, setActiveIntakeStep] = useState(0);
   const [activeDiagnosisTask, setActiveDiagnosisTask] = useState(0);
   const [evidence, setEvidence] = useState([]);
   const [graph, setGraph] = useState([]);
@@ -272,7 +283,9 @@ export default function App() {
                 <InputStage
                   input={input}
                   loading={loading}
+                  activeStep={activeIntakeStep}
                   onInput={setInput}
+                  onSelectStep={setActiveIntakeStep}
                   onStart={startDiagnosis}
                 />
               )}
@@ -320,12 +333,18 @@ export default function App() {
               activePhase={activePhase}
               steps={steps}
               activeStep={activeStep}
+              activeIntakeStep={activeIntakeStep}
               stage={stage}
               analysisSubStep={activeDiagnosisTask}
               activeAgentIndex={activeAgentIndex}
               currentStep={currentStep}
               diagnosis={diagnosis}
               onSelectPhase={jumpToPhase}
+              onSelectIntake={(index) => {
+                setActivePage("workbench");
+                setStage("input");
+                setActiveIntakeStep(index);
+              }}
               onSelectAnalysis={(index) => {
                 if (diagnosis) {
                   setActivePage("workbench");
@@ -348,41 +367,114 @@ export default function App() {
   );
 }
 
-function InputStage({ input, loading, onInput, onStart }) {
+function InputStage({ input, loading, activeStep, onInput, onSelectStep, onStart }) {
+  const isLastStep = activeStep === intakeTasks.length - 1;
+
   return (
     <div className="stage-content input-stage">
       <div className="stage-copy">
-        <p className="eyebrow">异常接入</p>
-        <h2>描述现场异常并补齐关键信息</h2>
-        <p>先输入一线人员看到的告警、灯态、声音、温度或数据上传异常，再在本阶段确认设备型号和灯值阈值。图片能力只保留入口，第一版不做真实上传。</p>
+        <p className="eyebrow">异常接入 · 第 {activeStep + 1} / {intakeTasks.length} 步</p>
+        <h2>{intakeTasks[activeStep].title}</h2>
+        <p>{intakeTasks[activeStep].detail}</p>
       </div>
-      <div className="intake-workspace">
-        <textarea
-          value={input}
-          onChange={(event) => onInput(event.target.value)}
-          placeholder="例如：站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。"
-        />
-        <section className="intake-confirm-panel">
-          {intakeTasks.map((task) => (
-            <article key={task.title}>
-              <span>已预填 · 可修改</span>
-              <strong>{task.title}</strong>
-              <p>{task.value}</p>
-              <small>{task.detail}</small>
+
+      {activeStep === 0 && (
+        <div className="intake-step-screen">
+          <textarea
+            value={input}
+            onChange={(event) => onInput(event.target.value)}
+            placeholder="例如：站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。"
+          />
+          <div className="intake-side-note">
+            <strong>本步采集</strong>
+            <span>现场现象</span>
+            <span>告警类型</span>
+            <span>图片入口预留</span>
+            <button className="ghost-button">
+              <ImagePlus size={16} />
+              上传图片（预留）
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeStep === 1 && (
+        <div className="intake-step-screen single-panel">
+          <section className="selection-panel">
+            <button className="selection-card active">
+              <span>推荐匹配</span>
+              <strong>研华 ACP-4000 / IPC-610</strong>
+              <small>站控柜内工控机，符合本次演示设备范围。</small>
+            </button>
+            <button className="selection-card">
+              <span>备选</span>
+              <strong>通用工控机</strong>
+              <small>仅用于后续扩展，当前 MVP 不进入该分支。</small>
+            </button>
+          </section>
+          <div className="operation-note">
+            <strong>确认口径</strong>
+            <p>本次演示只诊断站控柜内工控机散热异常，不展开 PLC 控制柜或完整电气系统诊断。</p>
+          </div>
+        </div>
+      )}
+
+      {activeStep === 2 && (
+        <div className="threshold-grid">
+          {[
+            ["TEMP/FAN LED", "告警", "前面板告警灯点亮或蜂鸣提示"],
+            ["风扇转速", "< 500 rpm", "风扇转速偏低，优先检查滤网、风道和风扇"],
+            ["系统温度", "> 55°C", "触发散热异常判断"],
+            ["CPU 温度", "> 70°C", "结合系统温度判断过热风险"],
+          ].map(([label, value, detail]) => (
+            <article key={label}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+              <p>{detail}</p>
             </article>
           ))}
-        </section>
-      </div>
+        </div>
+      )}
+
+      {activeStep === 3 && (
+        <div className="intake-summary">
+          <section>
+            <span>异常描述</span>
+            <p>{input || defaultInput}</p>
+          </section>
+          <section>
+            <span>设备型号</span>
+            <p>研华 ACP-4000 / IPC-610</p>
+          </section>
+          <section>
+            <span>关键阈值</span>
+            <p>TEMP/FAN 告警 · 风扇 &lt;500 rpm · 系统温度 &gt;55°C · CPU 温度 &gt;70°C</p>
+          </section>
+        </div>
+      )}
+
       <div className="input-toolbar">
-        <button className="ghost-button">
-          <ImagePlus size={16} />
-          上传图片（预留）
+        <button
+          className="ghost-button"
+          onClick={() => onSelectStep(Math.max(0, activeStep - 1))}
+          disabled={activeStep === 0}
+        >
+          <ChevronLeft size={16} />
+          上一步
         </button>
-        <button className="ghost-button">快速提问</button>
-        <button className="primary-button" onClick={onStart} disabled={loading}>
-          <Send size={16} />
-          {loading ? "诊断中" : "触发诊断"}
-        </button>
+        {!isLastStep ? (
+          <button
+            className="primary-button"
+            onClick={() => onSelectStep(Math.min(intakeTasks.length - 1, activeStep + 1))}
+          >
+            确认并继续 <ChevronRight size={16} />
+          </button>
+        ) : (
+          <button className="primary-button" onClick={onStart} disabled={loading}>
+            <Send size={16} />
+            {loading ? "诊断中" : "触发诊断"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -438,92 +530,103 @@ function DiagnosisStage({ diagnosis, evidence, activeTask, onSelectTask, onEnter
     ["风扇低速或停转", "优先级高", "需核对转速是否低于 500 rpm，并检查 FAN1/FAN2 接线顺序。"],
     ["机柜环境温度或通风条件异常", "待确认", "需确认环境温度是否超过 40°C，进出风口是否被遮挡。"],
   ];
+  const isLastTask = activeTask === diagnosisTasks.length - 1;
 
   return (
     <div className="stage-content diagnosis-stage">
       <div className="stage-copy">
-        <p className="eyebrow">诊断结论</p>
-        <h2>工控机散热异常诊断报告</h2>
-        <p>{diagnosis.summary}</p>
+        <p className="eyebrow">分析诊断 · 第 {activeTask + 1} / {diagnosisTasks.length} 步</p>
+        <h2>{diagnosisTasks[activeTask].title}</h2>
+        <p>{diagnosisTasks[activeTask].detail}</p>
       </div>
 
-      <div className="diagnosis-support">
-        <section className="agent-strip">
-          {diagnosis.agents.map((agent) => (
-            <article key={agent.name}>
-              <span>已完成</span>
-              <strong>{agent.name}</strong>
-              <p>{agent.content}</p>
-            </article>
-          ))}
-        </section>
+      {activeTask === 0 && (
+        <div className="diagnosis-step-screen">
+          <section className="conclusion-card">
+            <div>
+              <span className="status-badge">已接收异常接入信息</span>
+              <h3>散热异常诊断已触发</h3>
+              <p>系统将基于设备型号、灯值阈值和现场现象进入预设多 Agent 会诊流程。</p>
+            </div>
+            <AlertTriangle size={26} />
+          </section>
+          <section className="handoff-grid">
+            <article><span>设备</span><strong>研华 ACP-4000 / IPC-610</strong></article>
+            <article><span>故障方向</span><strong>TEMP/FAN 与高温告警</strong></article>
+            <article><span>诊断边界</span><strong>站控柜内工控机散热系统</strong></article>
+          </section>
+        </div>
+      )}
 
-        <section className="evidence-row">
-          {evidence.slice(0, 4).map((item) => (
-            <article key={item.id}>
-              <span>{item.id}</span>
-              <strong>{item.title}</strong>
-            </article>
-          ))}
-        </section>
-      </div>
-
-      <div className="diagnosis-report">
-        <section className="conclusion-card">
-          <div>
-            <span className="status-badge">建议进入检修向导</span>
-            <h3>{diagnosis.title}</h3>
-            <p>{diagnosis.risk}</p>
-          </div>
-          <AlertTriangle size={26} />
-        </section>
-
-        <section className="analysis-task-card">
-          <div className="section-heading compact">
-            <h3>诊断执行回放</h3>
-            <span>{activeTask + 1} / {diagnosisTasks.length}</span>
-          </div>
-          <div className="task-menu">
-            {diagnosisTasks.map((task, index) => (
-              <button
-                key={task.title}
-                className={classNames("task-option", index === activeTask && "active", index < activeTask && "done")}
-                onClick={() => onSelectTask(index)}
-              >
-                <span>{index < activeTask ? "已确认" : index === activeTask ? "当前" : "待确认"}</span>
-                <strong>{task.title}</strong>
-                <small>{task.value}</small>
-              </button>
+      {activeTask === 1 && (
+        <div className="diagnosis-step-screen">
+          <section className="agent-strip">
+            {diagnosis.agents.map((agent) => (
+              <article key={agent.name}>
+                <span>已完成</span>
+                <strong>{agent.name}</strong>
+                <p>{agent.content}</p>
+              </article>
             ))}
-          </div>
-          <div className="task-detail">
-            <strong>{diagnosisTasks[activeTask].title}</strong>
-            <p>{diagnosisTasks[activeTask].detail}</p>
-          </div>
-        </section>
+          </section>
 
-        <section className="cause-ranking">
-          <h3>可能原因排序</h3>
-          {rankedCauses.map(([name, level, detail]) => (
-            <article key={name}>
-              <span>{level}</span>
-              <strong>{name}</strong>
-              <p>{detail}</p>
-            </article>
-          ))}
-        </section>
-      </div>
+          <section className="evidence-row">
+            {evidence.slice(0, 4).map((item) => (
+              <article key={item.id}>
+                <span>{item.id}</span>
+                <strong>{item.title}</strong>
+              </article>
+            ))}
+          </section>
+        </div>
+      )}
+
+      {activeTask === 2 && (
+        <div className="diagnosis-step-screen final-report">
+          <section className="conclusion-card">
+            <div>
+              <span className="status-badge">建议进入检修向导</span>
+              <h3>{diagnosis.title}</h3>
+              <p>{diagnosis.summary}</p>
+              <p>{diagnosis.risk}</p>
+            </div>
+            <AlertTriangle size={26} />
+          </section>
+
+          <section className="cause-ranking">
+            <h3>可能原因排序</h3>
+            {rankedCauses.map(([name, level, detail]) => (
+              <article key={name}>
+                <span>{level}</span>
+                <strong>{name}</strong>
+                <p>{detail}</p>
+              </article>
+            ))}
+          </section>
+        </div>
+      )}
 
       <div className="stage-actions">
         <button
           className="ghost-button"
-          onClick={() => onSelectTask(Math.min(diagnosisTasks.length - 1, activeTask + 1))}
+          onClick={() => onSelectTask(Math.max(0, activeTask - 1))}
+          disabled={activeTask === 0}
         >
-          查看下一诊断环节
+          <ChevronLeft size={16} />
+          上一步
         </button>
-        <button className="primary-button" onClick={onEnterGuide}>
-          进入步骤式检修向导 <ChevronRight size={16} />
-        </button>
+        {!isLastTask ? (
+          <button
+            className="primary-button"
+            onClick={() => onSelectTask(Math.min(diagnosisTasks.length - 1, activeTask + 1))}
+          >
+            确认并继续 <ChevronRight size={16} />
+          </button>
+        ) : (
+          <button className="primary-button" onClick={onEnterGuide}>
+            进入步骤式检修向导 <ChevronRight size={16} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -638,7 +741,7 @@ function isAnalysisStepDone(stage, activePhase, index, activeAgentIndex, analysi
     if (index === 0) return activeAgentIndex >= 0;
     return false;
   }
-  if (stage === "diagnosis") return index < analysisSubStep || index < 2;
+  if (stage === "diagnosis") return index < analysisSubStep;
   return false;
 }
 
@@ -650,16 +753,25 @@ function getAnalysisStepStatus(stage, activePhase, index, activeAgentIndex, anal
   return "待处理";
 }
 
+function getIntakeStepStatus(activePhase, stage, index, activeIntakeStep) {
+  if (activePhase > 0) return "已完成";
+  if (stage === "input" && index === activeIntakeStep) return "当前";
+  if (stage === "input" && index < activeIntakeStep) return "已完成";
+  return "待处理";
+}
+
 function RightStepPanel({
   activePhase,
   steps,
   activeStep,
+  activeIntakeStep,
   stage,
   analysisSubStep,
   activeAgentIndex,
   currentStep,
   diagnosis,
   onSelectPhase,
+  onSelectIntake,
   onSelectAnalysis,
   onSelectStep,
 }) {
@@ -678,7 +790,21 @@ function RightStepPanel({
                 <strong>{phase.title}</strong>
               </button>
               <div className="sub-step-list">
-                {phaseIndex === 1 ? (
+                {phaseIndex === 0 ? (
+                  phase.items.map((item, index) => (
+                    <button
+                      className={classNames(
+                        "sub-step",
+                        stage === "input" && index === activeIntakeStep && "active",
+                        getIntakeStepStatus(activePhase, stage, index, activeIntakeStep) === "已完成" && "done"
+                      )}
+                      key={`${item}-${index}`}
+                      onClick={() => onSelectIntake(index)}
+                    >
+                      {getIntakeStepStatus(activePhase, stage, index, activeIntakeStep)} · {item}
+                    </button>
+                  ))
+                ) : phaseIndex === 1 ? (
                   diagnosisTasks.map((task, index) => (
                     <button
                       key={task.title}
