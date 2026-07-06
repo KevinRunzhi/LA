@@ -517,6 +517,7 @@ function AgentRunStage({ agents, activeAgentIndex }) {
     "正在检索维修指导、阈值和历史知识条目...",
     "正在进行操作合规与安全要求校验...",
   ];
+  const progress = Math.min(100, Math.round((Math.max(0, activeAgentIndex) / agents.length) * 100));
 
   return (
     <div className="stage-content agent-run-stage">
@@ -526,25 +527,49 @@ function AgentRunStage({ agents, activeAgentIndex }) {
         <p>系统正在按预设演示流程逐项分析。每个 Agent 完成后再进入下一项，全部完成后统一生成诊断结论。</p>
       </div>
 
-      <div className="agent-run-list">
-        {agents.map((agent, index) => {
-          const done = index < activeAgentIndex;
-          const running = index === activeAgentIndex;
-          return (
-            <article className={classNames("agent-run-card", done && "done", running && "running")} key={agent.name}>
-              <div className="agent-run-status">
-                {done && <Check size={18} />}
-                {running && <Loader2 size={18} className="spin" />}
-                {!done && !running && <span>{index + 1}</span>}
-              </div>
-              <div>
-                <strong>{agent.name}</strong>
-                <p>{done ? agent.content : running ? messages[index] || "正在分析..." : "等待上一个 Agent 完成"}</p>
-              </div>
-              <span>{done ? "已完成" : running ? "运行中" : "等待中"}</span>
-            </article>
-          );
-        })}
+      <div className="agent-run-workspace">
+        <div className="run-progress-panel">
+          <div className="progress-head">
+            <strong>诊断执行进度</strong>
+            <span>{progress}%</span>
+          </div>
+          <div className="progress-track">
+            <div style={{ width: `${progress}%` }} />
+          </div>
+          <div className="execution-rail">
+            {agents.map((agent, index) => {
+              const done = index < activeAgentIndex;
+              const running = index === activeAgentIndex;
+              return (
+                <div className={classNames("rail-step", done && "done", running && "running")} key={agent.name}>
+                  <span>{done ? <Check size={14} /> : running ? <Loader2 size={14} className="spin" /> : index + 1}</span>
+                  <p>{agent.name}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="agent-run-list">
+          {agents.map((agent, index) => {
+            const done = index < activeAgentIndex;
+            const running = index === activeAgentIndex;
+            return (
+              <article className={classNames("agent-run-card", done && "done", running && "running")} key={agent.name}>
+                <div className="agent-run-status">
+                  {done && <Check size={18} />}
+                  {running && <Loader2 size={18} className="spin" />}
+                  {!done && !running && <span>{index + 1}</span>}
+                </div>
+                <div>
+                  <strong>{agent.name}</strong>
+                  <p>{done ? agent.content : running ? messages[index] || "正在分析..." : "等待上一个 Agent 完成"}</p>
+                </div>
+                <span>{done ? "已完成" : running ? "运行中" : "等待中"}</span>
+              </article>
+            );
+          })}
+        </div>
       </div>
 
       <div className="analysis-waiting">
@@ -675,6 +700,7 @@ function GuideStage({
 }) {
   const completedChecks = currentStep.checks.filter((check) => checkedItems.includes(check)).length;
   const allChecksDone = completedChecks === currentStep.checks.length;
+  const checkProgress = Math.round((completedChecks / currentStep.checks.length) * 100);
 
   return (
     <div className="stage-content guide-stage">
@@ -682,6 +708,15 @@ function GuideStage({
         <p className="eyebrow">检修向导 · 第 {activeStep + 1} / {totalSteps} 步</p>
         <h2>{currentStep.title}</h2>
         <p>{currentStep.description}</p>
+      </div>
+      <div className="guide-progress">
+        <div className="progress-head">
+          <strong>本步确认进度</strong>
+          <span>{completedChecks} / {currentStep.checks.length}</span>
+        </div>
+        <div className="progress-track">
+          <div style={{ width: `${checkProgress}%` }} />
+        </div>
       </div>
       <div className="guide-screen">
         <div className="image-placeholder">

@@ -222,6 +222,7 @@ h2 {
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 18px;
+  animation: stageIn 180ms ease-out both;
 }
 
 .diagnosis-stage {
@@ -233,6 +234,17 @@ h2 {
 
 .agent-run-stage {
   align-content: center;
+}
+
+@keyframes stageIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .stage-copy {
@@ -400,6 +412,97 @@ h2 {
   font-weight: 700;
 }
 
+.agent-run-workspace {
+  min-height: 0;
+  display: grid;
+  gap: 14px;
+  align-content: center;
+}
+
+.run-progress-panel,
+.guide-progress {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 14px;
+}
+
+.progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  color: var(--color-text);
+}
+
+.progress-head span {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.progress-track {
+  height: 8px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: #e8eef7;
+  overflow: hidden;
+}
+
+.progress-track div {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+  transition: width 260ms ease;
+}
+
+.execution-rail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rail-step {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.rail-step span {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #eef2f7;
+}
+
+.rail-step.running {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.rail-step.running span {
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.rail-step.done {
+  color: #166534;
+}
+
+.rail-step.done span {
+  color: #fff;
+  background: #16a34a;
+}
+
+.rail-step p {
+  margin-bottom: 0;
+}
+
 .agent-run-list {
   display: grid;
   gap: 12px;
@@ -415,11 +518,15 @@ h2 {
   border-radius: 8px;
   background: #fbfdff;
   padding: 14px;
+  animation: cardIn 180ms ease-out both;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 
 .agent-run-card.running {
   border-color: var(--color-primary);
   background: var(--color-primary-soft);
+  transform: translateX(2px);
+  box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
 .agent-run-card.done {
@@ -474,6 +581,17 @@ h2 {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -775,6 +893,10 @@ h2 {
   gap: 14px;
 }
 
+.guide-stage {
+  grid-template-rows: auto auto 1fr auto;
+}
+
 .check-step-list {
   display: grid;
   gap: 10px;
@@ -792,16 +914,19 @@ h2 {
   color: var(--color-text);
   padding: 12px;
   text-align: left;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
 
 .check-step-item:hover {
   border-color: #b9c8dd;
   background: #f8fbff;
+  transform: translateX(2px);
 }
 
 .check-step-item.checked {
   border-color: #bbf7d0;
   background: #f0fdf4;
+  animation: checkedPop 180ms ease-out both;
 }
 
 .check-step-item span {
@@ -832,6 +957,12 @@ h2 {
 .check-step-item.checked p {
   color: #166534;
   font-weight: 700;
+}
+
+@keyframes checkedPop {
+  50% {
+    transform: scale(1.01);
+  }
 }
 
 .chips {
