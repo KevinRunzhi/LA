@@ -1071,10 +1071,25 @@ function RightStepPanel({
 }
 
 function KnowledgeGraphPage({ graph, evidence }) {
-  const nodes = ["输气场站", "站控柜", "工控机", "高温告警", "风道堵塞", "滤网积尘", "风扇异常", "恢复验证"];
-  const positions = [
-    [12, 46], [28, 28], [45, 46], [62, 24], [76, 43], [64, 68], [40, 72], [84, 68],
+  const [selectedNode, setSelectedNode] = useState("工控机");
+  const graphNodes = [
+    { name: "输气场站", type: "场景", detail: "油气管道场站业务环境，包含站控柜与现场运维对象。", position: [12, 46] },
+    { name: "站控柜", type: "设备容器", detail: "站控柜 A01，承载工控机及相关监控设备。", position: [28, 28] },
+    { name: "工控机", type: "核心设备", detail: "研华 ACP-4000 / IPC-610 工控机，本次散热异常诊断对象。", position: [45, 46] },
+    { name: "高温告警", type: "故障现象", detail: "由 TEMP/FAN、系统温度、CPU 温度等信号共同触发的异常现象。", position: [62, 24] },
+    { name: "风道堵塞", type: "可能原因", detail: "进出风道被遮挡或积尘导致散热效率下降。", position: [76, 43] },
+    { name: "滤网积尘", type: "可能原因", detail: "门滤网或风扇滤网积尘，导致进风阻力增大。", position: [64, 68] },
+    { name: "风扇异常", type: "可能原因", detail: "风扇低速、停转、异响或 FAN1/FAN2 接线异常。", position: [40, 72] },
+    { name: "恢复验证", type: "检修闭环", detail: "完成清理和恢复后，连续观察告警、温度、风扇转速和数据上传。", position: [84, 68] },
   ];
+  const activeNode = graphNodes.find((node) => node.name === selectedNode) || graphNodes[2];
+  const relatedEdges = graph.filter((edge) => edge.source === selectedNode || edge.target === selectedNode);
+  const relatedKeywords = new Set([selectedNode, ...relatedEdges.flatMap((edge) => [edge.source, edge.target])]);
+  const relatedEvidence = evidence.filter((item) => {
+    const text = `${item.title} ${item.step}`;
+    return Array.from(relatedKeywords).some((keyword) => text.includes(keyword) || keyword.includes("工控机"));
+  });
+  const visibleEvidence = relatedEvidence.length > 0 ? relatedEvidence : evidence.slice(0, 4);
 
   return (
     <section className="graph-page">
@@ -1084,7 +1099,7 @@ function KnowledgeGraphPage({ graph, evidence }) {
             <p className="eyebrow">知识图谱</p>
             <h2>工控机散热异常子图</h2>
           </div>
-          <span className="health-pill ok">节点图样式</span>
+          <span className="health-pill ok">{graph.length} 条关系</span>
         </div>
         <div className="node-map">
           <svg viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -1092,22 +1107,44 @@ function KnowledgeGraphPage({ graph, evidence }) {
             <polyline points="45,46 64,68 84,68" />
             <polyline points="45,46 40,72" />
           </svg>
-          {nodes.map((node, index) => (
+          {graphNodes.map((node) => (
             <button
-              key={node}
-              className={classNames("graph-node", index === 3 && "danger-node")}
-              style={{ left: `${positions[index][0]}%`, top: `${positions[index][1]}%` }}
+              key={node.name}
+              className={classNames(
+                "graph-node",
+                node.type === "故障现象" && "danger-node",
+                selectedNode === node.name && "active"
+              )}
+              style={{ left: `${node.position[0]}%`, top: `${node.position[1]}%` }}
+              onClick={() => setSelectedNode(node.name)}
             >
-              {node}
+              <span>{node.type}</span>
+              {node.name}
             </button>
           ))}
         </div>
+        <div className="graph-legend">
+          <span>场景</span>
+          <span>设备</span>
+          <span>故障</span>
+          <span>原因</span>
+          <span>验证</span>
+        </div>
       </div>
       <aside className="panel graph-side">
-        <h2>关系与证据</h2>
+        <div className="node-detail-card">
+          <p className="eyebrow">当前节点</p>
+          <h2>{activeNode.name}</h2>
+          <span>{activeNode.type}</span>
+          <p>{activeNode.detail}</p>
+        </div>
         <div className="relation-list">
-          {graph.slice(0, 8).map((edge, index) => (
-            <div key={`${edge.source}-${edge.target}-${index}`}>
+          <div className="section-heading compact">
+            <h3>关联关系</h3>
+            <span>{relatedEdges.length} 条</span>
+          </div>
+          {(relatedEdges.length > 0 ? relatedEdges : graph.slice(0, 6)).map((edge, index) => (
+            <div className="relation-row" key={`${edge.source}-${edge.target}-${index}`}>
               <strong>{edge.source}</strong>
               <span>{edge.relation}</span>
               <strong>{edge.target}</strong>
@@ -1115,10 +1152,15 @@ function KnowledgeGraphPage({ graph, evidence }) {
           ))}
         </div>
         <div className="evidence-mini">
-          {evidence.slice(0, 4).map((item) => (
+          <div className="section-heading compact">
+            <h3>知识条目</h3>
+            <span>{visibleEvidence.length} 条</span>
+          </div>
+          {visibleEvidence.map((item) => (
             <article key={item.id}>
               <span>{item.id}</span>
               <strong>{item.title}</strong>
+              <p>{item.step}</p>
             </article>
           ))}
         </div>
