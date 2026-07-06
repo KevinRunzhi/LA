@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Activity,
   AlertTriangle,
   BookOpen,
   Check,
+  ChevronLeft,
   ChevronRight,
   ClipboardList,
   Cpu,
-  Database,
   FileText,
   GitBranch,
+  ImagePlus,
+  LayoutDashboard,
   MapPin,
+  Menu,
+  MessageCircle,
   Send,
+  Settings,
   ShieldCheck,
   Sparkles,
   UserRound,
@@ -21,13 +25,31 @@ import {
 import { api } from "./api/client";
 import { defaultInput } from "./data/fallbackDemo";
 
-const flow = [
-  "现场描述",
-  "信息补充",
-  "知识检索与会诊",
-  "诊断结论生成",
-  "作业卡生成",
-  "专家审核回流",
+const navItems = [
+  { id: "workbench", label: "工作台", icon: LayoutDashboard },
+  { id: "graph", label: "知识图谱", icon: GitBranch },
+  { id: "cases", label: "案例回顾", icon: BookOpen },
+  { id: "records", label: "检修记录", icon: ClipboardList },
+  { id: "settings", label: "设置", icon: Settings },
+];
+
+const phaseSteps = [
+  {
+    title: "异常接入",
+    items: ["描述现场现象", "上传入口预留", "触发诊断"],
+  },
+  {
+    title: "分析诊断",
+    items: ["补充设备型号", "确认灯态与阈值", "生成诊断结论"],
+  },
+  {
+    title: "检修向导",
+    items: ["安全准备", "风道检查", "滤网/风扇检查", "恢复验证"],
+  },
+  {
+    title: "记录与回流",
+    items: ["生成检修记录", "专家审核", "知识沉淀"],
+  },
 ];
 
 function classNames(...items) {
@@ -35,6 +57,9 @@ function classNames(...items) {
 }
 
 export default function App() {
+  const [navOpen, setNavOpen] = useState(false);
+  const [activePage, setActivePage] = useState("workbench");
+  const [stage, setStage] = useState("input");
   const [health, setHealth] = useState("连接中");
   const [scenario, setScenario] = useState(null);
   const [input, setInput] = useState(defaultInput);
@@ -69,25 +94,31 @@ export default function App() {
   const completedCount = steps.filter((step) => step.completed).length;
   const currentStep = steps[activeStep];
 
-  const activeFlowIndex = useMemo(() => {
-    if (expertReview) return 5;
-    if (record) return 4;
-    if (completedCount > 0) return 3;
-    if (diagnosis) return 2;
-    return 1;
-  }, [completedCount, diagnosis, expertReview, record]);
+  const activePhase = useMemo(() => {
+    if (stage === "input") return 0;
+    if (stage === "diagnosis") return 1;
+    if (stage === "guide") return 2;
+    return 3;
+  }, [stage]);
 
-  async function triggerDiagnosis(usePreset = false) {
+  async function startDiagnosis() {
     setLoading(true);
     try {
-      const result = await api.startDiagnosis(usePreset ? defaultInput : input);
+      const result = await api.startDiagnosis(input || defaultInput);
       setDiagnosis(result);
-      const latestSteps = await api.steps();
-      setSteps(latestSteps);
+      setSteps(await api.steps());
+      setActivePage("workbench");
+      setStage("diagnosis");
       setActiveStep(0);
     } finally {
       setLoading(false);
     }
+  }
+
+  async function enterGuide() {
+    setSteps(await api.steps());
+    setStage("guide");
+    setActiveStep(0);
   }
 
   async function completeCurrentStep() {
@@ -97,40 +128,57 @@ export default function App() {
     setSteps(latestSteps);
     if (activeStep < latestSteps.length - 1) {
       setActiveStep(activeStep + 1);
+    } else {
+      const result = await api.generateRecord();
+      setRecord(result);
+      setStage("record");
     }
   }
 
   async function buildRecord() {
     const result = await api.generateRecord();
     setRecord(result);
+    setStage("record");
   }
 
   async function approveExpertReview() {
     const result = await api.expertReview();
     setExpertReview(result);
-    const refreshed = await api.startDiagnosis(input);
-    setDiagnosis(refreshed);
+    setDiagnosis(await api.startDiagnosis(input || defaultInput));
+    setStage("expert");
+  }
+
+  function openNavPage(pageId) {
+    setActivePage(pageId);
+    if (pageId === "workbench") return;
+    setStage("input");
   }
 
   return (
-    <div className="app-shell">
+    <div className={classNames("app-shell", navOpen && "nav-expanded")}>
       <aside className="sidebar">
-        <div className="brand-mark">
+        <button className="brand-mark" onClick={() => setNavOpen(!navOpen)} title="展开菜单">
           <Zap size={22} />
-        </div>
+        </button>
+        <button className="nav-toggle" onClick={() => setNavOpen(!navOpen)} title="菜单">
+          <Menu size={18} />
+          <span>菜单</span>
+        </button>
         <nav className="sidebar-nav" aria-label="主导航">
-          <button className="nav-icon active" title="智能诊断台">
-            <Sparkles size={20} />
-          </button>
-          <button className="nav-icon" title="检修记录">
-            <ClipboardList size={20} />
-          </button>
-          <button className="nav-icon" title="知识库">
-            <BookOpen size={20} />
-          </button>
-          <button className="nav-icon" title="知识图谱">
-            <GitBranch size={20} />
-          </button>
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                className={classNames("nav-icon", activePage === item.id && "active")}
+                title={item.label}
+                onClick={() => openNavPage(item.id)}
+              >
+                <Icon size={20} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
         </nav>
       </aside>
 
@@ -138,247 +186,375 @@ export default function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">站控慧眼</p>
-            <h1>智能诊断台</h1>
+            <h1>{activePage === "graph" ? "知识图谱" : "智能诊断台"}</h1>
           </div>
           <div className="topbar-meta">
             <span><MapPin size={16} /> {scenario?.site || "某输气场站"} · {scenario?.cabinet || "站控柜 A01"}</span>
             <span><UserRound size={16} /> 一线检修人员</span>
-            <span className={classNames("health-pill", health === "后端已连接" && "ok")}>
-              {health}
-            </span>
+            <span className={classNames("health-pill", health === "后端已连接" && "ok")}>{health}</span>
           </div>
         </header>
 
-        <section className="content-grid">
-          <div className="main-column">
-            <section className="panel diagnosis-panel">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">异常输入</p>
-                  <h2>现场描述</h2>
-                </div>
-                <button className="ghost-button" onClick={() => triggerDiagnosis(true)} disabled={loading}>
-                  一键触发主演示异常
-                </button>
-              </div>
+        {activePage === "graph" ? (
+          <KnowledgeGraphPage graph={graph} evidence={evidence} />
+        ) : activePage === "cases" ? (
+          <PlaceholderPage title="案例回顾" text="后续展示相似历史案例、专家经验和检修记录复盘。" />
+        ) : activePage === "records" ? (
+          <RecordPage record={record} onBuildRecord={buildRecord} />
+        ) : activePage === "settings" ? (
+          <PlaceholderPage title="设置" text="后续配置设备类型、故障类型、专家 Agent 和演示数据重置。" />
+        ) : (
+          <section className="stage-layout">
+            <div className="stage-card">
+              {stage === "input" && (
+                <InputStage
+                  input={input}
+                  loading={loading}
+                  onInput={setInput}
+                  onStart={startDiagnosis}
+                />
+              )}
+              {stage === "diagnosis" && diagnosis && (
+                <DiagnosisStage
+                  diagnosis={diagnosis}
+                  evidence={evidence}
+                  onEnterGuide={enterGuide}
+                />
+              )}
+              {stage === "guide" && currentStep && (
+                <GuideStage
+                  currentStep={currentStep}
+                  activeStep={activeStep}
+                  totalSteps={steps.length}
+                  onPrev={() => setActiveStep(Math.max(0, activeStep - 1))}
+                  onNext={completeCurrentStep}
+                  onRecord={buildRecord}
+                />
+              )}
+              {stage === "record" && (
+                <RecordStage
+                  record={record}
+                  onApprove={approveExpertReview}
+                  onBackGuide={() => setStage("guide")}
+                />
+              )}
+              {stage === "expert" && (
+                <ExpertStage
+                  expertReview={expertReview}
+                  onRestart={() => setStage("diagnosis")}
+                />
+              )}
+            </div>
 
-              <textarea
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                placeholder="请输入现场现象或补充信息..."
-              />
+            <RightStepPanel
+              activePhase={activePhase}
+              steps={steps}
+              activeStep={activeStep}
+              completedCount={completedCount}
+              onSelectStep={(index) => {
+                if (diagnosis) {
+                  setStage("guide");
+                  setActiveStep(index);
+                }
+              }}
+            />
+          </section>
+        )}
 
-              <div className="input-actions">
-                <span className="reserved-action">图片入口已预留</span>
-                <span className="reserved-action">语音播报模拟</span>
-                <button className="primary-button" onClick={() => triggerDiagnosis(false)} disabled={loading}>
-                  <Send size={16} />
-                  {loading ? "生成中" : "生成诊断摘要"}
-                </button>
-              </div>
-            </section>
-
-            {diagnosis && (
-              <section className="panel summary-panel">
-                <div className="section-heading">
-                  <div>
-                    <p className="eyebrow">诊断摘要</p>
-                    <h2>{diagnosis.title}</h2>
-                  </div>
-                  {diagnosis.expert_review_applied && (
-                    <span className="review-tag">专家修正 · 已审核</span>
-                  )}
-                </div>
-                <p className="summary-text">{diagnosis.summary}</p>
-                <div className="risk-box">
-                  <AlertTriangle size={18} />
-                  <span>{diagnosis.risk}</span>
-                </div>
-                {diagnosis.expert_review && (
-                  <div className="expert-note">
-                    <ShieldCheck size={18} />
-                    <span>{diagnosis.expert_review.content}</span>
-                  </div>
-                )}
-                <div className="agent-grid">
-                  {diagnosis.agents.map((agent) => (
-                    <article className="agent-card" key={agent.name}>
-                      <span>{agent.status}</span>
-                      <h3>{agent.name}</h3>
-                      <p>{agent.content}</p>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {diagnosis && currentStep && (
-              <section className="panel guide-panel">
-                <div className="section-heading">
-                  <div>
-                    <p className="eyebrow">步骤式检修向导</p>
-                    <h2>{currentStep.order}. {currentStep.title}</h2>
-                  </div>
-                  <span className="progress-text">{completedCount} / {steps.length} 已完成</span>
-                </div>
-
-                <div className="guide-layout">
-                  <div className="step-list">
-                    {steps.map((step, index) => (
-                      <button
-                        key={step.id}
-                        className={classNames(
-                          "step-item",
-                          index === activeStep && "active",
-                          step.completed && "done"
-                        )}
-                        onClick={() => setActiveStep(index)}
-                      >
-                        <span>{step.completed ? <Check size={16} /> : step.order}</span>
-                        {step.title}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="step-detail">
-                    <div className="image-placeholder">
-                      <Cpu size={30} />
-                      <strong>图片待补充</strong>
-                      <span>{currentStep.placeholder}</span>
-                    </div>
-                    <p>{currentStep.description}</p>
-                    <div className="chips">
-                      {currentStep.checks.map((check) => <span key={check}>{check}</span>)}
-                    </div>
-                    {currentStep.thresholds.length > 0 && (
-                      <div className="threshold-box">
-                        <Activity size={18} />
-                        <div>
-                          <strong>判断阈值</strong>
-                          <p>{currentStep.thresholds.join(" · ")}</p>
-                        </div>
-                      </div>
-                    )}
-                    <div className="safety-box">
-                      <ShieldCheck size={18} />
-                      <div>
-                        <strong>安全提醒</strong>
-                        <p>{currentStep.safety}</p>
-                      </div>
-                    </div>
-                    <p className="source-line">来源依据：{currentStep.source}</p>
-                    <div className="guide-actions">
-                      <button className="ghost-button" onClick={() => setActiveStep(Math.max(0, activeStep - 1))}>
-                        上一步
-                      </button>
-                      <button className="primary-button" onClick={completeCurrentStep}>
-                        标记完成 <ChevronRight size={16} />
-                      </button>
-                      <button className="ghost-button" onClick={buildRecord}>
-                        生成检修记录
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            )}
-
-            <section className="lower-grid">
-              <EvidencePanel evidence={evidence} />
-              <GraphPanel graph={graph} />
-            </section>
-          </div>
-
-          <aside className="side-column">
-            <section className="panel flow-panel">
-              <h2>诊断流程</h2>
-              <div className="flow-list">
-                {flow.map((item, index) => (
-                  <div className={classNames("flow-item", index <= activeFlowIndex && "active")} key={item}>
-                    <span>{index < activeFlowIndex ? <Check size={15} /> : index + 1}</span>
-                    <div>
-                      <strong>{item}</strong>
-                      <p>{index < activeFlowIndex ? "已完成" : index === activeFlowIndex ? "进行中" : "待生成"}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {record && (
-              <section className="panel record-panel">
-                <div className="section-heading compact">
-                  <h2>检修记录</h2>
-                  <FileText size={18} />
-                </div>
-                <p>{record.record_id}</p>
-                <strong>{record.equipment}</strong>
-                <span>{record.fault}</span>
-                <div className="record-stats">
-                  <span>{record.completed_steps.length} 个步骤完成</span>
-                  <span>{record.expert_status}</span>
-                </div>
-                <p className="muted">{record.conclusion}</p>
-                <button className="ghost-button full" onClick={() => window.print()}>
-                  浏览器打印作业卡
-                </button>
-              </section>
-            )}
-
-            <section className="panel expert-panel">
-              <div className="section-heading compact">
-                <h2>专家审核</h2>
-                <Wrench size={18} />
-              </div>
-              <p>沙尘环境下，站控柜工控机滤网维护周期应从季度检查缩短为月度检查。</p>
-              <button className="primary-button full" onClick={approveExpertReview}>
-                审核通过并回流
-              </button>
-              {expertReview && <span className="review-tag">{expertReview.tag}</span>}
-            </section>
-          </aside>
-        </section>
+        <AssistantChat currentStep={currentStep} diagnosis={diagnosis} />
       </main>
     </div>
   );
 }
 
-function EvidencePanel({ evidence }) {
+function InputStage({ input, loading, onInput, onStart }) {
   return (
-    <section className="panel evidence-panel">
-      <div className="section-heading compact">
-        <h2>证据卡片</h2>
-        <Database size={18} />
+    <div className="stage-content input-stage">
+      <div className="stage-copy">
+        <p className="eyebrow">现场接入</p>
+        <h2>描述问题和现象</h2>
+        <p>先输入一线人员看到的告警、灯态、声音、温度或数据上传异常。图片能力只保留入口，第一版不做真实上传。</p>
       </div>
-      <div className="evidence-list">
-        {evidence.slice(0, 6).map((item) => (
+      <textarea
+        value={input}
+        onChange={(event) => onInput(event.target.value)}
+        placeholder="例如：站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。"
+      />
+      <div className="input-toolbar">
+        <button className="ghost-button">
+          <ImagePlus size={16} />
+          上传图片（预留）
+        </button>
+        <button className="ghost-button">快速提问</button>
+        <button className="primary-button" onClick={onStart} disabled={loading}>
+          <Send size={16} />
+          {loading ? "诊断中" : "生成诊断结论"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DiagnosisStage({ diagnosis, evidence, onEnterGuide }) {
+  return (
+    <div className="stage-content diagnosis-stage">
+      <div className="stage-copy">
+        <p className="eyebrow">诊断结论</p>
+        <h2>{diagnosis.title}</h2>
+        <p>{diagnosis.summary}</p>
+      </div>
+      <div className="diagnosis-grid">
+        <div className="risk-box">
+          <AlertTriangle size={18} />
+          <span>{diagnosis.risk}</span>
+        </div>
+        <div className="agent-strip">
+          {diagnosis.agents.map((agent) => (
+            <article key={agent.name}>
+              <span>{agent.status}</span>
+              <strong>{agent.name}</strong>
+              <p>{agent.content}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+      <div className="evidence-row">
+        {evidence.slice(0, 4).map((item) => (
           <article key={item.id}>
             <span>{item.id}</span>
             <strong>{item.title}</strong>
-            <p>{item.step}</p>
           </article>
         ))}
       </div>
+      <div className="stage-actions">
+        <button className="primary-button" onClick={onEnterGuide}>
+          进入步骤式检修向导 <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function GuideStage({ currentStep, activeStep, totalSteps, onPrev, onNext, onRecord }) {
+  return (
+    <div className="stage-content guide-stage">
+      <div className="stage-copy">
+        <p className="eyebrow">检修向导 · 第 {activeStep + 1} / {totalSteps} 步</p>
+        <h2>{currentStep.title}</h2>
+        <p>{currentStep.description}</p>
+      </div>
+      <div className="guide-screen">
+        <div className="image-placeholder">
+          <Cpu size={34} />
+          <strong>图片待补充</strong>
+          <span>{currentStep.placeholder}</span>
+        </div>
+        <div className="guide-info">
+          <div>
+            <strong>检查项</strong>
+            <div className="chips">
+              {currentStep.checks.map((check) => <span key={check}>{check}</span>)}
+            </div>
+          </div>
+          {currentStep.thresholds.length > 0 && (
+            <div className="threshold-box">
+              <ShieldCheck size={18} />
+              <p>{currentStep.thresholds.join(" · ")}</p>
+            </div>
+          )}
+          <div className="safety-box">
+            <ShieldCheck size={18} />
+            <p>{currentStep.safety}</p>
+          </div>
+          <p className="source-line">来源依据：{currentStep.source}</p>
+        </div>
+      </div>
+      <div className="stage-actions">
+        <button className="ghost-button" onClick={onPrev}><ChevronLeft size={16} /> 上一步</button>
+        <button className="primary-button" onClick={onNext}>完成并继续 <ChevronRight size={16} /></button>
+        <button className="ghost-button" onClick={onRecord}>生成检修记录</button>
+      </div>
+    </div>
+  );
+}
+
+function RecordStage({ record, onApprove, onBackGuide }) {
+  if (!record) {
+    return (
+      <div className="stage-content">
+        <h2>检修记录尚未生成</h2>
+        <button className="ghost-button" onClick={onBackGuide}>返回检修向导</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="stage-content record-stage">
+      <div className="stage-copy">
+        <p className="eyebrow">检修完成记录</p>
+        <h2>{record.record_id}</h2>
+        <p>{record.conclusion}</p>
+      </div>
+      <div className="record-grid">
+        <article><span>设备</span><strong>{record.equipment}</strong></article>
+        <article><span>故障</span><strong>{record.fault}</strong></article>
+        <article><span>步骤完成</span><strong>{record.completed_steps.length} 项</strong></article>
+        <article><span>专家状态</span><strong>{record.expert_status}</strong></article>
+      </div>
+      <div className="stage-actions">
+        <button className="ghost-button" onClick={() => window.print()}>打印作业卡</button>
+        <button className="primary-button" onClick={onApprove}>提交专家审核</button>
+      </div>
+    </div>
+  );
+}
+
+function ExpertStage({ expertReview, onRestart }) {
+  return (
+    <div className="stage-content expert-stage">
+      <div className="stage-copy">
+        <p className="eyebrow">专家审核回流</p>
+        <h2>{expertReview?.tag || "专家修正 · 已审核"}</h2>
+        <p>{expertReview?.content}</p>
+      </div>
+      <div className="expert-note">
+        <Wrench size={20} />
+        <span>修正内容已写入知识库、图谱关系和专家经验记录。再次触发同类异常时会显示该专家修正。</span>
+      </div>
+      <div className="stage-actions">
+        <button className="primary-button" onClick={onRestart}>再次查看诊断结论</button>
+      </div>
+    </div>
+  );
+}
+
+function RightStepPanel({ activePhase, steps, activeStep, completedCount, onSelectStep }) {
+  return (
+    <aside className="right-step-panel">
+      <div className="section-heading compact">
+        <h2>诊断流程</h2>
+        <span>{completedCount} / {steps.length || 5}</span>
+      </div>
+      <div className="phase-list">
+        {phaseSteps.map((phase, phaseIndex) => (
+          <div className={classNames("phase-item", phaseIndex === activePhase && "active", phaseIndex < activePhase && "done")} key={phase.title}>
+            <div className="phase-title">
+              <span>{phaseIndex < activePhase ? <Check size={14} /> : phaseIndex + 1}</span>
+              <strong>{phase.title}</strong>
+            </div>
+            <div className="sub-step-list">
+              {phaseIndex === 2 && steps.length > 0
+                ? steps.map((step, index) => (
+                    <button
+                      key={step.id}
+                      className={classNames("sub-step", index === activeStep && "active", step.completed && "done")}
+                      onClick={() => onSelectStep(index)}
+                    >
+                      {step.completed ? "已完成" : `步骤 ${index + 1}`} · {step.title}
+                    </button>
+                  ))
+                : phase.items.map((item) => <span className="sub-step" key={item}>{item}</span>)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+function KnowledgeGraphPage({ graph, evidence }) {
+  const nodes = ["输气场站", "站控柜", "工控机", "高温告警", "风道堵塞", "滤网积尘", "风扇异常", "恢复验证"];
+  const positions = [
+    [12, 46], [28, 28], [45, 46], [62, 24], [76, 43], [64, 68], [40, 72], [84, 68],
+  ];
+
+  return (
+    <section className="graph-page">
+      <div className="graph-canvas panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">知识图谱</p>
+            <h2>工控机散热异常子图</h2>
+          </div>
+          <span className="health-pill ok">节点图样式</span>
+        </div>
+        <div className="node-map">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+            <polyline points="12,46 28,28 45,46 62,24 76,43" />
+            <polyline points="45,46 64,68 84,68" />
+            <polyline points="45,46 40,72" />
+          </svg>
+          {nodes.map((node, index) => (
+            <button
+              key={node}
+              className={classNames("graph-node", index === 3 && "danger-node")}
+              style={{ left: `${positions[index][0]}%`, top: `${positions[index][1]}%` }}
+            >
+              {node}
+            </button>
+          ))}
+        </div>
+      </div>
+      <aside className="panel graph-side">
+        <h2>关系与证据</h2>
+        <div className="relation-list">
+          {graph.slice(0, 8).map((edge, index) => (
+            <div key={`${edge.source}-${edge.target}-${index}`}>
+              <strong>{edge.source}</strong>
+              <span>{edge.relation}</span>
+              <strong>{edge.target}</strong>
+            </div>
+          ))}
+        </div>
+        <div className="evidence-mini">
+          {evidence.slice(0, 4).map((item) => (
+            <article key={item.id}>
+              <span>{item.id}</span>
+              <strong>{item.title}</strong>
+            </article>
+          ))}
+        </div>
+      </aside>
     </section>
   );
 }
 
-function GraphPanel({ graph }) {
+function RecordPage({ record, onBuildRecord }) {
   return (
-    <section className="panel graph-panel">
-      <div className="section-heading compact">
-        <h2>知识图谱子图</h2>
-        <GitBranch size={18} />
-      </div>
-      <div className="graph-list">
-        {graph.slice(0, 7).map((edge, index) => (
-          <div key={`${edge.source}-${edge.target}-${index}`}>
-            <strong>{edge.source}</strong>
-            <span>{edge.relation}</span>
-            <strong>{edge.target}</strong>
-          </div>
-        ))}
-      </div>
+    <section className="single-page panel">
+      <p className="eyebrow">检修记录</p>
+      <h2>{record ? record.record_id : "暂无检修记录"}</h2>
+      <p>{record ? record.conclusion : "完成步骤式检修向导后，将在这里生成本次检修记录。"}</p>
+      <button className="primary-button" onClick={onBuildRecord}>生成演示记录</button>
     </section>
+  );
+}
+
+function PlaceholderPage({ title, text }) {
+  return (
+    <section className="single-page panel">
+      <p className="eyebrow">预留页面</p>
+      <h2>{title}</h2>
+      <p>{text}</p>
+    </section>
+  );
+}
+
+function AssistantChat({ currentStep, diagnosis }) {
+  return (
+    <aside className="assistant-chat">
+      <div className="assistant-head">
+        <MessageCircle size={16} />
+        <strong>辅助对话</strong>
+      </div>
+      <div className="assistant-body">
+        <p>{diagnosis ? "我可以解释当前诊断结论或步骤依据。" : "先描述现场现象，我会辅助补充信息。"}</p>
+        {currentStep && <span>当前步骤：{currentStep.title}</span>}
+      </div>
+      <div className="assistant-input">
+        <input placeholder="追问当前步骤..." />
+        <button><Send size={14} /></button>
+      </div>
+    </aside>
   );
 }
