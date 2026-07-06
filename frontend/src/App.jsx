@@ -30,7 +30,7 @@ const navItems = [
   { id: "settings", label: "设置", icon: Settings },
 ];
 
-const diagnosisTasks = [
+const intakeTasks = [
   {
     title: "补充设备型号",
     value: "研华 ACP-4000 / IPC-610",
@@ -41,10 +41,18 @@ const diagnosisTasks = [
     value: "TEMP/FAN 告警，风扇转速偏低",
     detail: "重点确认风扇 <500 rpm、系统温度 >55°C、CPU 温度 >70°C 等判断条件。",
   },
+];
+
+const diagnosisTasks = [
   {
     title: "触发诊断",
     value: "散热异常方向",
-    detail: "启动多 Agent 会诊，依次完成问题分析、合规检查和知识检索。",
+    detail: "基于异常接入阶段已确认的信息，启动散热异常方向的预设诊断流程。",
+  },
+  {
+    title: "多 Agent 会诊",
+    value: "分析、合规、知识检索",
+    detail: "依次完成问题分析、操作合规检查和维修知识检索，形成诊断证据。",
   },
   {
     title: "弹出并生成诊断结论",
@@ -56,7 +64,7 @@ const diagnosisTasks = [
 const phaseSteps = [
   {
     title: "异常接入",
-    items: ["描述现场现象", "上传入口预留", "触发诊断"],
+    items: ["描述现场现象", "上传入口预留", ...intakeTasks.map((item) => item.title)],
   },
   {
     title: "分析诊断",
@@ -113,7 +121,6 @@ export default function App() {
       .catch(() => setHealth("后端未连接"));
   }, []);
 
-  const completedCount = steps.filter((step) => step.completed).length;
   const currentStep = steps[activeStep];
 
   const activePhase = useMemo(() => {
@@ -137,7 +144,10 @@ export default function App() {
         timers.push(window.setTimeout(advanceAgent, 3200));
       } else {
         setActiveAgentIndex(diagnosis.agents.length);
-        timers.push(window.setTimeout(() => setStage("diagnosis"), 700));
+        timers.push(window.setTimeout(() => {
+          setActiveDiagnosisTask(diagnosisTasks.length - 1);
+          setStage("diagnosis");
+        }, 700));
       }
     }
 
@@ -310,7 +320,6 @@ export default function App() {
               activePhase={activePhase}
               steps={steps}
               activeStep={activeStep}
-              completedCount={completedCount}
               stage={stage}
               analysisSubStep={activeDiagnosisTask}
               activeAgentIndex={activeAgentIndex}
@@ -343,15 +352,27 @@ function InputStage({ input, loading, onInput, onStart }) {
   return (
     <div className="stage-content input-stage">
       <div className="stage-copy">
-        <p className="eyebrow">现场接入</p>
-        <h2>描述问题和现象</h2>
-        <p>先输入一线人员看到的告警、灯态、声音、温度或数据上传异常。图片能力只保留入口，第一版不做真实上传。</p>
+        <p className="eyebrow">异常接入</p>
+        <h2>描述现场异常并补齐关键信息</h2>
+        <p>先输入一线人员看到的告警、灯态、声音、温度或数据上传异常，再在本阶段确认设备型号和灯值阈值。图片能力只保留入口，第一版不做真实上传。</p>
       </div>
-      <textarea
-        value={input}
-        onChange={(event) => onInput(event.target.value)}
-        placeholder="例如：站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。"
-      />
+      <div className="intake-workspace">
+        <textarea
+          value={input}
+          onChange={(event) => onInput(event.target.value)}
+          placeholder="例如：站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。"
+        />
+        <section className="intake-confirm-panel">
+          {intakeTasks.map((task) => (
+            <article key={task.title}>
+              <span>已预填 · 可修改</span>
+              <strong>{task.title}</strong>
+              <p>{task.value}</p>
+              <small>{task.detail}</small>
+            </article>
+          ))}
+        </section>
+      </div>
       <div className="input-toolbar">
         <button className="ghost-button">
           <ImagePlus size={16} />
@@ -360,7 +381,7 @@ function InputStage({ input, loading, onInput, onStart }) {
         <button className="ghost-button">快速提问</button>
         <button className="primary-button" onClick={onStart} disabled={loading}>
           <Send size={16} />
-          {loading ? "诊断中" : "生成诊断结论"}
+          {loading ? "诊断中" : "触发诊断"}
         </button>
       </div>
     </div>
@@ -459,7 +480,7 @@ function DiagnosisStage({ diagnosis, evidence, activeTask, onSelectTask, onEnter
 
         <section className="analysis-task-card">
           <div className="section-heading compact">
-            <h3>诊断信息补充</h3>
+            <h3>诊断执行回放</h3>
             <span>{activeTask + 1} / {diagnosisTasks.length}</span>
           </div>
           <div className="task-menu">
@@ -498,7 +519,7 @@ function DiagnosisStage({ diagnosis, evidence, activeTask, onSelectTask, onEnter
           className="ghost-button"
           onClick={() => onSelectTask(Math.min(diagnosisTasks.length - 1, activeTask + 1))}
         >
-          确认当前信息
+          查看下一诊断环节
         </button>
         <button className="primary-button" onClick={onEnterGuide}>
           进入步骤式检修向导 <ChevronRight size={16} />
@@ -601,11 +622,38 @@ function ExpertStage({ expertReview, onRestart }) {
   );
 }
 
+function isAnalysisStepActive(stage, index, activeAgentIndex, analysisSubStep) {
+  if (stage === "analysis") {
+    if (index === 0) return activeAgentIndex < 0;
+    if (index === 1) return activeAgentIndex >= 0;
+    return false;
+  }
+  if (stage === "diagnosis") return index === analysisSubStep;
+  return false;
+}
+
+function isAnalysisStepDone(stage, activePhase, index, activeAgentIndex, analysisSubStep) {
+  if (activePhase > 1) return true;
+  if (stage === "analysis") {
+    if (index === 0) return activeAgentIndex >= 0;
+    return false;
+  }
+  if (stage === "diagnosis") return index < analysisSubStep || index < 2;
+  return false;
+}
+
+function getAnalysisStepStatus(stage, activePhase, index, activeAgentIndex, analysisSubStep) {
+  if (isAnalysisStepDone(stage, activePhase, index, activeAgentIndex, analysisSubStep)) return "已完成";
+  if (isAnalysisStepActive(stage, index, activeAgentIndex, analysisSubStep)) {
+    return stage === "analysis" && index === 1 ? "运行中" : "当前";
+  }
+  return "待处理";
+}
+
 function RightStepPanel({
   activePhase,
   steps,
   activeStep,
-  completedCount,
   stage,
   analysisSubStep,
   activeAgentIndex,
@@ -620,7 +668,7 @@ function RightStepPanel({
       <section className="flow-box">
         <div className="section-heading compact">
           <h2>诊断流程</h2>
-          <span>{completedCount} / {steps.length || 5}</span>
+          <span>{activePhase + 1} / {phaseSteps.length}</span>
         </div>
         <div className="phase-list">
           {phaseSteps.map((phase, phaseIndex) => (
@@ -636,14 +684,12 @@ function RightStepPanel({
                       key={task.title}
                       className={classNames(
                         "sub-step",
-                        ((stage === "analysis" && index === activeAgentIndex) || (stage === "diagnosis" && index === analysisSubStep)) && "active",
-                        (stage === "analysis" ? index < activeAgentIndex : activePhase > 1 || index < analysisSubStep) && "done"
+                        isAnalysisStepActive(stage, index, activeAgentIndex, analysisSubStep) && "active",
+                        isAnalysisStepDone(stage, activePhase, index, activeAgentIndex, analysisSubStep) && "done"
                       )}
                       onClick={() => onSelectAnalysis(index)}
                     >
-                      {stage === "analysis"
-                        ? index < activeAgentIndex ? "已完成" : index === activeAgentIndex ? "运行中" : "等待中"
-                        : (activePhase > 1 || index < analysisSubStep) ? "已完成" : stage === "diagnosis" && index === analysisSubStep ? "当前" : "待确认"} · {task.title}
+                      {getAnalysisStepStatus(stage, activePhase, index, activeAgentIndex, analysisSubStep)} · {task.title}
                     </button>
                   ))
                 ) : phaseIndex === 2 && steps.length > 0 ? (

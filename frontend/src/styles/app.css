@@ -245,9 +245,16 @@ h2 {
   line-height: 1.7;
 }
 
+.intake-workspace {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 14px;
+}
+
 .input-stage textarea {
   width: 100%;
-  min-height: 230px;
+  min-height: 100%;
   resize: none;
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -261,6 +268,41 @@ h2 {
 .input-stage textarea:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.intake-confirm-panel {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.intake-confirm-panel article {
+  border: 1px solid #d7e4ff;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 14px;
+}
+
+.intake-confirm-panel span,
+.intake-confirm-panel small {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.intake-confirm-panel span {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.intake-confirm-panel p {
+  margin: 8px 0;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.intake-confirm-panel small {
+  display: block;
+  line-height: 1.5;
 }
 
 .agent-run-list {
@@ -921,6 +963,7 @@ h2 {
   .stage-layout,
   .graph-page,
   .guide-screen,
+  .intake-workspace,
   .diagnosis-report {
     grid-template-columns: 1fr;
   }
