@@ -90,6 +90,36 @@ const phaseSteps = [
   },
 ];
 
+const equipmentOptionGroups = [
+  {
+    label: "设备型号",
+    helper: "推荐型号匹配",
+    options: ["研华 ACP-4000 / IPC-610", "预留型号选项", "预留型号选项"],
+  },
+  {
+    label: "设备位置",
+    helper: "场站位置确认",
+    options: ["站控柜 A01 内部工控机", "预留位置选项", "预留位置选项"],
+  },
+  {
+    label: "设备角色",
+    helper: "系统角色确认",
+    options: ["站控画面与数据采集终端", "预留角色选项", "预留角色选项"],
+  },
+  {
+    label: "关联告警",
+    helper: "异常信号确认",
+    options: ["TEMP/FAN、蜂鸣、温度升高", "预留告警选项", "预留告警选项"],
+  },
+];
+
+const thresholdInputs = [
+  ["TEMP/FAN LED", "告警", "前面板告警灯点亮或蜂鸣提示"],
+  ["风扇转速", "< 500 rpm", "风扇转速偏低，优先检查滤网、风道和风扇"],
+  ["系统温度", "> 55°C", "触发散热异常判断"],
+  ["CPU 温度", "> 70°C", "结合系统温度判断过热风险"],
+];
+
 function classNames(...items) {
   return items.filter(Boolean).join(" ");
 }
@@ -417,29 +447,22 @@ function InputStage({ input, loading, activeStep, onInput, onSelectStep, onStart
       )}
 
       {activeStep === 1 && (
-        <div className="equipment-step-screen">
-          <section className="selection-panel">
-            <button className="selection-card active">
-              <span>推荐匹配</span>
-              <strong>研华 ACP-4000 / IPC-610</strong>
-              <small>站控柜内工控机，符合本次演示设备范围。</small>
-            </button>
-            <button className="selection-card">
-              <span>备选</span>
-              <strong>通用工控机</strong>
-              <small>仅用于后续扩展，当前 MVP 不进入该分支。</small>
-            </button>
-          </section>
-          <section className="equipment-profile">
-            {[
-              ["设备位置", "站控柜 A01 内部工控机"],
-              ["设备角色", "站控画面与数据采集终端"],
-              ["关联告警", "TEMP/FAN、蜂鸣、温度升高"],
-              ["诊断边界", "只进入工控机散热系统，不扩展 PLC 控制柜"],
-            ].map(([label, value]) => (
-              <article key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
+        <div className="equipment-option-screen">
+          <section className="equipment-option-grid">
+            {equipmentOptionGroups.map((group) => (
+              <article className="option-group" key={group.label}>
+                <div>
+                  <span>{group.helper}</span>
+                  <strong>{group.label}</strong>
+                </div>
+                <div className="option-list">
+                  {group.options.map((option, index) => (
+                    <button className={classNames("option-row", index === 0 && "active")} key={`${group.label}-${option}-${index}`}>
+                      <span>{index === 0 ? <Check size={14} /> : index + 1}</span>
+                      <p>{option}</p>
+                    </button>
+                  ))}
+                </div>
               </article>
             ))}
           </section>
@@ -451,16 +474,11 @@ function InputStage({ input, loading, activeStep, onInput, onSelectStep, onStart
       )}
 
       {activeStep === 2 && (
-        <div className="threshold-grid">
-          {[
-            ["TEMP/FAN LED", "告警", "前面板告警灯点亮或蜂鸣提示"],
-            ["风扇转速", "< 500 rpm", "风扇转速偏低，优先检查滤网、风道和风扇"],
-            ["系统温度", "> 55°C", "触发散热异常判断"],
-            ["CPU 温度", "> 70°C", "结合系统温度判断过热风险"],
-          ].map(([label, value, detail]) => (
-            <article key={label}>
+        <div className="threshold-edit-grid">
+          {thresholdInputs.map(([label, value, detail]) => (
+            <article className="threshold-edit-card" key={label}>
               <span>{label}</span>
-              <strong>{value}</strong>
+              <input defaultValue={value} aria-label={label} />
               <p>{detail}</p>
             </article>
           ))}
@@ -849,6 +867,13 @@ function getIntakeStepStatus(activePhase, stage, index, activeIntakeStep) {
   return "待处理";
 }
 
+function getVisiblePhaseLimit(stage) {
+  if (stage === "input") return 0;
+  if (stage === "analysis") return 1;
+  if (stage === "diagnosis" || stage === "guide") return 2;
+  return 3;
+}
+
 function RightStepPanel({
   activePhase,
   steps,
@@ -864,15 +889,24 @@ function RightStepPanel({
   onSelectAnalysis,
   onSelectStep,
 }) {
+  const visiblePhaseLimit = getVisiblePhaseLimit(stage);
+  const visiblePhaseSteps = phaseSteps.slice(0, visiblePhaseLimit + 1);
+
   return (
     <aside className="right-step-panel">
       <section className="flow-box">
         <div className="section-heading compact">
           <h2>诊断流程</h2>
-          <span>{activePhase + 1} / {phaseSteps.length}</span>
+          <span>已生成 {visiblePhaseSteps.length}</span>
+        </div>
+        <div className="flow-generation-note">
+          {visiblePhaseLimit === 0 && "请先完成异常接入，系统将生成后续诊断流程。"}
+          {visiblePhaseLimit === 1 && "已根据异常信息生成分析诊断流程。"}
+          {visiblePhaseLimit === 2 && "已根据诊断结论生成检修向导。"}
+          {visiblePhaseLimit === 3 && "检修记录与知识回流流程已生成。"}
         </div>
         <div className="phase-list">
-          {phaseSteps.map((phase, phaseIndex) => (
+          {visiblePhaseSteps.map((phase, phaseIndex) => (
             <div className={classNames("phase-item", phaseIndex === activePhase && "active", phaseIndex < activePhase && "done")} key={phase.title}>
               <button className="phase-title" onClick={() => onSelectPhase(phaseIndex)}>
                 <span>{phaseIndex < activePhase ? <Check size={14} /> : phaseIndex + 1}</span>
