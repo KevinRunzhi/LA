@@ -226,8 +226,9 @@ h2 {
 
 .diagnosis-stage {
   overflow: auto;
-  align-content: center;
   padding-right: 4px;
+  grid-template-rows: auto auto auto auto;
+  align-content: start;
 }
 
 .agent-run-stage {
@@ -416,6 +417,11 @@ h2 {
   min-height: 0;
 }
 
+.diagnosis-support {
+  display: grid;
+  gap: 12px;
+}
+
 .conclusion-card,
 .analysis-task-card,
 .cause-ranking {
@@ -548,7 +554,6 @@ h2 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  grid-column: 1 / -1;
 }
 
 .agent-strip article,
@@ -558,6 +563,10 @@ h2 {
   border-radius: 8px;
   padding: 12px;
   background: #fbfdff;
+}
+
+.agent-strip article {
+  min-height: 112px;
 }
 
 .agent-strip span,
@@ -581,7 +590,10 @@ h2 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   align-self: end;
-  grid-column: 1 / -1;
+}
+
+.evidence-row article {
+  min-height: 86px;
 }
 
 .guide-screen {

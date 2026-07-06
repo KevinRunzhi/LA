@@ -37,14 +37,19 @@ const diagnosisTasks = [
     detail: "确认主演示设备为站控柜内工控机整机，不进入 PLC 控制柜完整诊断。",
   },
   {
-    title: "确认灯态与阈值",
+    title: "确认灯值和阈值",
     value: "TEMP/FAN 告警，风扇转速偏低",
     detail: "重点确认风扇 <500 rpm、系统温度 >55°C、CPU 温度 >70°C 等判断条件。",
   },
   {
-    title: "生成诊断结论",
+    title: "触发诊断",
     value: "散热异常方向",
-    detail: "系统将现象、阈值、知识证据和安全要求汇总为结构化诊断结论。",
+    detail: "启动多 Agent 会诊，依次完成问题分析、合规检查和知识检索。",
+  },
+  {
+    title: "弹出并生成诊断结论",
+    value: "生成整版报告",
+    detail: "所有 Agent 完成后，统一输出结构化诊断结论和进入检修向导入口。",
   },
 ];
 
@@ -421,6 +426,27 @@ function DiagnosisStage({ diagnosis, evidence, activeTask, onSelectTask, onEnter
         <p>{diagnosis.summary}</p>
       </div>
 
+      <div className="diagnosis-support">
+        <section className="agent-strip">
+          {diagnosis.agents.map((agent) => (
+            <article key={agent.name}>
+              <span>已完成</span>
+              <strong>{agent.name}</strong>
+              <p>{agent.content}</p>
+            </article>
+          ))}
+        </section>
+
+        <section className="evidence-row">
+          {evidence.slice(0, 4).map((item) => (
+            <article key={item.id}>
+              <span>{item.id}</span>
+              <strong>{item.title}</strong>
+            </article>
+          ))}
+        </section>
+      </div>
+
       <div className="diagnosis-report">
         <section className="conclusion-card">
           <div>
@@ -462,25 +488,6 @@ function DiagnosisStage({ diagnosis, evidence, activeTask, onSelectTask, onEnter
               <span>{level}</span>
               <strong>{name}</strong>
               <p>{detail}</p>
-            </article>
-          ))}
-        </section>
-
-        <section className="agent-strip">
-          {diagnosis.agents.map((agent) => (
-            <article key={agent.name}>
-              <span>{agent.status}</span>
-              <strong>{agent.name}</strong>
-              <p>{agent.content}</p>
-            </article>
-          ))}
-        </section>
-
-        <section className="evidence-row">
-          {evidence.slice(0, 4).map((item) => (
-            <article key={item.id}>
-              <span>{item.id}</span>
-              <strong>{item.title}</strong>
             </article>
           ))}
         </section>
