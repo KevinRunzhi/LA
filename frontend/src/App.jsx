@@ -278,6 +278,8 @@ export default function App() {
               completedCount={completedCount}
               stage={stage}
               analysisSubStep={activeDiagnosisTask}
+              currentStep={currentStep}
+              diagnosis={diagnosis}
               onSelectPhase={jumpToPhase}
               onSelectAnalysis={(index) => {
                 if (diagnosis) {
@@ -296,8 +298,6 @@ export default function App() {
             />
           </section>
         )}
-
-        <AssistantChat currentStep={currentStep} diagnosis={diagnosis} />
       </main>
     </div>
   );
@@ -526,59 +526,64 @@ function RightStepPanel({
   completedCount,
   stage,
   analysisSubStep,
+  currentStep,
+  diagnosis,
   onSelectPhase,
   onSelectAnalysis,
   onSelectStep,
 }) {
   return (
     <aside className="right-step-panel">
-      <div className="section-heading compact">
-        <h2>诊断流程</h2>
-        <span>{completedCount} / {steps.length || 5}</span>
-      </div>
-      <div className="phase-list">
-        {phaseSteps.map((phase, phaseIndex) => (
-          <div className={classNames("phase-item", phaseIndex === activePhase && "active", phaseIndex < activePhase && "done")} key={phase.title}>
-            <button className="phase-title" onClick={() => onSelectPhase(phaseIndex)}>
-              <span>{phaseIndex < activePhase ? <Check size={14} /> : phaseIndex + 1}</span>
-              <strong>{phase.title}</strong>
-            </button>
-            <div className="sub-step-list">
-              {phaseIndex === 1 ? (
-                diagnosisTasks.map((task, index) => (
-                  <button
-                    key={task.title}
-                    className={classNames(
-                      "sub-step",
-                      stage === "diagnosis" && index === analysisSubStep && "active",
-                      (activePhase > 1 || index < analysisSubStep) && "done"
-                    )}
-                    onClick={() => onSelectAnalysis(index)}
-                  >
-                    {(activePhase > 1 || index < analysisSubStep) ? "已完成" : stage === "diagnosis" && index === analysisSubStep ? "当前" : "待确认"} · {task.title}
-                  </button>
-                ))
-              ) : phaseIndex === 2 && steps.length > 0 ? (
-                steps.map((step, index) => (
-                  <button
-                    key={step.id}
-                    className={classNames("sub-step", stage === "guide" && index === activeStep && "active", step.completed && "done")}
-                    onClick={() => onSelectStep(index)}
-                  >
-                    {step.completed ? "已完成" : stage === "guide" && index === activeStep ? "当前" : `步骤 ${index + 1}`} · {step.title}
-                  </button>
-                ))
-              ) : (
-                phase.items.map((item, index) => (
-                  <span className={classNames("sub-step", phaseIndex < activePhase && "done")} key={`${item}-${index}`}>
-                    {phaseIndex < activePhase ? "已完成" : "待处理"} · {item}
-                  </span>
-                ))
-              )}
+      <section className="flow-box">
+        <div className="section-heading compact">
+          <h2>诊断流程</h2>
+          <span>{completedCount} / {steps.length || 5}</span>
+        </div>
+        <div className="phase-list">
+          {phaseSteps.map((phase, phaseIndex) => (
+            <div className={classNames("phase-item", phaseIndex === activePhase && "active", phaseIndex < activePhase && "done")} key={phase.title}>
+              <button className="phase-title" onClick={() => onSelectPhase(phaseIndex)}>
+                <span>{phaseIndex < activePhase ? <Check size={14} /> : phaseIndex + 1}</span>
+                <strong>{phase.title}</strong>
+              </button>
+              <div className="sub-step-list">
+                {phaseIndex === 1 ? (
+                  diagnosisTasks.map((task, index) => (
+                    <button
+                      key={task.title}
+                      className={classNames(
+                        "sub-step",
+                        stage === "diagnosis" && index === analysisSubStep && "active",
+                        (activePhase > 1 || index < analysisSubStep) && "done"
+                      )}
+                      onClick={() => onSelectAnalysis(index)}
+                    >
+                      {(activePhase > 1 || index < analysisSubStep) ? "已完成" : stage === "diagnosis" && index === analysisSubStep ? "当前" : "待确认"} · {task.title}
+                    </button>
+                  ))
+                ) : phaseIndex === 2 && steps.length > 0 ? (
+                  steps.map((step, index) => (
+                    <button
+                      key={step.id}
+                      className={classNames("sub-step", stage === "guide" && index === activeStep && "active", step.completed && "done")}
+                      onClick={() => onSelectStep(index)}
+                    >
+                      {step.completed ? "已完成" : stage === "guide" && index === activeStep ? "当前" : `步骤 ${index + 1}`} · {step.title}
+                    </button>
+                  ))
+                ) : (
+                  phase.items.map((item, index) => (
+                    <span className={classNames("sub-step", phaseIndex < activePhase && "done")} key={`${item}-${index}`}>
+                      {phaseIndex < activePhase ? "已完成" : "待处理"} · {item}
+                    </span>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </section>
+      <AssistantChat currentStep={currentStep} diagnosis={diagnosis} />
     </aside>
   );
 }

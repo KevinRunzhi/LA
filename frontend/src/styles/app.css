@@ -214,6 +214,7 @@ h2 {
   min-height: 0;
   padding: 24px;
   display: grid;
+  overflow: hidden;
 }
 
 .stage-content {
@@ -221,6 +222,12 @@ h2 {
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 18px;
+}
+
+.diagnosis-stage {
+  overflow: auto;
+  align-content: center;
+  padding-right: 4px;
 }
 
 .stage-copy {
@@ -528,8 +535,17 @@ h2 {
   min-height: 0;
   max-height: calc(100vh - 118px);
   padding: 18px;
-  overflow: auto;
-  padding-bottom: 190px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 14px;
+}
+
+.flow-box {
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .section-heading {
@@ -547,6 +563,8 @@ h2 {
 .phase-list {
   display: grid;
   gap: 12px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .phase-item {
@@ -713,16 +731,13 @@ h2 {
 }
 
 .assistant-chat {
-  position: fixed;
-  right: 380px;
-  bottom: 18px;
-  width: 310px;
+  position: static;
+  width: 100%;
   background: #fff;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16);
+  box-shadow: none;
   overflow: hidden;
-  z-index: 20;
 }
 
 .assistant-head {
@@ -738,6 +753,8 @@ h2 {
   padding: 10px 12px;
   color: var(--color-muted);
   font-size: 13px;
+  max-height: 96px;
+  overflow: auto;
 }
 
 .assistant-body p {
@@ -787,6 +804,6 @@ h2 {
   }
 
   .assistant-chat {
-    right: 22px;
+    position: static;
   }
 }
