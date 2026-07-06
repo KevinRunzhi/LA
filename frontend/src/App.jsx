@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  BookOpen,
   Check,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
   Cpu,
-  FileText,
   GitBranch,
   ImagePlus,
   LayoutDashboard,
@@ -17,7 +15,6 @@ import {
   Send,
   Settings,
   ShieldCheck,
-  Sparkles,
   UserRound,
   Wrench,
   Zap,
@@ -28,9 +25,26 @@ import { defaultInput } from "./data/fallbackDemo";
 const navItems = [
   { id: "workbench", label: "工作台", icon: LayoutDashboard },
   { id: "graph", label: "知识图谱", icon: GitBranch },
-  { id: "cases", label: "案例回顾", icon: BookOpen },
   { id: "records", label: "检修记录", icon: ClipboardList },
   { id: "settings", label: "设置", icon: Settings },
+];
+
+const diagnosisTasks = [
+  {
+    title: "补充设备型号",
+    value: "研华 ACP-4000 / IPC-610",
+    detail: "确认主演示设备为站控柜内工控机整机，不进入 PLC 控制柜完整诊断。",
+  },
+  {
+    title: "确认灯态与阈值",
+    value: "TEMP/FAN 告警，风扇转速偏低",
+    detail: "重点确认风扇 <500 rpm、系统温度 >55°C、CPU 温度 >70°C 等判断条件。",
+  },
+  {
+    title: "生成诊断结论",
+    value: "散热异常方向",
+    detail: "系统将现象、阈值、知识证据和安全要求汇总为结构化诊断结论。",
+  },
 ];
 
 const phaseSteps = [
@@ -40,7 +54,7 @@ const phaseSteps = [
   },
   {
     title: "分析诊断",
-    items: ["补充设备型号", "确认灯态与阈值", "生成诊断结论"],
+    items: diagnosisTasks.map((item) => item.title),
   },
   {
     title: "检修向导",
@@ -66,6 +80,7 @@ export default function App() {
   const [diagnosis, setDiagnosis] = useState(null);
   const [steps, setSteps] = useState([]);
   const [activeStep, setActiveStep] = useState(0);
+  const [activeDiagnosisTask, setActiveDiagnosisTask] = useState(0);
   const [evidence, setEvidence] = useState([]);
   const [graph, setGraph] = useState([]);
   const [record, setRecord] = useState(null);
@@ -110,6 +125,7 @@ export default function App() {
       setActivePage("workbench");
       setStage("diagnosis");
       setActiveStep(0);
+      setActiveDiagnosisTask(0);
     } finally {
       setLoading(false);
     }
@@ -150,8 +166,17 @@ export default function App() {
 
   function openNavPage(pageId) {
     setActivePage(pageId);
-    if (pageId === "workbench") return;
-    setStage("input");
+    if (pageId !== "workbench") {
+      setStage("input");
+    }
+  }
+
+  function jumpToPhase(phaseIndex) {
+    setActivePage("workbench");
+    if (phaseIndex === 0) setStage("input");
+    if (phaseIndex === 1 && diagnosis) setStage("diagnosis");
+    if (phaseIndex === 2 && diagnosis) setStage("guide");
+    if (phaseIndex === 3 && record) setStage("record");
   }
 
   return (
@@ -197,8 +222,6 @@ export default function App() {
 
         {activePage === "graph" ? (
           <KnowledgeGraphPage graph={graph} evidence={evidence} />
-        ) : activePage === "cases" ? (
-          <PlaceholderPage title="案例回顾" text="后续展示相似历史案例、专家经验和检修记录复盘。" />
         ) : activePage === "records" ? (
           <RecordPage record={record} onBuildRecord={buildRecord} />
         ) : activePage === "settings" ? (
@@ -218,6 +241,8 @@ export default function App() {
                 <DiagnosisStage
                   diagnosis={diagnosis}
                   evidence={evidence}
+                  activeTask={activeDiagnosisTask}
+                  onSelectTask={setActiveDiagnosisTask}
                   onEnterGuide={enterGuide}
                 />
               )}
@@ -251,8 +276,19 @@ export default function App() {
               steps={steps}
               activeStep={activeStep}
               completedCount={completedCount}
+              stage={stage}
+              analysisSubStep={activeDiagnosisTask}
+              onSelectPhase={jumpToPhase}
+              onSelectAnalysis={(index) => {
+                if (diagnosis) {
+                  setActivePage("workbench");
+                  setStage("diagnosis");
+                  setActiveDiagnosisTask(index);
+                }
+              }}
               onSelectStep={(index) => {
                 if (diagnosis) {
+                  setActivePage("workbench");
                   setStage("guide");
                   setActiveStep(index);
                 }
@@ -295,20 +331,67 @@ function InputStage({ input, loading, onInput, onStart }) {
   );
 }
 
-function DiagnosisStage({ diagnosis, evidence, onEnterGuide }) {
+function DiagnosisStage({ diagnosis, evidence, activeTask, onSelectTask, onEnterGuide }) {
+  const rankedCauses = [
+    ["风道堵塞 / 滤网积尘", "优先级高", "现象与风扇声音异常、转速偏低、高温告警相符。"],
+    ["风扇低速或停转", "优先级高", "需核对转速是否低于 500 rpm，并检查 FAN1/FAN2 接线顺序。"],
+    ["机柜环境温度或通风条件异常", "待确认", "需确认环境温度是否超过 40°C，进出风口是否被遮挡。"],
+  ];
+
   return (
     <div className="stage-content diagnosis-stage">
       <div className="stage-copy">
         <p className="eyebrow">诊断结论</p>
-        <h2>{diagnosis.title}</h2>
+        <h2>工控机散热异常诊断报告</h2>
         <p>{diagnosis.summary}</p>
       </div>
-      <div className="diagnosis-grid">
-        <div className="risk-box">
-          <AlertTriangle size={18} />
-          <span>{diagnosis.risk}</span>
-        </div>
-        <div className="agent-strip">
+
+      <div className="diagnosis-report">
+        <section className="conclusion-card">
+          <div>
+            <span className="status-badge">建议进入检修向导</span>
+            <h3>{diagnosis.title}</h3>
+            <p>{diagnosis.risk}</p>
+          </div>
+          <AlertTriangle size={26} />
+        </section>
+
+        <section className="analysis-task-card">
+          <div className="section-heading compact">
+            <h3>诊断信息补充</h3>
+            <span>{activeTask + 1} / {diagnosisTasks.length}</span>
+          </div>
+          <div className="task-menu">
+            {diagnosisTasks.map((task, index) => (
+              <button
+                key={task.title}
+                className={classNames("task-option", index === activeTask && "active", index < activeTask && "done")}
+                onClick={() => onSelectTask(index)}
+              >
+                <span>{index < activeTask ? "已确认" : index === activeTask ? "当前" : "待确认"}</span>
+                <strong>{task.title}</strong>
+                <small>{task.value}</small>
+              </button>
+            ))}
+          </div>
+          <div className="task-detail">
+            <strong>{diagnosisTasks[activeTask].title}</strong>
+            <p>{diagnosisTasks[activeTask].detail}</p>
+          </div>
+        </section>
+
+        <section className="cause-ranking">
+          <h3>可能原因排序</h3>
+          {rankedCauses.map(([name, level, detail]) => (
+            <article key={name}>
+              <span>{level}</span>
+              <strong>{name}</strong>
+              <p>{detail}</p>
+            </article>
+          ))}
+        </section>
+
+        <section className="agent-strip">
           {diagnosis.agents.map((agent) => (
             <article key={agent.name}>
               <span>{agent.status}</span>
@@ -316,17 +399,25 @@ function DiagnosisStage({ diagnosis, evidence, onEnterGuide }) {
               <p>{agent.content}</p>
             </article>
           ))}
-        </div>
+        </section>
+
+        <section className="evidence-row">
+          {evidence.slice(0, 4).map((item) => (
+            <article key={item.id}>
+              <span>{item.id}</span>
+              <strong>{item.title}</strong>
+            </article>
+          ))}
+        </section>
       </div>
-      <div className="evidence-row">
-        {evidence.slice(0, 4).map((item) => (
-          <article key={item.id}>
-            <span>{item.id}</span>
-            <strong>{item.title}</strong>
-          </article>
-        ))}
-      </div>
+
       <div className="stage-actions">
+        <button
+          className="ghost-button"
+          onClick={() => onSelectTask(Math.min(diagnosisTasks.length - 1, activeTask + 1))}
+        >
+          确认当前信息
+        </button>
         <button className="primary-button" onClick={onEnterGuide}>
           进入步骤式检修向导 <ChevronRight size={16} />
         </button>
@@ -428,7 +519,17 @@ function ExpertStage({ expertReview, onRestart }) {
   );
 }
 
-function RightStepPanel({ activePhase, steps, activeStep, completedCount, onSelectStep }) {
+function RightStepPanel({
+  activePhase,
+  steps,
+  activeStep,
+  completedCount,
+  stage,
+  analysisSubStep,
+  onSelectPhase,
+  onSelectAnalysis,
+  onSelectStep,
+}) {
   return (
     <aside className="right-step-panel">
       <div className="section-heading compact">
@@ -438,22 +539,42 @@ function RightStepPanel({ activePhase, steps, activeStep, completedCount, onSele
       <div className="phase-list">
         {phaseSteps.map((phase, phaseIndex) => (
           <div className={classNames("phase-item", phaseIndex === activePhase && "active", phaseIndex < activePhase && "done")} key={phase.title}>
-            <div className="phase-title">
+            <button className="phase-title" onClick={() => onSelectPhase(phaseIndex)}>
               <span>{phaseIndex < activePhase ? <Check size={14} /> : phaseIndex + 1}</span>
               <strong>{phase.title}</strong>
-            </div>
+            </button>
             <div className="sub-step-list">
-              {phaseIndex === 2 && steps.length > 0
-                ? steps.map((step, index) => (
-                    <button
-                      key={step.id}
-                      className={classNames("sub-step", index === activeStep && "active", step.completed && "done")}
-                      onClick={() => onSelectStep(index)}
-                    >
-                      {step.completed ? "已完成" : `步骤 ${index + 1}`} · {step.title}
-                    </button>
-                  ))
-                : phase.items.map((item) => <span className="sub-step" key={item}>{item}</span>)}
+              {phaseIndex === 1 ? (
+                diagnosisTasks.map((task, index) => (
+                  <button
+                    key={task.title}
+                    className={classNames(
+                      "sub-step",
+                      stage === "diagnosis" && index === analysisSubStep && "active",
+                      (activePhase > 1 || index < analysisSubStep) && "done"
+                    )}
+                    onClick={() => onSelectAnalysis(index)}
+                  >
+                    {(activePhase > 1 || index < analysisSubStep) ? "已完成" : stage === "diagnosis" && index === analysisSubStep ? "当前" : "待确认"} · {task.title}
+                  </button>
+                ))
+              ) : phaseIndex === 2 && steps.length > 0 ? (
+                steps.map((step, index) => (
+                  <button
+                    key={step.id}
+                    className={classNames("sub-step", stage === "guide" && index === activeStep && "active", step.completed && "done")}
+                    onClick={() => onSelectStep(index)}
+                  >
+                    {step.completed ? "已完成" : stage === "guide" && index === activeStep ? "当前" : `步骤 ${index + 1}`} · {step.title}
+                  </button>
+                ))
+              ) : (
+                phase.items.map((item, index) => (
+                  <span className={classNames("sub-step", phaseIndex < activePhase && "done")} key={`${item}-${index}`}>
+                    {phaseIndex < activePhase ? "已完成" : "待处理"} · {item}
+                  </span>
+                ))
+              )}
             </div>
           </div>
         ))}
