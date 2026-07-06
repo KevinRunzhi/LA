@@ -112,6 +112,7 @@ export default function App() {
   const [expertReview, setExpertReview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeAgentIndex, setActiveAgentIndex] = useState(-1);
+  const [checkedGuideItems, setCheckedGuideItems] = useState({});
 
   useEffect(() => {
     Promise.all([
@@ -199,6 +200,21 @@ export default function App() {
       setRecord(result);
       setStage("record");
     }
+  }
+
+  function toggleGuideCheck(stepId, check) {
+    setCheckedGuideItems((current) => {
+      const checkedSet = new Set(current[stepId] || []);
+      if (checkedSet.has(check)) {
+        checkedSet.delete(check);
+      } else {
+        checkedSet.add(check);
+      }
+      return {
+        ...current,
+        [stepId]: Array.from(checkedSet),
+      };
+    });
   }
 
   async function buildRecord() {
@@ -309,6 +325,8 @@ export default function App() {
                   currentStep={currentStep}
                   activeStep={activeStep}
                   totalSteps={steps.length}
+                  checkedItems={checkedGuideItems[currentStep.id] || []}
+                  onToggleCheck={(check) => toggleGuideCheck(currentStep.id, check)}
                   onPrev={() => setActiveStep(Math.max(0, activeStep - 1))}
                   onNext={completeCurrentStep}
                   onRecord={buildRecord}
@@ -645,7 +663,19 @@ function DiagnosisStage({ diagnosis, evidence, activeTask, onSelectTask, onEnter
   );
 }
 
-function GuideStage({ currentStep, activeStep, totalSteps, onPrev, onNext, onRecord }) {
+function GuideStage({
+  currentStep,
+  activeStep,
+  totalSteps,
+  checkedItems,
+  onToggleCheck,
+  onPrev,
+  onNext,
+  onRecord,
+}) {
+  const completedChecks = currentStep.checks.filter((check) => checkedItems.includes(check)).length;
+  const allChecksDone = completedChecks === currentStep.checks.length;
+
   return (
     <div className="stage-content guide-stage">
       <div className="stage-copy">
@@ -661,13 +691,17 @@ function GuideStage({ currentStep, activeStep, totalSteps, onPrev, onNext, onRec
         </div>
         <div className="guide-info">
           <div>
-            <strong>检查项</strong>
+            <strong>检查项 · {completedChecks} / {currentStep.checks.length}</strong>
             <div className="check-step-list">
               {currentStep.checks.map((check, index) => (
-                <article key={check}>
-                  <span>{index + 1}</span>
+                <button
+                  key={check}
+                  className={classNames("check-step-item", checkedItems.includes(check) && "checked")}
+                  onClick={() => onToggleCheck(check)}
+                >
+                  <span>{checkedItems.includes(check) ? <Check size={16} /> : index + 1}</span>
                   <p>{check}</p>
-                </article>
+                </button>
               ))}
             </div>
           </div>
@@ -686,7 +720,9 @@ function GuideStage({ currentStep, activeStep, totalSteps, onPrev, onNext, onRec
       </div>
       <div className="stage-actions">
         <button className="ghost-button" onClick={onPrev}><ChevronLeft size={16} /> 上一步</button>
-        <button className="primary-button" onClick={onNext}>完成并继续 <ChevronRight size={16} /></button>
+        <button className="primary-button" onClick={onNext} disabled={!allChecksDone}>
+          完成并继续 <ChevronRight size={16} />
+        </button>
         <button className="ghost-button" onClick={onRecord}>生成检修记录</button>
       </div>
     </div>

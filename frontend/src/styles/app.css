@@ -781,33 +781,57 @@ h2 {
   margin-top: 10px;
 }
 
-.check-step-list article {
+.check-step-item {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: 28px minmax(0, 1fr);
   align-items: start;
   gap: 10px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: #fbfdff;
+  color: var(--color-text);
   padding: 12px;
+  text-align: left;
 }
 
-.check-step-list span {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+.check-step-item:hover {
+  border-color: #b9c8dd;
+  background: #f8fbff;
+}
+
+.check-step-item.checked {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.check-step-item span {
+  width: 22px;
+  height: 22px;
+  border: 1px solid #b8c6da;
+  border-radius: 5px;
   display: grid;
   place-items: center;
-  color: #fff;
-  background: var(--color-primary);
+  color: var(--color-muted);
+  background: #fff;
   font-size: 12px;
   font-weight: 700;
 }
 
-.check-step-list p {
+.check-step-item.checked span {
+  color: #fff;
+  border-color: #16a34a;
+  background: #16a34a;
+}
+
+.check-step-item p {
   margin-bottom: 0;
   color: #334155;
   line-height: 1.55;
+}
+
+.check-step-item.checked p {
+  color: #166534;
+  font-weight: 700;
 }
 
 .chips {
