@@ -454,7 +454,8 @@ function InputStage({ input, loading, activeStep, onInput, onSelectStep, onStart
                 <label>
                   <span>{group.helper}</span>
                   <strong>{group.label}</strong>
-                  <select defaultValue={group.options[0]} aria-label={group.label}>
+                  <select defaultValue="" aria-label={group.label}>
+                    <option value="" disabled>请选择{group.label}</option>
                   {group.options.map((option, index) => (
                     <option value={option} key={`${group.label}-${option}-${index}`}>
                       {option}
