@@ -4,11 +4,12 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
+FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"
 
 
 def load_json(name: str):
@@ -104,6 +105,22 @@ def create_app() -> Flask:
         review = deepcopy(expert_reviews[0])
         review["status"] = "approved"
         return jsonify(review)
+
+    @app.route("/", defaults={"path": ""})
+    @app.route("/<path:path>")
+    def serve_frontend(path: str):
+        if not FRONTEND_DIST.exists():
+            return jsonify(
+                {
+                    "error": "frontend dist not found",
+                    "hint": "run `npm run build` in frontend first",
+                }
+            ), 404
+
+        requested = FRONTEND_DIST / path
+        if path and requested.is_file():
+            return send_from_directory(FRONTEND_DIST, path)
+        return send_from_directory(FRONTEND_DIST, "index.html")
 
     return app
 
