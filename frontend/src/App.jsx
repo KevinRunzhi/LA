@@ -9,6 +9,7 @@ import {
   GitBranch,
   ImagePlus,
   LayoutDashboard,
+  Loader2,
   MapPin,
   Menu,
   MessageCircle,
@@ -86,6 +87,7 @@ export default function App() {
   const [record, setRecord] = useState(null);
   const [expertReview, setExpertReview] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [activeAgentIndex, setActiveAgentIndex] = useState(-1);
 
   useEffect(() => {
     Promise.all([
@@ -111,10 +113,32 @@ export default function App() {
 
   const activePhase = useMemo(() => {
     if (stage === "input") return 0;
-    if (stage === "diagnosis") return 1;
+    if (stage === "analysis" || stage === "diagnosis") return 1;
     if (stage === "guide") return 2;
     return 3;
   }, [stage]);
+
+  useEffect(() => {
+    if (stage !== "analysis" || !diagnosis?.agents?.length) return undefined;
+
+    let index = 0;
+    const timers = [];
+    setActiveAgentIndex(0);
+
+    function advanceAgent() {
+      index += 1;
+      if (index < diagnosis.agents.length) {
+        setActiveAgentIndex(index);
+        timers.push(window.setTimeout(advanceAgent, 3200));
+      } else {
+        setActiveAgentIndex(diagnosis.agents.length);
+        timers.push(window.setTimeout(() => setStage("diagnosis"), 700));
+      }
+    }
+
+    timers.push(window.setTimeout(advanceAgent, 3200));
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [diagnosis, stage]);
 
   async function startDiagnosis() {
     setLoading(true);
@@ -123,7 +147,7 @@ export default function App() {
       setDiagnosis(result);
       setSteps(await api.steps());
       setActivePage("workbench");
-      setStage("diagnosis");
+      setStage("analysis");
       setActiveStep(0);
       setActiveDiagnosisTask(0);
     } finally {
@@ -174,7 +198,7 @@ export default function App() {
   function jumpToPhase(phaseIndex) {
     setActivePage("workbench");
     if (phaseIndex === 0) setStage("input");
-    if (phaseIndex === 1 && diagnosis) setStage("diagnosis");
+    if (phaseIndex === 1 && diagnosis) setStage(stage === "analysis" ? "analysis" : "diagnosis");
     if (phaseIndex === 2 && diagnosis) setStage("guide");
     if (phaseIndex === 3 && record) setStage("record");
   }
@@ -237,6 +261,12 @@ export default function App() {
                   onStart={startDiagnosis}
                 />
               )}
+              {stage === "analysis" && diagnosis && (
+                <AgentRunStage
+                  agents={diagnosis.agents}
+                  activeAgentIndex={activeAgentIndex}
+                />
+              )}
               {stage === "diagnosis" && diagnosis && (
                 <DiagnosisStage
                   diagnosis={diagnosis}
@@ -278,6 +308,7 @@ export default function App() {
               completedCount={completedCount}
               stage={stage}
               analysisSubStep={activeDiagnosisTask}
+              activeAgentIndex={activeAgentIndex}
               currentStep={currentStep}
               diagnosis={diagnosis}
               onSelectPhase={jumpToPhase}
@@ -326,6 +357,50 @@ function InputStage({ input, loading, onInput, onStart }) {
           <Send size={16} />
           {loading ? "诊断中" : "生成诊断结论"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+function AgentRunStage({ agents, activeAgentIndex }) {
+  const messages = [
+    "正在解析现场描述、设备型号和故障现象...",
+    "正在检索维修指导、阈值和历史知识条目...",
+    "正在进行操作合规与安全要求校验...",
+  ];
+
+  return (
+    <div className="stage-content agent-run-stage">
+      <div className="stage-copy">
+        <p className="eyebrow">分析诊断</p>
+        <h2>多 Agent 会诊进行中</h2>
+        <p>系统正在按预设演示流程逐项分析。每个 Agent 完成后再进入下一项，全部完成后统一生成诊断结论。</p>
+      </div>
+
+      <div className="agent-run-list">
+        {agents.map((agent, index) => {
+          const done = index < activeAgentIndex;
+          const running = index === activeAgentIndex;
+          return (
+            <article className={classNames("agent-run-card", done && "done", running && "running")} key={agent.name}>
+              <div className="agent-run-status">
+                {done && <Check size={18} />}
+                {running && <Loader2 size={18} className="spin" />}
+                {!done && !running && <span>{index + 1}</span>}
+              </div>
+              <div>
+                <strong>{agent.name}</strong>
+                <p>{done ? agent.content : running ? messages[index] || "正在分析..." : "等待上一个 Agent 完成"}</p>
+              </div>
+              <span>{done ? "已完成" : running ? "运行中" : "等待中"}</span>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="analysis-waiting">
+        <span className="pulse-dot" />
+        <p>{activeAgentIndex >= agents.length ? "会诊完成，正在生成整版诊断结论..." : "请稍候，系统正在组织诊断依据。"}</p>
       </div>
     </div>
   );
@@ -526,6 +601,7 @@ function RightStepPanel({
   completedCount,
   stage,
   analysisSubStep,
+  activeAgentIndex,
   currentStep,
   diagnosis,
   onSelectPhase,
@@ -553,12 +629,14 @@ function RightStepPanel({
                       key={task.title}
                       className={classNames(
                         "sub-step",
-                        stage === "diagnosis" && index === analysisSubStep && "active",
-                        (activePhase > 1 || index < analysisSubStep) && "done"
+                        ((stage === "analysis" && index === activeAgentIndex) || (stage === "diagnosis" && index === analysisSubStep)) && "active",
+                        (stage === "analysis" ? index < activeAgentIndex : activePhase > 1 || index < analysisSubStep) && "done"
                       )}
                       onClick={() => onSelectAnalysis(index)}
                     >
-                      {(activePhase > 1 || index < analysisSubStep) ? "已完成" : stage === "diagnosis" && index === analysisSubStep ? "当前" : "待确认"} · {task.title}
+                      {stage === "analysis"
+                        ? index < activeAgentIndex ? "已完成" : index === activeAgentIndex ? "运行中" : "等待中"
+                        : (activePhase > 1 || index < analysisSubStep) ? "已完成" : stage === "diagnosis" && index === analysisSubStep ? "当前" : "待确认"} · {task.title}
                     </button>
                   ))
                 ) : phaseIndex === 2 && steps.length > 0 ? (

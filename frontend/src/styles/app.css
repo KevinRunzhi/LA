@@ -230,6 +230,10 @@ h2 {
   padding-right: 4px;
 }
 
+.agent-run-stage {
+  align-content: center;
+}
+
 .stage-copy {
   max-width: 900px;
 }
@@ -256,6 +260,112 @@ h2 {
 .input-stage textarea:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.agent-run-list {
+  display: grid;
+  gap: 12px;
+  align-content: center;
+}
+
+.agent-run-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 74px;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 14px;
+}
+
+.agent-run-card.running {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.agent-run-card.done {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.agent-run-card p {
+  margin-bottom: 0;
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.agent-run-card > span {
+  justify-self: end;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.agent-run-card.running > span {
+  color: var(--color-primary);
+}
+
+.agent-run-card.done > span {
+  color: #166534;
+}
+
+.agent-run-status {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--color-muted);
+  background: #eef2f7;
+}
+
+.agent-run-card.running .agent-run-status {
+  color: var(--color-primary);
+  background: #fff;
+}
+
+.agent-run-card.done .agent-run-status {
+  color: #fff;
+  background: #16a34a;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.analysis-waiting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-muted);
+}
+
+.analysis-waiting p {
+  margin-bottom: 0;
+}
+
+.pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.35);
+  animation: pulse 1.4s ease-out infinite;
+}
+
+@keyframes pulse {
+  70% {
+    box-shadow: 0 0 0 9px rgba(37, 99, 235, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
 }
 
 .input-toolbar,
