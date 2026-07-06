@@ -256,6 +256,14 @@ h2 {
   grid-template-columns: minmax(0, 1fr) 300px;
 }
 
+.equipment-step-screen {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-rows: auto 1fr;
+  gap: 14px;
+}
+
 .input-stage textarea {
   width: 100%;
   min-height: 100%;
@@ -285,6 +293,10 @@ h2 {
   gap: 10px;
 }
 
+.equipment-step-screen .operation-note {
+  grid-row: 1 / span 2;
+}
+
 .intake-side-note span {
   border-radius: 8px;
   background: #f1f5f9;
@@ -294,6 +306,7 @@ h2 {
 }
 
 .selection-panel,
+.equipment-profile,
 .threshold-grid,
 .intake-summary,
 .diagnosis-step-screen {
@@ -304,6 +317,10 @@ h2 {
 }
 
 .selection-panel {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.equipment-profile {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -346,12 +363,24 @@ h2 {
 }
 
 .threshold-grid article,
+.equipment-profile article,
 .intake-summary section,
 .handoff-grid article {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: #fbfdff;
   padding: 14px;
+}
+
+.equipment-profile span {
+  display: block;
+  color: var(--color-muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.equipment-profile strong {
+  line-height: 1.45;
 }
 
 .threshold-grid strong {
@@ -746,6 +775,41 @@ h2 {
   gap: 14px;
 }
 
+.check-step-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.check-step-list article {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 12px;
+}
+
+.check-step-list span {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.check-step-list p {
+  margin-bottom: 0;
+  color: #334155;
+  line-height: 1.55;
+}
+
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -1042,7 +1106,9 @@ h2 {
   .graph-page,
   .guide-screen,
   .intake-step-screen,
+  .equipment-step-screen,
   .selection-panel,
+  .equipment-profile,
   .threshold-grid,
   .handoff-grid,
   .diagnosis-report {

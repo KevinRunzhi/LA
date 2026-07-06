@@ -399,7 +399,7 @@ function InputStage({ input, loading, activeStep, onInput, onSelectStep, onStart
       )}
 
       {activeStep === 1 && (
-        <div className="intake-step-screen single-panel">
+        <div className="equipment-step-screen">
           <section className="selection-panel">
             <button className="selection-card active">
               <span>推荐匹配</span>
@@ -411,6 +411,19 @@ function InputStage({ input, loading, activeStep, onInput, onSelectStep, onStart
               <strong>通用工控机</strong>
               <small>仅用于后续扩展，当前 MVP 不进入该分支。</small>
             </button>
+          </section>
+          <section className="equipment-profile">
+            {[
+              ["设备位置", "站控柜 A01 内部工控机"],
+              ["设备角色", "站控画面与数据采集终端"],
+              ["关联告警", "TEMP/FAN、蜂鸣、温度升高"],
+              ["诊断边界", "只进入工控机散热系统，不扩展 PLC 控制柜"],
+            ].map(([label, value]) => (
+              <article key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </article>
+            ))}
           </section>
           <div className="operation-note">
             <strong>确认口径</strong>
@@ -649,8 +662,13 @@ function GuideStage({ currentStep, activeStep, totalSteps, onPrev, onNext, onRec
         <div className="guide-info">
           <div>
             <strong>检查项</strong>
-            <div className="chips">
-              {currentStep.checks.map((check) => <span key={check}>{check}</span>)}
+            <div className="check-step-list">
+              {currentStep.checks.map((check, index) => (
+                <article key={check}>
+                  <span>{index + 1}</span>
+                  <p>{check}</p>
+                </article>
+              ))}
             </div>
           </div>
           {currentStep.thresholds.length > 0 && (
