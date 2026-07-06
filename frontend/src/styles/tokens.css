@@ -1,0 +1,14 @@
+:root {
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-primary-soft: #EEF4FF;
+  --color-accent: #6366F1;
+  --color-bg: #F7F9FC;
+  --color-card: #FFFFFF;
+  --color-border: #DDE4F0;
+  --color-text: #0F172A;
+  --color-muted: #64748B;
+  --color-danger: #B45309;
+  --shadow-card: 0 12px 32px rgba(15, 23, 42, 0.07);
+  --radius-card: 8px;
+}

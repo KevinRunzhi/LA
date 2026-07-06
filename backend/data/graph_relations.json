@@ -1,0 +1,15 @@
+[
+  { "source": "输气场站", "relation": "包含", "target": "站控柜" },
+  { "source": "站控柜", "relation": "包含", "target": "工控机" },
+  { "source": "工控机", "relation": "包含", "target": "风道" },
+  { "source": "工控机", "relation": "包含", "target": "滤网" },
+  { "source": "工控机", "relation": "包含", "target": "风扇" },
+  { "source": "工控机", "relation": "发生", "target": "高温告警" },
+  { "source": "高温告警", "relation": "可能原因", "target": "风道堵塞" },
+  { "source": "高温告警", "relation": "可能原因", "target": "滤网积尘" },
+  { "source": "高温告警", "relation": "可能原因", "target": "风扇异常" },
+  { "source": "风扇异常", "relation": "判断依据", "target": "风扇转速 <500 rpm" },
+  { "source": "高温告警", "relation": "判断依据", "target": "系统温度 >55°C" },
+  { "source": "高温告警", "relation": "判断依据", "target": "CPU 温度 >70°C" },
+  { "source": "恢复验证", "relation": "要求", "target": "连续观察 ≥10 分钟" }
+]

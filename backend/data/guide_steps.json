@@ -1,0 +1,57 @@
+[
+  {
+    "id": "step-01-location",
+    "order": 1,
+    "title": "确认告警与定位设备",
+    "placeholder": "step-01-location",
+    "description": "记录 TEMP/FAN 灯状态、蜂鸣器状态、风扇转速、系统温度、CPU 温度和站控柜位置。",
+    "checks": ["TEMP/FAN 灯状态", "蜂鸣器状态", "风扇 rpm", "系统/CPU 温度", "站控柜位置"],
+    "safety": "仅做外观和状态确认，不进行拆检。",
+    "thresholds": ["风扇 < 500 rpm", "系统温度 > 55°C", "CPU 温度 > 70°C"],
+    "source": "ACP-4000 / IPC-610 散热异常维修指导"
+  },
+  {
+    "id": "step-02-safety",
+    "order": 2,
+    "title": "执行安全准备",
+    "placeholder": "step-02-safety",
+    "description": "通知值班负责人，正常关闭操作系统，拔除所有电源线，等待冷却并佩戴防静电手环。",
+    "checks": ["通知负责人", "正常关机", "拔除所有电源", "等待冷却", "防静电"],
+    "safety": "禁止带电拆装任何部件，拆线前拍照记录 FAN1/FAN2 顺序。",
+    "thresholds": [],
+    "source": "现场检修安全要求"
+  },
+  {
+    "id": "step-03-airflow",
+    "order": 3,
+    "title": "检查机柜环境与风道",
+    "placeholder": "step-03-airflow",
+    "description": "检查环境温度、进风口、出风口和机箱开孔是否被遮挡。",
+    "checks": ["环境温度 ≤ 40°C", "进风口无遮挡", "出风口无遮挡", "机箱开孔无遮挡"],
+    "safety": "保持设备断电状态下检查风道与遮挡物。",
+    "thresholds": ["环境温度 ≤ 40°C"],
+    "source": "ACP-4000 / IPC-610 工作环境要求"
+  },
+  {
+    "id": "step-04-filter-fan",
+    "order": 4,
+    "title": "检查滤网、风扇和接线",
+    "placeholder": "step-04-filter-fan",
+    "description": "检查门滤网、风扇滤网积尘，确认风扇是否异响、停转、低速，并核对 FAN1/FAN2 接线顺序。",
+    "checks": ["门滤网积尘", "风扇滤网积尘", "风扇异响/停转/低速", "FAN1/FAN2 顺序"],
+    "safety": "拆装风扇或线缆前必须断电并保留照片记录。",
+    "thresholds": ["风扇 < 500 rpm 判定异常"],
+    "source": "风扇与滤网检查流程"
+  },
+  {
+    "id": "step-05-verify",
+    "order": 5,
+    "title": "恢复运行与验证",
+    "placeholder": "step-05-verify",
+    "description": "装回滤网、锁闭前门、恢复供电并观察 TEMP/FAN 状态、风扇转速、温度和数据上传。",
+    "checks": ["TEMP/FAN 告警解除", "风扇 > 500 rpm", "系统 ≤ 55°C", "CPU ≤ 70°C", "数据上传稳定"],
+    "safety": "恢复后连续观察不少于 10 分钟。",
+    "thresholds": ["风扇 > 500 rpm", "系统 ≤ 55°C", "CPU ≤ 70°C", "观察 ≥ 10 分钟"],
+    "source": "恢复运行确认清单"
+  }
+]
