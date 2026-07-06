@@ -114,10 +114,17 @@ const equipmentOptionGroups = [
 ];
 
 const thresholdInputs = [
-  ["TEMP/FAN LED", "告警", "前面板告警灯点亮或蜂鸣提示"],
-  ["风扇转速", "< 500 rpm", "风扇转速偏低，优先检查滤网、风道和风扇"],
-  ["系统温度", "> 55°C", "触发散热异常判断"],
-  ["CPU 温度", "> 70°C", "结合系统温度判断过热风险"],
+  ["TEMP/FAN LED", "告警", "保留告警状态", "前面板告警灯点亮或蜂鸣提示"],
+  ["风扇转速", "< 500 rpm", "建议作为高优先级条件", "风扇转速偏低，优先检查滤网、风道和风扇"],
+  ["系统温度", "> 55°C", "触发散热异常判断", "触发散热异常判断"],
+  ["CPU 温度", "> 70°C", "判断过热风险", "结合系统温度判断过热风险"],
+];
+
+const generatedDiagnosisPlan = [
+  "解析现场异常描述与告警信号",
+  "匹配 ACP-4000 / IPC-610 散热结构",
+  "检索 TEMP/FAN、风扇转速和温度阈值",
+  "生成散热异常诊断结论与检修向导",
 ];
 
 function classNames(...items) {
@@ -143,6 +150,12 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [activeAgentIndex, setActiveAgentIndex] = useState(-1);
   const [checkedGuideItems, setCheckedGuideItems] = useState({});
+  const [intakeSelections, setIntakeSelections] = useState({});
+  const [thresholdValues, setThresholdValues] = useState(
+    Object.fromEntries(thresholdInputs.map(([label, value]) => [label, value]))
+  );
+  const [autoRecognizing, setAutoRecognizing] = useState(false);
+  const [autoRecognized, setAutoRecognized] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -247,6 +260,27 @@ export default function App() {
     });
   }
 
+  function updateIntakeSelection(label, value) {
+    setIntakeSelections((current) => ({ ...current, [label]: value }));
+  }
+
+  function autoFillIntakeSelections() {
+    setAutoRecognizing(true);
+    window.setTimeout(() => {
+      setIntakeSelections(Object.fromEntries(equipmentOptionGroups.map((group) => [group.label, group.options[0]])));
+      setAutoRecognizing(false);
+      setAutoRecognized(true);
+    }, 850);
+  }
+
+  function updateThresholdValue(label, value) {
+    setThresholdValues((current) => ({ ...current, [label]: value }));
+  }
+
+  function applyThresholdSuggestion(label, value) {
+    setThresholdValues((current) => ({ ...current, [label]: value }));
+  }
+
   async function buildRecord() {
     const result = await api.generateRecord();
     setRecord(result);
@@ -330,7 +364,15 @@ export default function App() {
                   input={input}
                   loading={loading}
                   activeStep={activeIntakeStep}
+                  selections={intakeSelections}
+                  thresholdValues={thresholdValues}
+                  autoRecognizing={autoRecognizing}
+                  autoRecognized={autoRecognized}
                   onInput={setInput}
+                  onAutoFill={autoFillIntakeSelections}
+                  onSelectionChange={updateIntakeSelection}
+                  onThresholdChange={updateThresholdValue}
+                  onApplyThresholdSuggestion={applyThresholdSuggestion}
                   onSelectStep={setActiveIntakeStep}
                   onStart={startDiagnosis}
                 />
@@ -415,8 +457,24 @@ export default function App() {
   );
 }
 
-function InputStage({ input, loading, activeStep, onInput, onSelectStep, onStart }) {
+function InputStage({
+  input,
+  loading,
+  activeStep,
+  selections,
+  thresholdValues,
+  autoRecognizing,
+  autoRecognized,
+  onInput,
+  onAutoFill,
+  onSelectionChange,
+  onThresholdChange,
+  onApplyThresholdSuggestion,
+  onSelectStep,
+  onStart,
+}) {
   const isLastStep = activeStep === intakeTasks.length - 1;
+  const selectedValues = equipmentOptionGroups.map((group) => selections[group.label]).filter(Boolean);
 
   return (
     <div className="stage-content input-stage">
@@ -454,7 +512,11 @@ function InputStage({ input, loading, activeStep, onInput, onSelectStep, onStart
                 <label>
                   <span>{group.helper}</span>
                   <strong>{group.label}</strong>
-                  <select defaultValue="" aria-label={group.label}>
+                  <select
+                    value={selections[group.label] || ""}
+                    aria-label={group.label}
+                    onChange={(event) => onSelectionChange(group.label, event.target.value)}
+                  >
                     <option value="" disabled>请选择{group.label}</option>
                   {group.options.map((option, index) => (
                     <option value={option} key={`${group.label}-${option}-${index}`}>
@@ -467,18 +529,38 @@ function InputStage({ input, loading, activeStep, onInput, onSelectStep, onStart
             ))}
           </section>
           <div className="operation-note">
-            <strong>确认口径</strong>
-            <p>本次演示只诊断站控柜内工控机散热异常，不展开 PLC 控制柜或完整电气系统诊断。</p>
+            <strong>自动识别</strong>
+            <p>根据现场描述模拟识别设备型号、位置、角色和关联告警。</p>
+            <button className="primary-button" onClick={onAutoFill} disabled={autoRecognizing}>
+              {autoRecognizing ? <Loader2 size={16} className="spin" /> : <Zap size={16} />}
+              {autoRecognizing ? "识别中" : "自动识别并补充"}
+            </button>
+            <div className="recognized-panel">
+              <span>{autoRecognized ? "已识别" : "待识别"}</span>
+              {selectedValues.length > 0 ? (
+                selectedValues.map((value) => <p key={value}>{value}</p>)
+              ) : (
+                <p>暂无补充项，请手动选择或点击自动识别。</p>
+              )}
+            </div>
           </div>
         </div>
       )}
 
       {activeStep === 2 && (
         <div className="threshold-edit-grid">
-          {thresholdInputs.map(([label, value, detail]) => (
+          {thresholdInputs.map(([label, value, suggestion, detail]) => (
             <article className="threshold-edit-card" key={label}>
               <span>{label}</span>
-              <input defaultValue={value} aria-label={label} />
+              <input
+                value={thresholdValues[label] || ""}
+                aria-label={label}
+                onChange={(event) => onThresholdChange(label, event.target.value)}
+              />
+              <div className="suggestion-line">
+                <small>系统建议：{suggestion}</small>
+                <button onClick={() => onApplyThresholdSuggestion(label, value)}>采用建议值</button>
+              </div>
               <p>{detail}</p>
             </article>
           ))}
@@ -493,11 +575,19 @@ function InputStage({ input, loading, activeStep, onInput, onSelectStep, onStart
           </section>
           <section>
             <span>设备型号</span>
-            <p>研华 ACP-4000 / IPC-610</p>
+            <p>{selections["设备型号"] || "待选择"}</p>
           </section>
           <section>
             <span>关键阈值</span>
-            <p>TEMP/FAN 告警 · 风扇 &lt;500 rpm · 系统温度 &gt;55°C · CPU 温度 &gt;70°C</p>
+            <p>{Object.entries(thresholdValues).map(([label, value]) => `${label} ${value}`).join(" · ")}</p>
+          </section>
+          <section>
+            <span>系统将生成的诊断任务</span>
+            <div className="generated-task-list">
+              {generatedDiagnosisPlan.map((task) => (
+                <p key={task}><Check size={14} /> {task}</p>
+              ))}
+            </div>
           </section>
         </div>
       )}
@@ -534,6 +624,11 @@ function AgentRunStage({ agents, activeAgentIndex }) {
     "正在解析现场描述、设备型号和故障现象...",
     "正在检索维修指导、阈值和历史知识条目...",
     "正在进行操作合规与安全要求校验...",
+  ];
+  const streamedItems = [
+    ["读取现场描述：温度告警、风扇声音异常、前面板风扇转速偏低。", "识别设备上下文：ACP-4000 / IPC-610 工控机。", "初步判断进入散热异常诊断路径。"],
+    ["检索 KB-001：ACP-4000 / IPC-610 散热系统结构。", "命中 KB-003：风扇 <500 rpm 告警阈值。", "命中 KB-004：系统温度与 CPU 温度判断条件。"],
+    ["校验操作前置条件：断电、挂牌、防静电。", "确认拆检顺序：风道、滤网、风扇、恢复验证。", "形成可进入检修向导的安全边界。"],
   ];
   const progress = Math.min(100, Math.round((Math.max(0, activeAgentIndex) / agents.length) * 100));
 
@@ -582,6 +677,13 @@ function AgentRunStage({ agents, activeAgentIndex }) {
                 <div>
                   <strong>{agent.name}</strong>
                   <p>{done ? agent.content : running ? messages[index] || "正在分析..." : "等待上一个 Agent 完成"}</p>
+                  {running && (
+                    <div className="stream-lines">
+                      {(streamedItems[index] || []).map((item, lineIndex) => (
+                        <span style={{ animationDelay: `${lineIndex * 520}ms` }} key={item}>{item}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <span>{done ? "已完成" : running ? "运行中" : "等待中"}</span>
               </article>

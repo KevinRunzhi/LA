@@ -388,6 +388,26 @@ h2 {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
+.recognized-panel {
+  display: grid;
+  gap: 7px;
+  border: 1px dashed #c8d6ea;
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+}
+
+.recognized-panel span {
+  color: var(--color-primary);
+  font-size: 12px;
+}
+
+.recognized-panel p {
+  margin-bottom: 0;
+  color: #334155;
+  line-height: 1.45;
+}
+
 .selection-card {
   border: 1px solid #d7e4ff;
   border-radius: 8px;
@@ -471,6 +491,26 @@ h2 {
   line-height: 1.5;
 }
 
+.suggestion-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.suggestion-line small {
+  color: #166534;
+}
+
+.suggestion-line button {
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #166534;
+  min-height: 30px;
+  padding: 0 10px;
+}
+
 .equipment-profile span {
   display: block;
   color: var(--color-muted);
@@ -496,6 +536,20 @@ h2 {
 .intake-summary p {
   margin-top: 8px;
   color: var(--color-text);
+  font-weight: 700;
+}
+
+.generated-task-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.generated-task-list p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #166534;
   font-weight: 700;
 }
 
@@ -627,6 +681,22 @@ h2 {
   line-height: 1.55;
 }
 
+.stream-lines {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.stream-lines span {
+  color: #334155;
+  border-left: 2px solid var(--color-primary);
+  padding-left: 9px;
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0;
+  animation: streamLineIn 360ms ease-out forwards;
+}
+
 .agent-run-card > span {
   justify-self: end;
   color: var(--color-muted);
@@ -675,6 +745,17 @@ h2 {
   from {
     opacity: 0;
     transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes streamLineIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
   }
   to {
     opacity: 1;
