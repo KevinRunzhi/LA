@@ -138,10 +138,9 @@ const quickPrompts = [
 ];
 
 const modalityActions = [
-  { label: "图片", status: "预留", icon: ImagePlus },
-  { label: "视频", status: "模拟", icon: Video },
-  { label: "语音", status: "模拟", icon: Mic },
-  { label: "文件", status: "预留", icon: Paperclip },
+  { label: "添加材料", icon: Paperclip },
+  { label: "图片", icon: ImagePlus },
+  { label: "视频", icon: Video },
 ];
 
 function classNames(...items) {
@@ -508,21 +507,27 @@ function HomeStage({ draft, onDraft, onSubmit, onQuickPrompt, onUseQuickPrompt }
             onChange={(event) => onDraft(event.target.value)}
             placeholder="描述现场现象，例如：工控机温度告警、风扇声音异常、前面板风扇转速很低..."
           />
-          <button className="home-send-button" onClick={onSubmit} aria-label="开始异常接入">
-            <Send size={20} />
-          </button>
-        </div>
-        <div className="home-tools">
-          {modalityActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <button key={action.label} type="button" title={`${action.label} ${action.status}`}>
-                <Icon size={16} />
-                <span>{action.label}</span>
-                <small>{action.status}</small>
+          <div className="home-input-actions">
+            <div className="home-tools">
+              {modalityActions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <button key={action.label} type="button" title={action.label}>
+                    <Icon size={16} />
+                    <span>{action.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="home-submit-actions">
+              <button className="home-voice-button" type="button" aria-label="语音输入" title="语音输入">
+                <Mic size={18} />
               </button>
-            );
-          })}
+              <button className="home-send-button" onClick={onSubmit} aria-label="开始异常接入">
+                <Send size={19} />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -541,21 +546,6 @@ function HomeStage({ draft, onDraft, onSubmit, onQuickPrompt, onUseQuickPrompt }
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="home-context-strip">
-        <article>
-          <span>当前场站</span>
-          <strong>某输气场站 · 站控柜 A01</strong>
-        </article>
-        <article>
-          <span>已加载知识</span>
-          <strong>散热异常 · 检修向导 · 专家修正</strong>
-        </article>
-        <article>
-          <span>后续流程</span>
-          <strong>异常接入后自动生成</strong>
-        </article>
       </div>
     </section>
   );
