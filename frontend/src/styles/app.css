@@ -1571,7 +1571,7 @@ h2 {
   padding: 18px;
   overflow: hidden;
   display: grid;
-  grid-template-rows: minmax(280px, 58%) minmax(230px, 1fr);
+  grid-template-rows: minmax(210px, 42%) minmax(330px, 1fr);
   gap: 14px;
 }
 
@@ -1596,7 +1596,7 @@ h2 {
 
 .phase-list {
   display: grid;
-  gap: 12px;
+  gap: 9px;
   overflow: auto;
   padding-right: 4px;
 }
@@ -1604,7 +1604,7 @@ h2 {
 .phase-item {
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  padding: 12px;
+  padding: 10px;
   background: #fbfdff;
   animation: phaseReveal 180ms ease-out both;
 }
@@ -1654,8 +1654,8 @@ h2 {
 
 .sub-step-list {
   display: grid;
-  gap: 7px;
-  margin-top: 10px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .sub-step {
@@ -1664,7 +1664,7 @@ h2 {
   background: #fff;
   color: var(--color-muted);
   text-align: left;
-  padding: 7px 9px;
+  padding: 6px 8px;
   font-size: 13px;
 }
 
@@ -2387,6 +2387,22 @@ h2 {
   align-items: center;
   gap: 7px;
   color: var(--color-muted);
+}
+
+.stream-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 1.1em;
+  margin-left: 2px;
+  border-right: 2px solid var(--color-primary);
+  vertical-align: -2px;
+  animation: cursorBlink 760ms steps(2, start) infinite;
+}
+
+@keyframes cursorBlink {
+  50% {
+    opacity: 0;
+  }
 }
 
 .assistant-input {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CalendarClock,
@@ -1845,9 +1845,18 @@ function AssistantChat({ stage, activeIntakeStep, analysisSubStep, currentStep, 
   const context = getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentStep, diagnosis);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([]);
-  const [typing, setTyping] = useState(false);
+  const [thinking, setThinking] = useState(false);
+  const [streaming, setStreaming] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState(null);
+  const timersRef = useRef([]);
+
+  function clearAssistantTimers() {
+    timersRef.current.forEach((timer) => window.clearTimeout(timer));
+    timersRef.current = [];
+  }
 
   useEffect(() => {
+    clearAssistantTimers();
     setMessages([
       {
         id: `hint-${context.label}`,
@@ -1856,27 +1865,47 @@ function AssistantChat({ stage, activeIntakeStep, analysisSubStep, currentStep, 
       },
     ]);
     setDraft("");
-    setTyping(false);
+    setThinking(false);
+    setStreaming(false);
+    setStreamingMessageId(null);
+    return clearAssistantTimers;
   }, [context.label, context.suggestion]);
 
   function sendMessage() {
     const text = draft.trim();
-    if (!text || typing) return;
+    if (!text || thinking || streaming) return;
     const userMessage = { id: `user-${Date.now()}`, role: "user", text };
     setMessages((current) => [...current, userMessage]);
     setDraft("");
-    setTyping(true);
-    window.setTimeout(() => {
-      setMessages((current) => [
-        ...current,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          text: getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep, text),
-        },
-      ]);
-      setTyping(false);
-    }, 760);
+    setThinking(true);
+    clearAssistantTimers();
+
+    const reply = getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep, text);
+    const replyId = `assistant-${Date.now()}`;
+    const chunks = reply.match(/[^。！？；]+[。！？；]?/g) || [reply];
+
+    const thinkingTimer = window.setTimeout(() => {
+      setThinking(false);
+      setStreaming(true);
+      setStreamingMessageId(replyId);
+      setMessages((current) => [...current, { id: replyId, role: "assistant", text: "" }]);
+
+      chunks.forEach((chunk, index) => {
+        const streamTimer = window.setTimeout(() => {
+          setMessages((current) => current.map((message) => (
+            message.id === replyId
+              ? { ...message, text: `${message.text}${chunk}` }
+              : message
+          )));
+          if (index === chunks.length - 1) {
+            setStreaming(false);
+            setStreamingMessageId(null);
+          }
+        }, index * 520);
+        timersRef.current.push(streamTimer);
+      });
+    }, 1800);
+    timersRef.current.push(thinkingTimer);
   }
 
   return (
@@ -1894,13 +1923,13 @@ function AssistantChat({ stage, activeIntakeStep, analysisSubStep, currentStep, 
           {messages.map((message) => (
             <div className={classNames("assistant-message", message.role)} key={message.id}>
               {message.role === "hint" && <span>当前步骤建议</span>}
-              <p>{message.text}</p>
+              <p>{message.text}{message.id === streamingMessageId && <i className="stream-cursor" />}</p>
             </div>
           ))}
-          {typing && (
+          {thinking && (
             <div className="assistant-message assistant typing">
               <Loader2 size={14} className="spin" />
-              <p>正在结合当前步骤生成建议...</p>
+              <p>正在思考当前步骤和检修上下文...</p>
             </div>
           )}
         </div>
@@ -1914,7 +1943,7 @@ function AssistantChat({ stage, activeIntakeStep, analysisSubStep, currentStep, 
           }}
           placeholder="追问当前步骤..."
         />
-        <button onClick={sendMessage} disabled={!draft.trim() || typing}><Send size={14} /></button>
+        <button onClick={sendMessage} disabled={!draft.trim() || thinking || streaming}><Send size={14} /></button>
       </div>
     </aside>
   );
