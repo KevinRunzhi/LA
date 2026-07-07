@@ -1434,9 +1434,83 @@ function RecordPage({ record, onBuildRecord }) {
       checks: ["确认柜门滤网状态", "检查柜内线缆遮挡", "记录环境温湿度"],
     },
   ].filter(Boolean);
-  const [selectedId, setSelectedId] = useState(records[0]?.id);
-  const selectedRecord = records.find((item) => item.id === selectedId) || records[0];
+  const [searchFault, setSearchFault] = useState("");
+  const [detailRecordId, setDetailRecordId] = useState(null);
+  const filteredRecords = records.filter((item) => item.fault.includes(searchFault.trim()));
+  const selectedRecord = records.find((item) => item.id === detailRecordId);
   const reviewedCount = records.filter((item) => item.status === "已审核" || item.status === "已归档").length;
+
+  if (selectedRecord) {
+    return (
+      <section className="records-page">
+        <div className="records-panel detail-mode">
+          <div className="record-detail-topbar">
+            <button className="ghost-button" onClick={() => setDetailRecordId(null)}>
+              <ChevronLeft size={16} />
+              返回记录列表
+            </button>
+            <div className="records-actions">
+              <button className="ghost-button" onClick={() => window.print()}>
+                <Download size={16} />
+                导出
+              </button>
+            </div>
+          </div>
+
+          <article className="record-detail full-page">
+            <div className="record-detail-head">
+              <div>
+                <span className={classNames("record-status", selectedRecord.status === "待审核" && "pending")}>
+                  {selectedRecord.status}
+                </span>
+                <h3>{selectedRecord.title}</h3>
+                <p>{selectedRecord.id}</p>
+              </div>
+              <ClipboardList size={30} />
+            </div>
+
+            <div className="record-meta-grid">
+              <section>
+                <span>设备</span>
+                <strong>{selectedRecord.equipment}</strong>
+              </section>
+              <section>
+                <span>故障</span>
+                <strong>{selectedRecord.fault}</strong>
+              </section>
+              <section>
+                <span>处理人</span>
+                <strong>{selectedRecord.maintainer}</strong>
+              </section>
+              <section>
+                <span>耗时</span>
+                <strong>{selectedRecord.duration}</strong>
+              </section>
+            </div>
+
+            <section className="record-conclusion">
+              <div className="section-heading compact">
+                <h3>本次维修主要内容</h3>
+                <span><CalendarClock size={14} /> {selectedRecord.time}</span>
+              </div>
+              <p>{selectedRecord.conclusion}</p>
+            </section>
+
+            <section className="record-checks">
+              <h3>关键确认项</h3>
+              {selectedRecord.checks.map((check) => (
+                <p key={check}><Check size={15} /> {check}</p>
+              ))}
+            </section>
+
+            <div className="record-tags">
+              {selectedRecord.tags.map((tag) => <span key={tag}>{tag}</span>)}
+            </div>
+          </article>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="records-page">
@@ -1481,92 +1555,37 @@ function RecordPage({ record, onBuildRecord }) {
         <div className="record-filter-row">
           <label>
             <Search size={15} />
-            <input placeholder="搜索记录编号、设备或故障..." />
+            <input
+              value={searchFault}
+              onChange={(event) => setSearchFault(event.target.value)}
+              placeholder="搜索故障，例如：风扇、温度、滤网..."
+            />
           </label>
-          <select defaultValue="all">
-            <option value="all">全部状态</option>
-            <option value="reviewed">已审核</option>
-            <option value="archived">已归档</option>
-            <option value="pending">待审核</option>
-          </select>
-          <select defaultValue="recent">
-            <option value="recent">最近优先</option>
-            <option value="device">按设备</option>
-            <option value="status">按状态</option>
-          </select>
+          <span>共 {filteredRecords.length} 条</span>
         </div>
 
-        <div className="records-workspace">
-          <div className="record-list" aria-label="检修记录列表">
-            {records.map((item) => (
+        <div className="record-list-full" aria-label="检修记录列表">
+          {filteredRecords.length > 0 ? (
+            filteredRecords.map((item) => (
               <button
                 key={item.id}
-                className={classNames("record-list-item", item.id === selectedRecord.id && "active")}
-                onClick={() => setSelectedId(item.id)}
+                className="record-row-item"
+                onClick={() => setDetailRecordId(item.id)}
               >
                 <div>
                   <strong>{item.title}</strong>
-                  <span>{item.id}</span>
-                </div>
-                <p>{item.equipment}</p>
-                <footer>
-                  <span className={classNames("record-status", item.status === "待审核" && "pending")}>{item.status}</span>
                   <span>{item.time}</span>
-                </footer>
+                </div>
+                <p>{item.fault}</p>
+                <span>{item.equipment}</span>
+                <span>{item.maintainer}</span>
+                <span className={classNames("record-status", item.status === "待审核" && "pending")}>{item.status}</span>
+                <ChevronRight size={18} />
               </button>
-            ))}
-          </div>
-
-          <article className="record-detail">
-            <div className="record-detail-head">
-              <div>
-                <span className={classNames("record-status", selectedRecord.status === "待审核" && "pending")}>
-                  {selectedRecord.status}
-                </span>
-                <h3>{selectedRecord.title}</h3>
-                <p>{selectedRecord.id}</p>
-              </div>
-              <ClipboardList size={30} />
-            </div>
-
-            <div className="record-meta-grid">
-              <section>
-                <span>设备</span>
-                <strong>{selectedRecord.equipment}</strong>
-              </section>
-              <section>
-                <span>故障</span>
-                <strong>{selectedRecord.fault}</strong>
-              </section>
-              <section>
-                <span>处理人</span>
-                <strong>{selectedRecord.maintainer}</strong>
-              </section>
-              <section>
-                <span>耗时</span>
-                <strong>{selectedRecord.duration}</strong>
-              </section>
-            </div>
-
-            <section className="record-conclusion">
-              <div className="section-heading compact">
-                <h3>处理结论</h3>
-                <span><CalendarClock size={14} /> {selectedRecord.time}</span>
-              </div>
-              <p>{selectedRecord.conclusion}</p>
-            </section>
-
-            <section className="record-checks">
-              <h3>关键确认项</h3>
-              {selectedRecord.checks.map((check) => (
-                <p key={check}><Check size={15} /> {check}</p>
-              ))}
-            </section>
-
-            <div className="record-tags">
-              {selectedRecord.tags.map((tag) => <span key={tag}>{tag}</span>)}
-            </div>
-          </article>
+            ))
+          ) : (
+            <div className="record-empty">未找到相关故障记录。</div>
+          )}
         </div>
       </div>
     </section>
