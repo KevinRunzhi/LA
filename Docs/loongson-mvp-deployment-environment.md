@@ -76,32 +76,59 @@
 - 即使最终只用 Flask 托管静态页面，也需要 Vite 先把前端构建成 `frontend/dist`。
 - 如果直接拷贝已经构建好的 `frontend/dist`，龙芯机器上可以临时不装 npm 依赖；但为了后续继续开发和迭代，建议准备完整 Node/npm 环境。
 
-## 4. 前端 npm 依赖完整清单
+## 4. 前端 npm 包准备清单
 
-以下清单来自当前 `frontend/package-lock.json`。准备离线 npm 包时，应以锁文件为准。
+前端包以 `frontend/package.json` 和 `frontend/package-lock.json` 为准。实际准备时不需要人工逐个下载锁文件里的所有传递依赖，更不需要把 `x64`、`arm64`、`win32`、`darwin` 等平台可选包全部下载。npm 会根据当前系统和架构自动解析并拉取需要的包。
 
-### 4.1 生产运行相关包
+### 4.1 必须关注的前端包名
 
-| 包名 | 版本 |
+这些是当前项目直接使用或构建必须依赖的包，准备环境时主要关注这些包名即可。
+
+| 包名 | 当前版本 | 类型 | 用途 |
+| --- | --- | --- | --- |
+| `react` | `18.3.1` | 运行依赖 | 前端组件框架 |
+| `react-dom` | `18.3.1` | 运行依赖 | 浏览器 DOM 渲染 |
+| `lucide-react` | `0.468.0` | 运行依赖 | 图标组件库 |
+| `vite` | `6.4.3` | 构建依赖 | 前端开发服务和生产构建 |
+| `@vitejs/plugin-react` | `4.7.0` | 构建依赖 | Vite React 插件 |
+
+### 4.2 会自动带出的主要传递依赖包名
+
+这些包一般不需要单独手动找。只要上面的直接依赖按锁文件下载，npm 会自动把这些传递依赖一起放进 `node_modules` 或 npm 缓存里。
+
+| 包名 | 当前版本 | 来源/用途 |
+| --- | --- | --- |
+| `react-refresh` | `0.17.0` | Vite React 热更新和构建相关 |
+| `rollup` | `4.62.2` | Vite 构建底层打包器 |
+| `esbuild` | `0.25.12` | Vite 构建底层工具 |
+| `scheduler` | `0.23.2` | React 传递依赖 |
+| `loose-envify` | `1.4.0` | React 传递依赖 |
+| `js-tokens` | `4.0.0` | React 传递依赖 |
+| `postcss` | `8.5.16` | Vite/CSS 构建相关 |
+| `nanoid` | `3.3.15` | Vite/PostCSS 传递依赖 |
+| `picocolors` | `1.1.1` | Vite/Rollup 输出相关 |
+| `source-map-js` | `1.2.1` | Source map 处理 |
+| `tinyglobby` | `0.2.17` | Vite 文件匹配相关 |
+| `fdir` | `6.5.0` | 文件遍历相关 |
+| `picomatch` | `4.0.5` | 文件匹配相关 |
+
+### 4.3 Babel 相关包名
+
+`@babel` 这一类包属于 Vite React 插件的构建依赖。它们通常会作为一组依赖自动下载，不需要人工一个个下载。离线准备时，建议让 npm 根据 `package-lock.json` 一次性生成缓存或打包 `node_modules`。
+
+当前会用到的主要 Babel 包名：
+
+| 包名 | 当前版本 |
 | --- | --- |
-| `react` | `18.3.1` |
-| `react-dom` | `18.3.1` |
-| `lucide-react` | `0.468.0` |
-| `scheduler` | `0.23.2` |
-| `loose-envify` | `1.4.0` |
-| `js-tokens` | `4.0.0` |
-
-### 4.2 Vite / React / Babel 构建相关包
-
-| 包名 | 版本 |
-| --- | --- |
-| `vite` | `6.4.3` |
-| `@vitejs/plugin-react` | `4.7.0` |
-| `react-refresh` | `0.17.0` |
 | `@babel/core` | `7.29.7` |
+| `@babel/parser` | `7.29.7` |
+| `@babel/generator` | `7.29.7` |
+| `@babel/traverse` | `7.29.7` |
+| `@babel/types` | `7.29.7` |
+| `@babel/template` | `7.29.7` |
+| `@babel/helpers` | `7.29.7` |
 | `@babel/code-frame` | `7.29.7` |
 | `@babel/compat-data` | `7.29.7` |
-| `@babel/generator` | `7.29.7` |
 | `@babel/helper-compilation-targets` | `7.29.7` |
 | `@babel/helper-globals` | `7.29.7` |
 | `@babel/helper-module-imports` | `7.29.7` |
@@ -110,118 +137,33 @@
 | `@babel/helper-string-parser` | `7.29.7` |
 | `@babel/helper-validator-identifier` | `7.29.7` |
 | `@babel/helper-validator-option` | `7.29.7` |
-| `@babel/helpers` | `7.29.7` |
-| `@babel/parser` | `7.29.7` |
 | `@babel/plugin-transform-react-jsx-self` | `7.29.7` |
 | `@babel/plugin-transform-react-jsx-source` | `7.29.7` |
-| `@babel/template` | `7.29.7` |
-| `@babel/traverse` | `7.29.7` |
-| `@babel/types` | `7.29.7` |
-| `@types/babel__core` | `7.20.5` |
-| `@types/babel__generator` | `7.27.0` |
-| `@types/babel__template` | `7.4.4` |
-| `@types/babel__traverse` | `7.28.0` |
-| `@types/estree` | `1.0.9` |
 
-### 4.3 Rollup / esbuild 相关包
+### 4.4 平台可选包说明
 
-Vite 构建会依赖 Rollup 和 esbuild。锁文件中包含多个平台的可选包，龙芯环境重点关注 `linux-loong64` 相关包。
+`rollup` 和 `esbuild` 会根据操作系统和 CPU 架构选择平台包。文档不再列出所有平台包，因为龙芯部署不需要准备 Windows、macOS、x64、ARM64 等平台包。
 
-| 包名 | 版本 | 备注 |
+龙芯环境只需要让 npm 能拿到当前平台匹配的包即可，重点可能涉及：
+
+| 包名 | 当前版本 | 说明 |
 | --- | --- | --- |
-| `rollup` | `4.62.2` | Vite 构建核心依赖 |
-| `esbuild` | `0.25.12` | Vite 构建依赖 |
-| `@esbuild/linux-loong64` | `0.25.12` | 龙芯 Linux 重点关注 |
-| `@rollup/rollup-linux-loong64-gnu` | `4.62.2` | 龙芯 glibc 环境重点关注 |
+| `@esbuild/linux-loong64` | `0.25.12` | 龙芯 Linux 对应的 esbuild 平台包 |
+| `@rollup/rollup-linux-loong64-gnu` | `4.62.2` | 龙芯 glibc 环境对应的 Rollup 平台包 |
 | `@rollup/rollup-linux-loong64-musl` | `4.62.2` | 龙芯 musl 环境备用 |
 
-锁文件同时包含以下其他平台可选包，正常联网安装时 npm 会按平台选择合适包；准备完整离线缓存时可以一并保留：
+如果队友直接在龙芯机器上联网安装，npm 会自动选择上述平台包，不需要手动判断全部平台包。
 
-| 包名 | 版本 |
-| --- | --- |
-| `@esbuild/aix-ppc64` | `0.25.12` |
-| `@esbuild/android-arm` | `0.25.12` |
-| `@esbuild/android-arm64` | `0.25.12` |
-| `@esbuild/android-x64` | `0.25.12` |
-| `@esbuild/darwin-arm64` | `0.25.12` |
-| `@esbuild/darwin-x64` | `0.25.12` |
-| `@esbuild/freebsd-arm64` | `0.25.12` |
-| `@esbuild/freebsd-x64` | `0.25.12` |
-| `@esbuild/linux-arm` | `0.25.12` |
-| `@esbuild/linux-arm64` | `0.25.12` |
-| `@esbuild/linux-ia32` | `0.25.12` |
-| `@esbuild/linux-mips64el` | `0.25.12` |
-| `@esbuild/linux-ppc64` | `0.25.12` |
-| `@esbuild/linux-riscv64` | `0.25.12` |
-| `@esbuild/linux-s390x` | `0.25.12` |
-| `@esbuild/linux-x64` | `0.25.12` |
-| `@esbuild/netbsd-arm64` | `0.25.12` |
-| `@esbuild/netbsd-x64` | `0.25.12` |
-| `@esbuild/openbsd-arm64` | `0.25.12` |
-| `@esbuild/openbsd-x64` | `0.25.12` |
-| `@esbuild/openharmony-arm64` | `0.25.12` |
-| `@esbuild/sunos-x64` | `0.25.12` |
-| `@esbuild/win32-arm64` | `0.25.12` |
-| `@esbuild/win32-ia32` | `0.25.12` |
-| `@esbuild/win32-x64` | `0.25.12` |
-| `@rollup/rollup-android-arm-eabi` | `4.62.2` |
-| `@rollup/rollup-android-arm64` | `4.62.2` |
-| `@rollup/rollup-darwin-arm64` | `4.62.2` |
-| `@rollup/rollup-darwin-x64` | `4.62.2` |
-| `@rollup/rollup-freebsd-arm64` | `4.62.2` |
-| `@rollup/rollup-freebsd-x64` | `4.62.2` |
-| `@rollup/rollup-linux-arm-gnueabihf` | `4.62.2` |
-| `@rollup/rollup-linux-arm-musleabihf` | `4.62.2` |
-| `@rollup/rollup-linux-arm64-gnu` | `4.62.2` |
-| `@rollup/rollup-linux-arm64-musl` | `4.62.2` |
-| `@rollup/rollup-linux-ppc64-gnu` | `4.62.2` |
-| `@rollup/rollup-linux-ppc64-musl` | `4.62.2` |
-| `@rollup/rollup-linux-riscv64-gnu` | `4.62.2` |
-| `@rollup/rollup-linux-riscv64-musl` | `4.62.2` |
-| `@rollup/rollup-linux-s390x-gnu` | `4.62.2` |
-| `@rollup/rollup-linux-x64-gnu` | `4.62.2` |
-| `@rollup/rollup-linux-x64-musl` | `4.62.2` |
-| `@rollup/rollup-openbsd-x64` | `4.62.2` |
-| `@rollup/rollup-openharmony-arm64` | `4.62.2` |
-| `@rollup/rollup-win32-arm64-msvc` | `4.62.2` |
-| `@rollup/rollup-win32-ia32-msvc` | `4.62.2` |
-| `@rollup/rollup-win32-x64-gnu` | `4.62.2` |
-| `@rollup/rollup-win32-x64-msvc` | `4.62.2` |
+### 4.5 推荐准备方式
 
-### 4.4 其他前端构建传递依赖
+前端依赖可以按以下思路准备：
 
-| 包名 | 版本 |
-| --- | --- |
-| `@jridgewell/gen-mapping` | `0.3.13` |
-| `@jridgewell/remapping` | `2.3.5` |
-| `@jridgewell/resolve-uri` | `3.1.2` |
-| `@jridgewell/sourcemap-codec` | `1.5.5` |
-| `@jridgewell/trace-mapping` | `0.3.31` |
-| `@rolldown/pluginutils` | `1.0.0-beta.27` |
-| `baseline-browser-mapping` | `2.10.42` |
-| `browserslist` | `4.28.4` |
-| `caniuse-lite` | `1.0.30001802` |
-| `convert-source-map` | `2.0.0` |
-| `debug` | `4.4.3` |
-| `electron-to-chromium` | `1.5.387` |
-| `escalade` | `3.2.0` |
-| `fdir` | `6.5.0` |
-| `fsevents` | `2.3.3` |
-| `gensync` | `1.0.0-beta.2` |
-| `jsesc` | `3.1.0` |
-| `json5` | `2.2.3` |
-| `lru-cache` | `5.1.1` |
-| `ms` | `2.1.3` |
-| `nanoid` | `3.3.15` |
-| `node-releases` | `2.0.50` |
-| `picocolors` | `1.1.1` |
-| `picomatch` | `4.0.5` |
-| `postcss` | `8.5.16` |
-| `semver` | `6.3.1` |
-| `source-map-js` | `1.2.1` |
-| `tinyglobby` | `0.2.17` |
-| `update-browserslist-db` | `1.2.3` |
-| `yallist` | `3.1.1` |
+| 准备方式 | 适用情况 | 说明 |
+| --- | --- | --- |
+| 准备 `package.json` + `package-lock.json` | 龙芯机器可以访问 npm 源 | npm 会按锁文件自动下载需要的包 |
+| 准备 npm 缓存包 | 龙芯机器网络慢或不稳定 | 在可联网环境预先缓存依赖，再拷贝到龙芯机器 |
+| 准备完整 `node_modules` 压缩包 | 网络受限、只做短期演示 | 需要尽量在同架构或龙芯机器上生成，避免平台二进制包不匹配 |
+| 准备 `frontend/dist/` | 只运行演示，不在龙芯上改前端 | 可以减少前端构建需求，但后续开发仍建议保留完整 npm 环境 |
 
 ## 5. Python 运行环境
 
@@ -343,7 +285,8 @@ MVP 演示优先准备 `8080` 端口即可。
 - 基础编译工具链，作为特殊架构依赖编译备用。
 - Node.js `20.19.4`。
 - npm `10.8.2`。
-- `frontend/package-lock.json` 对应的 npm 依赖包或可联网 npm 源。
+- 前端直接包：`react`、`react-dom`、`lucide-react`、`vite`、`@vitejs/plugin-react`。
+- npm 离线准备物：可联网 npm 源、npm 缓存包，或在龙芯/同架构环境生成的 `node_modules` 压缩包。
 - Python `3.10+`，推荐 `3.12.x`。
 - pip 和 venv。
 - `Flask==3.0.3` 及其 6 个传递依赖包。
