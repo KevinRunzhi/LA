@@ -1438,7 +1438,6 @@ function RecordPage({ record, onBuildRecord }) {
   const [detailRecordId, setDetailRecordId] = useState(null);
   const filteredRecords = records.filter((item) => item.fault.includes(searchFault.trim()));
   const selectedRecord = records.find((item) => item.id === detailRecordId);
-  const reviewedCount = records.filter((item) => item.status === "已审核" || item.status === "已归档").length;
 
   if (selectedRecord) {
     return (
@@ -1531,25 +1530,6 @@ function RecordPage({ record, onBuildRecord }) {
               生成演示记录
             </button>
           </div>
-        </div>
-
-        <div className="record-summary-grid">
-          <article>
-            <span>记录总数</span>
-            <strong>{records.length}</strong>
-          </article>
-          <article>
-            <span>已审核/归档</span>
-            <strong>{reviewedCount}</strong>
-          </article>
-          <article>
-            <span>当前设备</span>
-            <strong>站控柜 A01</strong>
-          </article>
-          <article>
-            <span>最近更新</span>
-            <strong>{records[0]?.time}</strong>
-          </article>
         </div>
 
         <div className="record-filter-row">

@@ -1877,7 +1877,7 @@ h2 {
   height: calc(100vh - 118px);
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 14px;
   background: var(--color-card);
   border: 1px solid var(--color-border);
@@ -1915,13 +1915,6 @@ h2 {
   flex-wrap: wrap;
 }
 
-.record-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.record-summary-grid article,
 .record-meta-grid section {
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -1931,15 +1924,9 @@ h2 {
   gap: 6px;
 }
 
-.record-summary-grid span,
 .record-meta-grid span {
   color: var(--color-muted);
   font-size: 12px;
-}
-
-.record-summary-grid strong {
-  color: var(--color-text);
-  font-size: 20px;
 }
 
 .record-filter-row {
@@ -2364,8 +2351,6 @@ h2 {
   .stage-layout,
   .settings-grid,
   .graph-page,
-  .records-workspace,
-  .record-summary-grid,
   .record-filter-row,
   .record-meta-grid,
   .guide-screen,
