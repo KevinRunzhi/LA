@@ -1270,7 +1270,13 @@ function RightStepPanel({
           ))}
         </div>
       </section>
-      <AssistantChat currentStep={currentStep} diagnosis={diagnosis} />
+      <AssistantChat
+        stage={stage}
+        activeIntakeStep={activeIntakeStep}
+        analysisSubStep={analysisSubStep}
+        currentStep={currentStep}
+        diagnosis={diagnosis}
+      />
     </aside>
   );
 }
@@ -1751,20 +1757,164 @@ function PlaceholderPage({ title, text }) {
   );
 }
 
-function AssistantChat({ currentStep, diagnosis }) {
+function getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentStep, diagnosis) {
+  if (stage === "input") {
+    const suggestions = [
+      "请补充温度告警、风扇声音、前面板灯态，以及是否有现场图片或视频材料。",
+      "建议先选择设备型号、设备位置、设备角色和关联告警，系统会按演示流程整理接入信息。",
+      "重点核对 TEMP/FAN、风扇转速、系统温度和 CPU 温度，阈值后续可改为真实 API 返回。",
+      "接入信息确认后，可以触发散热异常方向的多 Agent 会诊。",
+    ];
+    return {
+      label: `异常接入 · ${intakeTasks[activeIntakeStep]?.title || "现场信息"}`,
+      suggestion: suggestions[activeIntakeStep] || suggestions[0],
+    };
+  }
+
+  if (stage === "analysis") {
+    return {
+      label: "分析诊断 · 多 Agent 会诊",
+      suggestion: "当前正在模拟分析诊断 Agent、操作合规 Agent 和知识检索 Agent 的运行过程。",
+    };
+  }
+
+  if (stage === "diagnosis") {
+    return {
+      label: `分析诊断 · ${diagnosisTasks[analysisSubStep]?.title || "诊断结论"}`,
+      suggestion: diagnosis
+        ? "可以追问诊断依据、风险原因或为什么建议进入步骤式检修向导。"
+        : "诊断结论生成后，我会辅助解释证据和下一步处理建议。",
+    };
+  }
+
+  if (stage === "guide" && currentStep) {
+    return {
+      label: `检修向导 · ${currentStep.title}`,
+      suggestion: `${currentStep.description} 本步安全要求：${currentStep.safety}`,
+    };
+  }
+
+  if (stage === "record") {
+    return {
+      label: "检修记录",
+      suggestion: "可以追问本次检修记录、处理结论、关键确认项和后续专家审核状态。",
+    };
+  }
+
+  return {
+    label: "辅助对话",
+    suggestion: "先描述现场现象，我会辅助补充信息并解释当前步骤。",
+  };
+}
+
+function getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep, message) {
+  const text = message.trim();
+  if (stage === "input") {
+    if (activeIntakeStep === 0) return "建议把现象拆成三类记录：告警灯态、声音/转速、温度变化。当前演示会优先识别为工控机散热异常。";
+    if (activeIntakeStep === 1) return "本步建议先确认设备型号为 ACP-4000 / IPC-610，再补充站控柜 A01、工控机角色和 TEMP/FAN 关联告警。";
+    if (activeIntakeStep === 2) return "阈值可以先按演示值填写：风扇 <500 rpm、系统温度 >55°C、CPU 温度 >70°C。后续接 API 后可由设备数据自动带入。";
+    return "接入信息已经足够触发诊断。建议点击触发诊断，让系统进入多 Agent 会诊并生成诊断结论。";
+  }
+
+  if (stage === "analysis") {
+    return "当前是模拟会诊流程：分析诊断 Agent 判断故障方向，操作合规 Agent 校验安全要求，知识检索 Agent 匹配维修知识条目。";
+  }
+
+  if (stage === "diagnosis") {
+    if (analysisSubStep === 0) return "触发诊断后，系统会把异常限定在站控柜工控机散热系统，不扩展到 PLC 或全站设备。";
+    if (analysisSubStep === 1) return "会诊依据主要来自 TEMP/FAN 告警、风扇转速、系统温度、CPU 温度和安全操作要求。";
+    return "当前结论优先指向风道堵塞、滤网积尘或风扇低速。建议进入检修向导，按步骤完成确认和恢复验证。";
+  }
+
+  if (stage === "guide" && currentStep) {
+    if (currentStep.id === "step-02-safety") return "本步不要跳过：先通知负责人、正常关机、拔除电源、等待冷却，并佩戴防静电手环。";
+    if (currentStep.id === "step-03-airflow") return "建议先看环境温度是否超过 40°C，再检查进风口、出风口和机箱开孔是否被遮挡。";
+    if (currentStep.id === "step-04-filter-fan") return "建议先检查门滤网和风扇滤网积尘，再确认风扇是否异响、停转、低速，并核对 FAN1/FAN2 接线顺序。";
+    if (currentStep.id === "step-05-verify") return "恢复后重点观察风扇是否高于 500 rpm、系统温度是否不高于 55°C、CPU 温度是否不高于 70°C，并连续观察不少于 10 分钟。";
+    return "本步先完成外观和状态确认，不进行拆检。记录 TEMP/FAN、蜂鸣器、风扇 rpm、温度和站控柜位置。";
+  }
+
+  if (stage === "record") return "检修记录会沉淀本次故障、步骤完成情况、处理结论和专家审核状态，后续可以接导出或知识回流 API。";
+
+  return text.includes("API")
+    ? "后续这里可以替换为真实大模型 API：把当前阶段、步骤、用户问题和维修知识作为上下文传给后端。"
+    : "我会根据当前步骤给出辅助建议。当前版本是本地模拟回复，用于演示交互效果。";
+}
+
+function AssistantChat({ stage, activeIntakeStep, analysisSubStep, currentStep, diagnosis }) {
+  const context = getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentStep, diagnosis);
+  const [draft, setDraft] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [typing, setTyping] = useState(false);
+
+  useEffect(() => {
+    setMessages([
+      {
+        id: `hint-${context.label}`,
+        role: "hint",
+        text: context.suggestion,
+      },
+    ]);
+    setDraft("");
+    setTyping(false);
+  }, [context.label, context.suggestion]);
+
+  function sendMessage() {
+    const text = draft.trim();
+    if (!text || typing) return;
+    const userMessage = { id: `user-${Date.now()}`, role: "user", text };
+    setMessages((current) => [...current, userMessage]);
+    setDraft("");
+    setTyping(true);
+    window.setTimeout(() => {
+      setMessages((current) => [
+        ...current,
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          text: getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep, text),
+        },
+      ]);
+      setTyping(false);
+    }, 760);
+  }
+
   return (
     <aside className="assistant-chat">
       <div className="assistant-head">
         <MessageCircle size={16} />
-        <strong>辅助对话</strong>
+        <div>
+          <strong>辅助对话</strong>
+          <span>{context.label}</span>
+        </div>
       </div>
       <div className="assistant-body">
-        <p>{diagnosis ? "我可以解释当前诊断结论或步骤依据。" : "先描述现场现象，我会辅助补充信息。"}</p>
-        {currentStep && <span>当前步骤：{currentStep.title}</span>}
+        <div className="assistant-api-note">当前为本地模拟回复，后续接入大模型 API 后替换此逻辑。</div>
+        <div className="assistant-message-list">
+          {messages.map((message) => (
+            <div className={classNames("assistant-message", message.role)} key={message.id}>
+              {message.role === "hint" && <span>当前步骤建议</span>}
+              <p>{message.text}</p>
+            </div>
+          ))}
+          {typing && (
+            <div className="assistant-message assistant typing">
+              <Loader2 size={14} className="spin" />
+              <p>正在结合当前步骤生成建议...</p>
+            </div>
+          )}
+        </div>
       </div>
       <div className="assistant-input">
-        <input placeholder="追问当前步骤..." />
-        <button><Send size={14} /></button>
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") sendMessage();
+          }}
+          placeholder="追问当前步骤..."
+        />
+        <button onClick={sendMessage} disabled={!draft.trim() || typing}><Send size={14} /></button>
       </div>
     </aside>
   );
