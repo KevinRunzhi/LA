@@ -151,8 +151,6 @@ const defaultUser = {
   team: "站控运维一班",
 };
 
-const roleOptions = ["一线检修人员", "专家审核人员", "运维管理员"];
-
 function classNames(...items) {
   return items.filter(Boolean).join(" ");
 }
@@ -362,7 +360,7 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <LoginPage initialUser={currentUser} onLogin={handleLogin} />;
+    return <LoginPage onLogin={handleLogin} />;
   }
 
   return (
@@ -526,21 +524,13 @@ export default function App() {
   );
 }
 
-function LoginPage({ initialUser, onLogin }) {
-  const [form, setForm] = useState(initialUser);
-
-  function updateField(field, value) {
-    setForm((current) => ({ ...current, [field]: value }));
-  }
+function LoginPage({ onLogin }) {
+  const [account, setAccount] = useState("lishifu");
+  const [password, setPassword] = useState("");
 
   function submitLogin(event) {
     event.preventDefault();
-    onLogin({
-      name: form.name.trim() || defaultUser.name,
-      role: form.role || defaultUser.role,
-      site: form.site.trim() || defaultUser.site,
-      team: form.team.trim() || defaultUser.team,
-    });
+    onLogin(defaultUser);
   }
 
   return (
@@ -557,57 +547,31 @@ function LoginPage({ initialUser, onLogin }) {
         </div>
 
         <form className="login-form" onSubmit={submitLogin}>
-          <div className="login-field">
-            <span>人员身份</span>
-            <div className="role-selector">
-              {roleOptions.map((role) => (
-                <button
-                  type="button"
-                  key={role}
-                  className={classNames(form.role === role && "active")}
-                  onClick={() => updateField("role", role)}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
-          </div>
-
           <label className="login-field">
-            <span>人员姓名</span>
-            <input value={form.name} onChange={(event) => updateField("name", event.target.value)} />
+            <span>账号</span>
+            <input
+              value={account}
+              onChange={(event) => setAccount(event.target.value)}
+              placeholder="请输入账号"
+              autoComplete="username"
+            />
           </label>
           <label className="login-field">
-            <span>所属场站</span>
-            <input value={form.site} onChange={(event) => updateField("site", event.target.value)} />
-          </label>
-          <label className="login-field">
-            <span>班组</span>
-            <input value={form.team} onChange={(event) => updateField("team", event.target.value)} />
+            <span>密码</span>
+            <input
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="请输入密码"
+              type="password"
+              autoComplete="current-password"
+            />
           </label>
 
           <button className="login-submit" type="submit">
-            进入智能诊断台
+            登录
             <ChevronRight size={18} />
           </button>
         </form>
-      </section>
-
-      <section className="login-visual" aria-hidden="true">
-        <div className="login-visual-grid">
-          <article>
-            <span>当前入口</span>
-            <strong>{form.role}</strong>
-          </article>
-          <article>
-            <span>场站</span>
-            <strong>{form.site}</strong>
-          </article>
-          <article>
-            <span>工作流</span>
-            <strong>异常接入 · 分析诊断 · 检修向导</strong>
-          </article>
-        </div>
       </section>
     </main>
   );
