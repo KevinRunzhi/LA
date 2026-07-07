@@ -38,7 +38,7 @@ const intakeTasks = [
   {
     title: "描述现场现象",
     value: "温度告警、风扇声音异常",
-    detail: "记录一线人员看到的告警、声音、温度和数据上传状态，作为后续诊断输入。",
+    detail: "请描述现场看到的异常现象，系统将整理为诊断输入。",
   },
   {
     title: "补充设备型号",
@@ -680,14 +680,29 @@ function InputStage({
             placeholder="例如：站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。"
           />
           <div className="intake-side-note">
-            <strong>本步采集</strong>
-            <span>现场现象</span>
-            <span>告警类型</span>
-            <span>图片入口预留</span>
-            <button className="ghost-button">
-              <ImagePlus size={16} />
-              上传图片（预留）
-            </button>
+            <section className="intake-collection-card">
+              <strong>本步采集</strong>
+              <span>现场描述</span>
+              <span>告警状态</span>
+              <span>设备声音</span>
+              <span>现场材料</span>
+            </section>
+            <section className="site-location-card">
+              <div className="section-heading compact">
+                <h3>位置提示</h3>
+                <span>系统识别</span>
+              </div>
+              <div className="site-map-preview">
+                <div className="cabinet-outline primary" />
+                <div className="cabinet-outline secondary" />
+                <div className="location-pulse" />
+                <div className="location-label">
+                  <strong>站控柜 A01</strong>
+                  <span>工控机区域</span>
+                </div>
+              </div>
+              <p>后续诊断将优先围绕该区域组织检修步骤。</p>
+            </section>
           </div>
         </div>
       )}
