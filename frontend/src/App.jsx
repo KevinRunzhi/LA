@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  CalendarClock,
   Check,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
   Cpu,
+  Download,
+  FileText,
   GitBranch,
   ImagePlus,
   LayoutDashboard,
@@ -16,6 +19,7 @@ import {
   MessageCircle,
   Mic,
   Paperclip,
+  Search,
   Send,
   Settings,
   ShieldCheck,
@@ -398,6 +402,8 @@ export default function App() {
             <h1>
               {activePage === "graph"
                 ? "知识图谱"
+                : activePage === "records"
+                  ? "检修记录"
                 : activePage === "settings"
                   ? "设置"
                   : stage === "home"
@@ -1369,12 +1375,200 @@ function KnowledgeGraphPage({ graph, evidence }) {
 }
 
 function RecordPage({ record, onBuildRecord }) {
+  const generatedRecord = record && {
+    id: record.record_id,
+    title: "站控柜 A01 工控机散热异常检修",
+    equipment: record.equipment,
+    fault: record.fault,
+    status: record.expert_status,
+    time: "今天 10:42",
+    maintainer: "李师傅",
+    duration: "42 分钟",
+    conclusion: record.conclusion,
+    tags: ["本次流程", "待归档"],
+    checks: [
+      `已完成 ${record.completed_steps.length || 0} 项检修步骤`,
+      record.safety_confirmed ? "安全条件已确认" : "安全确认待补充",
+      "支持打印作业卡和提交专家审核",
+    ],
+  };
+  const records = [
+    generatedRecord,
+    {
+      id: "REC-ACP4000-HIS-001",
+      title: "站控柜 A01 工控机散热异常检修",
+      equipment: "研华 ACP-4000 / IPC-610",
+      fault: "TEMP/FAN 告警、风扇转速偏低",
+      status: "已审核",
+      time: "2026-07-04 09:36",
+      maintainer: "李师傅",
+      duration: "38 分钟",
+      conclusion: "清理滤网和前面板风道后，风扇转速恢复，系统温度下降，告警解除。",
+      tags: ["散热异常", "已回流知识库"],
+      checks: ["完成断电挂牌与防静电确认", "完成滤网清理和风道检查", "恢复上电后连续观察 15 分钟"],
+    },
+    {
+      id: "REC-IPC610-20260703",
+      title: "站控工控机风扇异响排查",
+      equipment: "IPC-610 工控机",
+      fault: "风扇异响、局部温度升高",
+      status: "已归档",
+      time: "2026-07-03 16:18",
+      maintainer: "王工",
+      duration: "25 分钟",
+      conclusion: "确认风扇积尘并完成清理，未发现接线松动。",
+      tags: ["风扇检查", "低风险"],
+      checks: ["检查 FAN1/FAN2 接线", "清理风扇叶片积尘", "记录恢复后转速"],
+    },
+    {
+      id: "REC-STATION-A01-0702",
+      title: "站控柜通风状态巡检",
+      equipment: "站控柜 A01",
+      fault: "例行巡检",
+      status: "已归档",
+      time: "2026-07-02 11:20",
+      maintainer: "赵师傅",
+      duration: "18 分钟",
+      conclusion: "柜体通风良好，未发现进出风口遮挡。",
+      tags: ["巡检", "无异常"],
+      checks: ["确认柜门滤网状态", "检查柜内线缆遮挡", "记录环境温湿度"],
+    },
+  ].filter(Boolean);
+  const [selectedId, setSelectedId] = useState(records[0]?.id);
+  const selectedRecord = records.find((item) => item.id === selectedId) || records[0];
+  const reviewedCount = records.filter((item) => item.status === "已审核" || item.status === "已归档").length;
+
   return (
-    <section className="single-page panel">
-      <p className="eyebrow">检修记录</p>
-      <h2>{record ? record.record_id : "暂无检修记录"}</h2>
-      <p>{record ? record.conclusion : "完成步骤式检修向导后，将在这里生成本次检修记录。"}</p>
-      <button className="primary-button" onClick={onBuildRecord}>生成演示记录</button>
+    <section className="records-page">
+      <div className="records-panel">
+        <div className="records-head">
+          <div>
+            <p className="eyebrow">检修记录</p>
+            <h2>记录台账</h2>
+            <p>查看检修闭环、审核状态和关键处理结论。</p>
+          </div>
+          <div className="records-actions">
+            <button className="ghost-button" onClick={() => window.print()}>
+              <Download size={16} />
+              导出
+            </button>
+            <button className="primary-button" onClick={onBuildRecord}>
+              <FileText size={16} />
+              生成演示记录
+            </button>
+          </div>
+        </div>
+
+        <div className="record-summary-grid">
+          <article>
+            <span>记录总数</span>
+            <strong>{records.length}</strong>
+          </article>
+          <article>
+            <span>已审核/归档</span>
+            <strong>{reviewedCount}</strong>
+          </article>
+          <article>
+            <span>当前设备</span>
+            <strong>站控柜 A01</strong>
+          </article>
+          <article>
+            <span>最近更新</span>
+            <strong>{records[0]?.time}</strong>
+          </article>
+        </div>
+
+        <div className="record-filter-row">
+          <label>
+            <Search size={15} />
+            <input placeholder="搜索记录编号、设备或故障..." />
+          </label>
+          <select defaultValue="all">
+            <option value="all">全部状态</option>
+            <option value="reviewed">已审核</option>
+            <option value="archived">已归档</option>
+            <option value="pending">待审核</option>
+          </select>
+          <select defaultValue="recent">
+            <option value="recent">最近优先</option>
+            <option value="device">按设备</option>
+            <option value="status">按状态</option>
+          </select>
+        </div>
+
+        <div className="records-workspace">
+          <div className="record-list" aria-label="检修记录列表">
+            {records.map((item) => (
+              <button
+                key={item.id}
+                className={classNames("record-list-item", item.id === selectedRecord.id && "active")}
+                onClick={() => setSelectedId(item.id)}
+              >
+                <div>
+                  <strong>{item.title}</strong>
+                  <span>{item.id}</span>
+                </div>
+                <p>{item.equipment}</p>
+                <footer>
+                  <span className={classNames("record-status", item.status === "待审核" && "pending")}>{item.status}</span>
+                  <span>{item.time}</span>
+                </footer>
+              </button>
+            ))}
+          </div>
+
+          <article className="record-detail">
+            <div className="record-detail-head">
+              <div>
+                <span className={classNames("record-status", selectedRecord.status === "待审核" && "pending")}>
+                  {selectedRecord.status}
+                </span>
+                <h3>{selectedRecord.title}</h3>
+                <p>{selectedRecord.id}</p>
+              </div>
+              <ClipboardList size={30} />
+            </div>
+
+            <div className="record-meta-grid">
+              <section>
+                <span>设备</span>
+                <strong>{selectedRecord.equipment}</strong>
+              </section>
+              <section>
+                <span>故障</span>
+                <strong>{selectedRecord.fault}</strong>
+              </section>
+              <section>
+                <span>处理人</span>
+                <strong>{selectedRecord.maintainer}</strong>
+              </section>
+              <section>
+                <span>耗时</span>
+                <strong>{selectedRecord.duration}</strong>
+              </section>
+            </div>
+
+            <section className="record-conclusion">
+              <div className="section-heading compact">
+                <h3>处理结论</h3>
+                <span><CalendarClock size={14} /> {selectedRecord.time}</span>
+              </div>
+              <p>{selectedRecord.conclusion}</p>
+            </section>
+
+            <section className="record-checks">
+              <h3>关键确认项</h3>
+              {selectedRecord.checks.map((check) => (
+                <p key={check}><Check size={15} /> {check}</p>
+              ))}
+            </section>
+
+            <div className="record-tags">
+              {selectedRecord.tags.map((tag) => <span key={tag}>{tag}</span>)}
+            </div>
+          </article>
+        </div>
+      </div>
     </section>
   );
 }
