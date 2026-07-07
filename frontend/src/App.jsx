@@ -10,6 +10,7 @@ import {
   ImagePlus,
   LayoutDashboard,
   Loader2,
+  LogOut,
   MapPin,
   Menu,
   MessageCircle,
@@ -143,11 +144,22 @@ const modalityActions = [
   { label: "视频", icon: Video },
 ];
 
+const defaultUser = {
+  name: "李师傅",
+  role: "一线检修人员",
+  site: "某输气场站",
+  team: "站控运维一班",
+};
+
+const roleOptions = ["一线检修人员", "专家审核人员", "运维管理员"];
+
 function classNames(...items) {
   return items.filter(Boolean).join(" ");
 }
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(defaultUser);
   const [navOpen, setNavOpen] = useState(false);
   const [activePage, setActivePage] = useState("workbench");
   const [stage, setStage] = useState("home");
@@ -335,6 +347,24 @@ export default function App() {
     if (phaseIndex === 3 && record) setStage("record");
   }
 
+  function handleLogin(user) {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    setActivePage("workbench");
+    setStage("home");
+  }
+
+  function handleLogout() {
+    setIsAuthenticated(false);
+    setActivePage("workbench");
+    setStage("home");
+    setHomeDraft("");
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage initialUser={currentUser} onLogin={handleLogin} />;
+  }
+
   return (
     <div className={classNames("app-shell", navOpen && "nav-expanded")}>
       <aside className="sidebar">
@@ -370,9 +400,13 @@ export default function App() {
             <h1>{activePage === "graph" ? "知识图谱" : stage === "home" ? "智能诊断入口" : "智能诊断台"}</h1>
           </div>
           <div className="topbar-meta">
-            <span><MapPin size={16} /> {scenario?.site || "某输气场站"} · {scenario?.cabinet || "站控柜 A01"}</span>
-            <span><UserRound size={16} /> 一线检修人员</span>
+            <span><MapPin size={16} /> {currentUser.site || scenario?.site || "某输气场站"} · {currentUser.team}</span>
+            <span><UserRound size={16} /> {currentUser.name} · {currentUser.role}</span>
             <span className={classNames("health-pill", health === "后端已连接" && "ok")}>{health}</span>
+            <button className="topbar-logout" onClick={handleLogout} title="退出登录">
+              <LogOut size={15} />
+              退出
+            </button>
           </div>
         </header>
 
@@ -385,6 +419,7 @@ export default function App() {
         ) : stage === "home" ? (
           <HomeStage
             draft={homeDraft}
+            userName={currentUser.name}
             onDraft={setHomeDraft}
             onSubmit={() => enterIntakeFromHome()}
             onQuickPrompt={(prompt) => setHomeDraft(prompt)}
@@ -491,12 +526,99 @@ export default function App() {
   );
 }
 
-function HomeStage({ draft, onDraft, onSubmit, onQuickPrompt, onUseQuickPrompt }) {
+function LoginPage({ initialUser, onLogin }) {
+  const [form, setForm] = useState(initialUser);
+
+  function updateField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function submitLogin(event) {
+    event.preventDefault();
+    onLogin({
+      name: form.name.trim() || defaultUser.name,
+      role: form.role || defaultUser.role,
+      site: form.site.trim() || defaultUser.site,
+      team: form.team.trim() || defaultUser.team,
+    });
+  }
+
+  return (
+    <main className="login-shell">
+      <section className="login-panel">
+        <div className="login-brand">
+          <div className="brand-mark static">
+            <Zap size={24} />
+          </div>
+          <div>
+            <p className="eyebrow">站控慧眼</p>
+            <h1>工控设备检修助手</h1>
+          </div>
+        </div>
+
+        <form className="login-form" onSubmit={submitLogin}>
+          <div className="login-field">
+            <span>人员身份</span>
+            <div className="role-selector">
+              {roleOptions.map((role) => (
+                <button
+                  type="button"
+                  key={role}
+                  className={classNames(form.role === role && "active")}
+                  onClick={() => updateField("role", role)}
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="login-field">
+            <span>人员姓名</span>
+            <input value={form.name} onChange={(event) => updateField("name", event.target.value)} />
+          </label>
+          <label className="login-field">
+            <span>所属场站</span>
+            <input value={form.site} onChange={(event) => updateField("site", event.target.value)} />
+          </label>
+          <label className="login-field">
+            <span>班组</span>
+            <input value={form.team} onChange={(event) => updateField("team", event.target.value)} />
+          </label>
+
+          <button className="login-submit" type="submit">
+            进入智能诊断台
+            <ChevronRight size={18} />
+          </button>
+        </form>
+      </section>
+
+      <section className="login-visual" aria-hidden="true">
+        <div className="login-visual-grid">
+          <article>
+            <span>当前入口</span>
+            <strong>{form.role}</strong>
+          </article>
+          <article>
+            <span>场站</span>
+            <strong>{form.site}</strong>
+          </article>
+          <article>
+            <span>工作流</span>
+            <strong>异常接入 · 分析诊断 · 检修向导</strong>
+          </article>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQuickPrompt }) {
   return (
     <section className="home-stage">
       <div className="home-copy">
         <p className="eyebrow">智能诊断入口</p>
-        <h2>早上好李师傅</h2>
+        <h2>早上好{userName}</h2>
         <p>描述现场现象，系统会先整理异常信息，再进入步骤式诊断流程。</p>
       </div>
 
