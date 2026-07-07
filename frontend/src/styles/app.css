@@ -553,8 +553,8 @@ h2 {
 .intake-step-screen {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 14px;
+  grid-template-columns: minmax(280px, 34%) minmax(0, 1fr);
+  gap: 18px;
 }
 
 .intake-step-screen.single-panel {
@@ -574,6 +574,13 @@ h2 {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: 14px;
+}
+
+.symptom-input-card {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
 }
 
 .input-stage textarea {
@@ -609,6 +616,11 @@ h2 {
   overflow: auto;
 }
 
+.intake-side-note.primary-visual {
+  padding: 16px;
+  overflow: hidden;
+}
+
 .equipment-step-screen .operation-note {
   grid-row: 1 / span 2;
 }
@@ -628,13 +640,13 @@ h2 {
 }
 
 .site-location-card {
-  border-top: 1px solid var(--color-border);
-  padding-top: 12px;
+  min-height: 0;
+  align-content: stretch;
 }
 
 .site-location-card .section-heading h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
 }
 
 .site-location-card p {
@@ -646,7 +658,7 @@ h2 {
 
 .site-map-preview {
   position: relative;
-  min-height: 168px;
+  min-height: 360px;
   border: 1px solid #d7e4ff;
   border-radius: 8px;
   background:
@@ -659,9 +671,9 @@ h2 {
 .site-map-preview::before {
   content: "";
   position: absolute;
-  inset: 22px 16px auto auto;
-  width: 112px;
-  height: 82px;
+  inset: 42px 36px auto auto;
+  width: 190px;
+  height: 132px;
   border: 2px solid rgba(51, 95, 150, 0.28);
   border-radius: 8px;
   transform: skewY(-5deg);
@@ -676,24 +688,24 @@ h2 {
 }
 
 .cabinet-outline.primary {
-  right: 42px;
-  width: 82px;
-  height: 118px;
+  right: 78px;
+  width: 134px;
+  height: 218px;
 }
 
 .cabinet-outline.secondary {
-  right: 136px;
-  width: 52px;
-  height: 88px;
+  right: 236px;
+  width: 82px;
+  height: 154px;
   opacity: 0.7;
 }
 
 .location-pulse {
   position: absolute;
-  right: 82px;
-  top: 64px;
-  width: 14px;
-  height: 14px;
+  right: 138px;
+  top: 112px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--color-primary);
   box-shadow: 0 0 0 8px rgba(79, 70, 229, 0.16);
@@ -702,8 +714,8 @@ h2 {
 
 .location-label {
   position: absolute;
-  left: 16px;
-  bottom: 16px;
+  left: 22px;
+  bottom: 22px;
   display: grid;
   gap: 3px;
   border: 1px solid #bfdbfe;

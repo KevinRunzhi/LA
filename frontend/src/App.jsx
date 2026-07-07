@@ -674,12 +674,12 @@ function InputStage({
 
       {activeStep === 0 && (
         <div className="intake-step-screen">
-          <textarea
-            value={input}
-            onChange={(event) => onInput(event.target.value)}
-            placeholder="例如：站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。"
-          />
-          <div className="intake-side-note">
+          <section className="symptom-input-card">
+            <textarea
+              value={input}
+              onChange={(event) => onInput(event.target.value)}
+              placeholder="例如：站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。"
+            />
             <section className="intake-collection-card">
               <strong>本步采集</strong>
               <span>现场描述</span>
@@ -687,6 +687,8 @@ function InputStage({
               <span>设备声音</span>
               <span>现场材料</span>
             </section>
+          </section>
+          <div className="intake-side-note primary-visual">
             <section className="site-location-card">
               <div className="section-heading compact">
                 <h3>位置提示</h3>
