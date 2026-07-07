@@ -1,406 +1,355 @@
-# 龙芯环境 MVP 部署环境清单
+# 龙芯环境 MVP 环境与包下载清单
 
-本文档用于队友在龙芯部署环境时逐项准备依赖。范围只覆盖当前 MVP 骨架已经用到的技术栈，不包含后续真实大模型接入、视频输入、语音播报、专家连线等扩展能力。
+本文档只列出当前 MVP 需要提前准备、下载或确认的环境与依赖包，不展开安装步骤。目标是让队友在龙芯机器部署前，知道要准备哪些系统组件、Node.js 环境、npm 包、Python 环境、pip 包、源码文件和演示数据。
 
-## 1. MVP 技术栈总览
+当前 MVP 技术栈：
 
-当前 MVP 是一个轻量 Web 应用：
+- 前端：React 18 + Vite 6 + lucide-react。
+- 后端：Python 3 + Flask 3。
+- 数据：JSON 预设演示数据。
+- 部署：本机进程运行，Flask 监听 `8080`，可托管前端 `dist` 静态文件。
+- 不使用：Docker、数据库、向量数据库、本地大模型推理、视频输入、语音播报、真实专家连线。
 
-| 层级 | 技术 | 当前用途 | 是否必须 |
-| --- | --- | --- | --- |
-| 前端 | React 18 | 构建诊断台、知识图谱、检修向导等页面 | 必须 |
-| 前端构建 | Vite 6 | 本地开发服务、打包前端静态文件 | 必须 |
-| 前端图标 | lucide-react | 左侧导航、按钮、步骤状态等图标 | 必须 |
-| 后端 | Python 3 + Flask 3 | 提供 API、托管前端构建产物 | 必须 |
-| 数据 | JSON 文件 | 存放演示场景、检修步骤、知识条目、图谱关系 | 必须 |
-| 部署方式 | 本机进程运行 | Flask 监听 8080 端口，前端可由 Flask 托管 | 必须 |
-| Docker | 不使用 | 龙芯平台当前不使用 Docker | 不需要 |
+## 1. 基础系统环境
 
-## 2. 操作系统基础环境
-
-龙芯机器需要先准备基础命令行环境：
-
-- Linux 发行版：以龙芯机器当前系统为准。
-- Shell：`bash`。
-- Git：用于拉取 GitHub 仓库。
-- curl：用于健康检查和下载工具。
-- ca-certificates：用于 HTTPS 证书校验。
-- tar / gzip / unzip：用于解压 Node.js 或其他离线包。
-- build-essential 或等价编译工具：建议安装，部分 npm 或 Python 包在特殊架构上可能需要本地编译。
-
-建议安装项：
-
-```bash
-sudo apt update
-sudo apt install -y git curl ca-certificates tar gzip unzip build-essential
-```
-
-如果系统不是 Debian/Ubuntu 系，使用系统对应的软件包管理器安装同类工具即可。
-
-## 3. Node.js 与 npm
-
-### 3.1 版本要求
-
-当前项目固定使用：
-
-- Node.js：`20.19.4`
-- npm：`10.8.2`
-
-项目根目录的 `.nvmrc` 已写入：
-
-```text
-20.19.4
-```
-
-前端 `package.json` 也声明了相同版本要求。
-
-### 3.2 为什么选择 Node.js 20
-
-Node.js 20 是长期支持版本，稳定性更适合当前 MVP。Node.js 22 功能更新更多，但对本项目目前没有必要收益；考虑龙芯环境包兼容性、离线下载和部署可控性，MVP 阶段优先用 Node.js 20.19.4。
-
-### 3.3 安装方式
-
-优先使用龙芯系统软件源或龙芯适配包安装 Node.js 20.19.4。如果软件源没有这个版本，可以下载龙芯平台可用的 Node.js 二进制包或源码包。
-
-需要确认：
-
-```bash
-node -v
-npm -v
-```
-
-期望输出：
-
-```text
-v20.19.4
-10.8.2
-```
-
-如果 npm 版本不一致，可以在 Node 安装完成后调整：
-
-```bash
-npm install -g npm@10.8.2
-```
-
-## 4. 前端依赖包
-
-前端目录：
-
-```bash
-frontend/
-```
-
-必须安装的运行依赖：
-
-| 包名 | 版本 | 用途 |
-| --- | --- | --- |
-| react | 18.3.1 | 前端 UI 框架 |
-| react-dom | 18.3.1 | React DOM 渲染 |
-| lucide-react | 0.468.0 | 图标组件 |
-
-必须安装的开发/构建依赖：
-
-| 包名 | 版本 | 用途 |
-| --- | --- | --- |
-| vite | 6.4.3 | 前端开发服务器和生产构建 |
-| @vitejs/plugin-react | 4.7.0 | Vite 的 React 插件 |
-
-安装命令：
-
-```bash
-cd ~/projects/LA/frontend
-npm install
-```
-
-如果希望严格按锁文件安装：
-
-```bash
-npm ci
-```
+| 类型 | 需要准备的内容 | 版本/要求 | 用途 | 是否必须 |
+| --- | --- | --- | --- | --- |
+| 操作系统 | 龙芯 Linux 环境 | 以龙芯机器实际系统为准 | 运行前后端服务 | 必须 |
+| Shell | bash | 常见 Linux 默认即可 | 执行项目脚本和命令 | 必须 |
+| Git | git | 任意可用稳定版 | 拉取 GitHub 仓库 | 必须 |
+| HTTPS 证书 | ca-certificates | 系统源版本即可 | GitHub、npm、pip HTTPS 下载 | 必须 |
+| 下载工具 | curl | 系统源版本即可 | 健康检查、下载文件 | 建议 |
+| 解压工具 | tar / gzip / unzip | 系统源版本即可 | 解压 Node、源码、离线包 | 建议 |
+| 编译工具 | gcc / g++ / make 等 | 系统源版本即可 | 特殊架构下编译部分依赖备用 | 建议 |
+| Python 虚拟环境组件 | python3-venv 或等价组件 | 与 Python 版本匹配 | 创建后端虚拟环境 | 必须 |
+| Python 包管理组件 | pip | 与 Python 版本匹配 | 安装 Flask 依赖 | 必须 |
 
 说明：
 
-- `npm install` 会根据 `package.json` 和 `package-lock.json` 安装依赖。
-- `npm ci` 更适合部署环境，要求 `package-lock.json` 存在且与 `package.json` 一致。
-- 龙芯环境如果下载慢，可以提前在有网络的机器上准备 npm 缓存或离线包。
+- 当前 npm 与 pip 依赖都比较轻，理论上不需要复杂编译环境。
+- 但龙芯属于特殊架构，建议准备基础编译工具，避免遇到没有预编译包时无法继续。
 
-## 5. Python 与后端依赖
+## 2. Node.js 运行环境
 
-### 5.1 Python 版本
-
-当前开发环境使用：
-
-```text
-Python 3.12.3
-```
-
-部署环境建议：
-
-- 优先使用 Python 3.10 及以上。
-- 推荐 Python 3.12，如果龙芯系统软件源支持，尽量与开发环境保持一致。
-
-必须具备：
-
-- `python3`
-- `python3-venv`
-- `python3-pip`
-
-安装示例：
-
-```bash
-sudo apt install -y python3 python3-venv python3-pip
-```
-
-### 5.2 后端直接依赖
-
-后端目录：
-
-```bash
-backend/
-```
-
-`backend/requirements.txt` 当前只有一个直接依赖：
-
-```text
-Flask==3.0.3
-```
-
-安装命令：
-
-```bash
-cd ~/projects/LA/backend
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 5.3 Flask 传递依赖
-
-安装 Flask 后通常会出现以下传递依赖，属于正常情况：
-
-| 包名 | 当前开发环境版本 | 用途 |
+| 内容 | 当前要求 | 说明 |
 | --- | --- | --- |
-| Flask | 3.0.3 | Web 后端框架 |
-| Werkzeug | 3.1.8 | WSGI 工具库 |
-| Jinja2 | 3.1.6 | 模板引擎，Flask 依赖 |
-| MarkupSafe | 3.0.3 | Jinja2 安全字符串处理 |
-| itsdangerous | 2.2.0 | Flask 签名相关依赖 |
-| click | 8.4.2 | Flask 命令行依赖 |
-| blinker | 1.9.0 | Flask 信号机制依赖 |
+| Node.js | `20.19.4` | 项目根目录 `.nvmrc` 已固定为该版本 |
+| npm | `10.8.2` | `frontend/package.json` 中声明的 npm 版本 |
+| 架构 | 龙芯可用版本 | 需要能在龙芯 Linux 上运行 |
 
-如果龙芯机器无法直接联网安装 Python 包，可以在其他机器提前下载 wheel 或源码包：
+选择 Node.js 20 的原因：
 
-```bash
-pip download -r backend/requirements.txt -d vendor/python
-```
+- Node.js 20 是长期支持版本，稳定性更适合当前 MVP。
+- Node.js 22 虽然更新，但当前项目没有用到 Node 22 的新增特性。
+- 龙芯环境更关注包兼容性、可下载性和部署稳定性，所以 MVP 阶段固定为 `20.19.4`。
 
-然后拷贝到龙芯机器离线安装：
+需要准备的 Node.js 内容：
 
-```bash
-pip install --no-index --find-links vendor/python -r backend/requirements.txt
-```
+| 内容 | 建议准备方式 |
+| --- | --- |
+| Node.js `20.19.4` 龙芯可用安装包 | 优先龙芯系统源、龙芯适配包或官方/可信来源二进制包 |
+| npm `10.8.2` | 通常随 Node 提供；如版本不一致，准备 npm 对应包 |
+| npm 缓存或离线包 | 如果龙芯机器网络不稳定，提前准备 |
+| `frontend/package-lock.json` | 已在仓库中，用于锁定 npm 依赖版本 |
 
-## 6. GitHub 仓库拉取
+## 3. 前端直接依赖包
 
-仓库地址：
+这些是 `frontend/package.json` 中显式声明的包。
+
+### 3.1 运行依赖
+
+| 包名 | 版本 | 用途 | 是否必须 |
+| --- | --- | --- | --- |
+| `react` | `18.3.1` | 前端组件框架 | 必须 |
+| `react-dom` | `18.3.1` | 浏览器 DOM 渲染 | 必须 |
+| `lucide-react` | `0.468.0` | 图标组件库 | 必须 |
+
+### 3.2 开发与构建依赖
+
+| 包名 | 版本 | 用途 | 是否必须 |
+| --- | --- | --- | --- |
+| `vite` | `6.4.3` | 前端开发服务和生产构建 | 必须 |
+| `@vitejs/plugin-react` | `4.7.0` | Vite React 插件 | 必须 |
+
+说明：
+
+- 即使最终只用 Flask 托管静态页面，也需要 Vite 先把前端构建成 `frontend/dist`。
+- 如果直接拷贝已经构建好的 `frontend/dist`，龙芯机器上可以临时不装 npm 依赖；但为了后续继续开发和迭代，建议准备完整 Node/npm 环境。
+
+## 4. 前端 npm 依赖完整清单
+
+以下清单来自当前 `frontend/package-lock.json`。准备离线 npm 包时，应以锁文件为准。
+
+### 4.1 生产运行相关包
+
+| 包名 | 版本 |
+| --- | --- |
+| `react` | `18.3.1` |
+| `react-dom` | `18.3.1` |
+| `lucide-react` | `0.468.0` |
+| `scheduler` | `0.23.2` |
+| `loose-envify` | `1.4.0` |
+| `js-tokens` | `4.0.0` |
+
+### 4.2 Vite / React / Babel 构建相关包
+
+| 包名 | 版本 |
+| --- | --- |
+| `vite` | `6.4.3` |
+| `@vitejs/plugin-react` | `4.7.0` |
+| `react-refresh` | `0.17.0` |
+| `@babel/core` | `7.29.7` |
+| `@babel/code-frame` | `7.29.7` |
+| `@babel/compat-data` | `7.29.7` |
+| `@babel/generator` | `7.29.7` |
+| `@babel/helper-compilation-targets` | `7.29.7` |
+| `@babel/helper-globals` | `7.29.7` |
+| `@babel/helper-module-imports` | `7.29.7` |
+| `@babel/helper-module-transforms` | `7.29.7` |
+| `@babel/helper-plugin-utils` | `7.29.7` |
+| `@babel/helper-string-parser` | `7.29.7` |
+| `@babel/helper-validator-identifier` | `7.29.7` |
+| `@babel/helper-validator-option` | `7.29.7` |
+| `@babel/helpers` | `7.29.7` |
+| `@babel/parser` | `7.29.7` |
+| `@babel/plugin-transform-react-jsx-self` | `7.29.7` |
+| `@babel/plugin-transform-react-jsx-source` | `7.29.7` |
+| `@babel/template` | `7.29.7` |
+| `@babel/traverse` | `7.29.7` |
+| `@babel/types` | `7.29.7` |
+| `@types/babel__core` | `7.20.5` |
+| `@types/babel__generator` | `7.27.0` |
+| `@types/babel__template` | `7.4.4` |
+| `@types/babel__traverse` | `7.28.0` |
+| `@types/estree` | `1.0.9` |
+
+### 4.3 Rollup / esbuild 相关包
+
+Vite 构建会依赖 Rollup 和 esbuild。锁文件中包含多个平台的可选包，龙芯环境重点关注 `linux-loong64` 相关包。
+
+| 包名 | 版本 | 备注 |
+| --- | --- | --- |
+| `rollup` | `4.62.2` | Vite 构建核心依赖 |
+| `esbuild` | `0.25.12` | Vite 构建依赖 |
+| `@esbuild/linux-loong64` | `0.25.12` | 龙芯 Linux 重点关注 |
+| `@rollup/rollup-linux-loong64-gnu` | `4.62.2` | 龙芯 glibc 环境重点关注 |
+| `@rollup/rollup-linux-loong64-musl` | `4.62.2` | 龙芯 musl 环境备用 |
+
+锁文件同时包含以下其他平台可选包，正常联网安装时 npm 会按平台选择合适包；准备完整离线缓存时可以一并保留：
+
+| 包名 | 版本 |
+| --- | --- |
+| `@esbuild/aix-ppc64` | `0.25.12` |
+| `@esbuild/android-arm` | `0.25.12` |
+| `@esbuild/android-arm64` | `0.25.12` |
+| `@esbuild/android-x64` | `0.25.12` |
+| `@esbuild/darwin-arm64` | `0.25.12` |
+| `@esbuild/darwin-x64` | `0.25.12` |
+| `@esbuild/freebsd-arm64` | `0.25.12` |
+| `@esbuild/freebsd-x64` | `0.25.12` |
+| `@esbuild/linux-arm` | `0.25.12` |
+| `@esbuild/linux-arm64` | `0.25.12` |
+| `@esbuild/linux-ia32` | `0.25.12` |
+| `@esbuild/linux-mips64el` | `0.25.12` |
+| `@esbuild/linux-ppc64` | `0.25.12` |
+| `@esbuild/linux-riscv64` | `0.25.12` |
+| `@esbuild/linux-s390x` | `0.25.12` |
+| `@esbuild/linux-x64` | `0.25.12` |
+| `@esbuild/netbsd-arm64` | `0.25.12` |
+| `@esbuild/netbsd-x64` | `0.25.12` |
+| `@esbuild/openbsd-arm64` | `0.25.12` |
+| `@esbuild/openbsd-x64` | `0.25.12` |
+| `@esbuild/openharmony-arm64` | `0.25.12` |
+| `@esbuild/sunos-x64` | `0.25.12` |
+| `@esbuild/win32-arm64` | `0.25.12` |
+| `@esbuild/win32-ia32` | `0.25.12` |
+| `@esbuild/win32-x64` | `0.25.12` |
+| `@rollup/rollup-android-arm-eabi` | `4.62.2` |
+| `@rollup/rollup-android-arm64` | `4.62.2` |
+| `@rollup/rollup-darwin-arm64` | `4.62.2` |
+| `@rollup/rollup-darwin-x64` | `4.62.2` |
+| `@rollup/rollup-freebsd-arm64` | `4.62.2` |
+| `@rollup/rollup-freebsd-x64` | `4.62.2` |
+| `@rollup/rollup-linux-arm-gnueabihf` | `4.62.2` |
+| `@rollup/rollup-linux-arm-musleabihf` | `4.62.2` |
+| `@rollup/rollup-linux-arm64-gnu` | `4.62.2` |
+| `@rollup/rollup-linux-arm64-musl` | `4.62.2` |
+| `@rollup/rollup-linux-ppc64-gnu` | `4.62.2` |
+| `@rollup/rollup-linux-ppc64-musl` | `4.62.2` |
+| `@rollup/rollup-linux-riscv64-gnu` | `4.62.2` |
+| `@rollup/rollup-linux-riscv64-musl` | `4.62.2` |
+| `@rollup/rollup-linux-s390x-gnu` | `4.62.2` |
+| `@rollup/rollup-linux-x64-gnu` | `4.62.2` |
+| `@rollup/rollup-linux-x64-musl` | `4.62.2` |
+| `@rollup/rollup-openbsd-x64` | `4.62.2` |
+| `@rollup/rollup-openharmony-arm64` | `4.62.2` |
+| `@rollup/rollup-win32-arm64-msvc` | `4.62.2` |
+| `@rollup/rollup-win32-ia32-msvc` | `4.62.2` |
+| `@rollup/rollup-win32-x64-gnu` | `4.62.2` |
+| `@rollup/rollup-win32-x64-msvc` | `4.62.2` |
+
+### 4.4 其他前端构建传递依赖
+
+| 包名 | 版本 |
+| --- | --- |
+| `@jridgewell/gen-mapping` | `0.3.13` |
+| `@jridgewell/remapping` | `2.3.5` |
+| `@jridgewell/resolve-uri` | `3.1.2` |
+| `@jridgewell/sourcemap-codec` | `1.5.5` |
+| `@jridgewell/trace-mapping` | `0.3.31` |
+| `@rolldown/pluginutils` | `1.0.0-beta.27` |
+| `baseline-browser-mapping` | `2.10.42` |
+| `browserslist` | `4.28.4` |
+| `caniuse-lite` | `1.0.30001802` |
+| `convert-source-map` | `2.0.0` |
+| `debug` | `4.4.3` |
+| `electron-to-chromium` | `1.5.387` |
+| `escalade` | `3.2.0` |
+| `fdir` | `6.5.0` |
+| `fsevents` | `2.3.3` |
+| `gensync` | `1.0.0-beta.2` |
+| `jsesc` | `3.1.0` |
+| `json5` | `2.2.3` |
+| `lru-cache` | `5.1.1` |
+| `ms` | `2.1.3` |
+| `nanoid` | `3.3.15` |
+| `node-releases` | `2.0.50` |
+| `picocolors` | `1.1.1` |
+| `picomatch` | `4.0.5` |
+| `postcss` | `8.5.16` |
+| `semver` | `6.3.1` |
+| `source-map-js` | `1.2.1` |
+| `tinyglobby` | `0.2.17` |
+| `update-browserslist-db` | `1.2.3` |
+| `yallist` | `3.1.1` |
+
+## 5. Python 运行环境
+
+| 内容 | 当前开发环境 | 部署建议 | 是否必须 |
+| --- | --- | --- | --- |
+| Python | `3.12.3` | Python `3.10+`，推荐 `3.12.x` | 必须 |
+| pip | 随 Python 环境 | 与 Python 匹配即可 | 必须 |
+| venv | Python 虚拟环境模块 | 与 Python 匹配即可 | 必须 |
+
+说明：
+
+- 当前后端没有使用数据库驱动、AI 推理库、图像处理库或科学计算库。
+- 后端只依赖 Flask，部署压力较小。
+
+## 6. 后端 pip 包完整清单
+
+### 6.1 直接依赖
+
+| 包名 | 版本 | 用途 |
+| --- | --- | --- |
+| `Flask` | `3.0.3` | 后端 Web 框架、API、静态文件托管 |
+
+### 6.2 解析后的完整 pip 包
+
+以下来自当前后端虚拟环境 `pip freeze`：
+
+| 包名 | 版本 | 用途 |
+| --- | --- | --- |
+| `Flask` | `3.0.3` | Web 后端框架 |
+| `Werkzeug` | `3.1.8` | WSGI 工具库，Flask 依赖 |
+| `Jinja2` | `3.1.6` | 模板引擎，Flask 依赖 |
+| `MarkupSafe` | `3.0.3` | Jinja2 安全字符串处理 |
+| `itsdangerous` | `2.2.0` | Flask 签名与安全相关依赖 |
+| `click` | `8.4.2` | Flask 命令行依赖 |
+| `blinker` | `1.9.0` | Flask 信号机制依赖 |
+
+如果需要准备离线 Python 包，至少准备上述 7 个包对应的 wheel 或源码包。
+
+## 7. 项目源码与配置文件
+
+需要准备完整 Git 仓库源码：
 
 ```text
 https://github.com/KevinRunzhi/LA.git
 ```
 
-拉取命令：
+当前 MVP 必须包含的关键文件：
 
-```bash
-mkdir -p ~/projects
-cd ~/projects
-git clone https://github.com/KevinRunzhi/LA.git
-cd LA
-```
-
-如果 HTTPS 拉取需要账号密码，不要输入 GitHub 登录密码。GitHub 现在需要使用以下方式之一：
-
-- GitHub CLI 登录后拉取。
-- Personal Access Token。
-- SSH key。
-
-## 7. 构建与启动顺序
-
-### 7.1 安装前端依赖并构建
-
-```bash
-cd ~/projects/LA/frontend
-npm ci
-npm run build
-```
-
-构建成功后会生成：
-
-```text
-frontend/dist/
-```
-
-### 7.2 安装后端依赖并启动
-
-```bash
-cd ~/projects/LA/backend
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-python app.py
-```
-
-后端默认监听：
-
-```text
-0.0.0.0:8080
-```
-
-本机访问：
-
-```text
-http://127.0.0.1:8080
-```
-
-局域网访问时，把 `127.0.0.1` 换成龙芯机器 IP：
-
-```text
-http://<龙芯机器IP>:8080
-```
-
-### 7.3 健康检查
-
-```bash
-curl http://127.0.0.1:8080/api/health
-```
-
-期望返回：
-
-```json
-{"service":"la-mvp-backend","status":"ok"}
-```
-
-## 8. 开发模式与部署模式区别
-
-### 8.1 开发模式
-
-开发时可以同时运行前后端：
-
-```bash
-cd ~/projects/LA/backend
-. .venv/bin/activate
-python app.py
-```
-
-另开一个终端：
-
-```bash
-cd ~/projects/LA/frontend
-npm run dev
-```
-
-前端开发服务默认：
-
-```text
-http://127.0.0.1:3000
-```
-
-Vite 会把 `/api` 请求代理到：
-
-```text
-http://127.0.0.1:8080
-```
-
-### 8.2 MVP 演示部署模式
-
-演示时建议只启动后端：
-
-```bash
-cd ~/projects/LA/frontend
-npm run build
-
-cd ~/projects/LA/backend
-. .venv/bin/activate
-python app.py
-```
-
-然后访问：
-
-```text
-http://<龙芯机器IP>:8080
-```
-
-这样浏览器只需要访问一个端口，部署更简单。
-
-## 9. 当前数据文件
-
-MVP 不接数据库，所有演示数据来自 JSON 文件：
-
-| 文件 | 用途 |
-| --- | --- |
-| `backend/data/demo_scenario.json` | 工控机高温、风道堵塞、散热异常演示场景 |
-| `backend/data/guide_steps.json` | 检修向导步骤 |
-| `backend/data/knowledge_items.json` | 知识检索证据条目 |
-| `backend/data/graph_relations.json` | 知识图谱关系 |
-| `backend/data/expert_reviews.json` | 专家审核模拟结果 |
-
-这些文件是当前 MVP 的“预设流程”来源，后续接入真实大模型或数据库前，不需要额外部署数据库服务。
-
-## 10. 当前不需要部署的内容
-
-以下能力在 MVP 阶段只保留位置或模拟入口，不需要队友现在部署：
-
-| 能力 | 当前状态 | 是否部署 |
+| 路径 | 用途 | 是否必须 |
 | --- | --- | --- |
-| Docker | 龙芯平台当前不用 Docker | 不部署 |
-| 数据库 | 暂用 JSON 文件 | 不部署 |
-| 向量数据库 | 知识检索为预设数据 | 不部署 |
-| 大模型本地推理 | 暂未接入 | 不部署 |
-| 云 API Key | 后续可接云 API，目前骨架不依赖 | 暂不需要 |
-| 语音播报 | 模拟能力，预留接口 | 不部署 |
-| 视频输入 | 模拟能力，预留接口 | 不部署 |
-| 专家连线 | 模拟能力，预留接口 | 不部署 |
-| 图片上传/插入 | MVP 第一阶段不做 | 不部署 |
-| 三维建模 | 不做复杂三维，仅后续预留图片区域 | 不部署 |
+| `.nvmrc` | 固定 Node.js 版本为 `20.19.4` | 必须 |
+| `README.md` | 项目基础说明 | 建议 |
+| `frontend/package.json` | 前端直接依赖与脚本 | 必须 |
+| `frontend/package-lock.json` | 前端锁定依赖版本 | 必须 |
+| `frontend/index.html` | 前端入口 HTML | 必须 |
+| `frontend/src/App.jsx` | MVP 主界面逻辑 | 必须 |
+| `frontend/src/main.jsx` | React 入口 | 必须 |
+| `frontend/src/styles/app.css` | 页面样式 | 必须 |
+| `frontend/vite.config.js` | Vite 配置和 API 代理 | 必须 |
+| `backend/app.py` | Flask 后端入口 | 必须 |
+| `backend/requirements.txt` | 后端 Python 直接依赖 | 必须 |
+| `scripts/dev.sh` | 开发命令提示脚本 | 可选 |
 
-## 11. 端口与网络
+如果只做演示部署，还可以提前准备构建产物：
 
-需要确认：
+| 路径 | 用途 |
+| --- | --- |
+| `frontend/dist/` | 前端生产构建产物，由 Flask 后端托管 |
 
-- 后端端口：`8080`
-- 前端开发端口：`3000`
-- 演示优先使用：`8080`
+## 8. MVP 演示数据文件
 
-如果其他设备需要访问龙芯机器：
+当前 MVP 不接数据库，以下 JSON 文件就是演示数据来源。
 
-1. 确认龙芯机器和访问设备在同一网络。
-2. 确认防火墙允许 `8080` 端口。
-3. 使用 `http://<龙芯机器IP>:8080` 访问。
+| 文件 | 用途 | 是否必须 |
+| --- | --- | --- |
+| `backend/data/demo_scenario.json` | 工控机高温、风道堵塞、散热异常的演示场景 | 必须 |
+| `backend/data/guide_steps.json` | 检修向导步骤 | 必须 |
+| `backend/data/knowledge_items.json` | 知识检索证据条目 | 必须 |
+| `backend/data/graph_relations.json` | 知识图谱关系 | 必须 |
+| `backend/data/expert_reviews.json` | 专家审核模拟结果 | 必须 |
 
-如果平板或外部浏览器暂时不方便访问龙芯 IP，这部分可后期再处理；当前环境先保证龙芯机器本机浏览器能打开页面。
+这些 JSON 文件需要随代码一起部署。当前不需要准备 MySQL、PostgreSQL、SQLite、Neo4j 或向量数据库。
 
-## 12. 最小验收清单
+## 9. 端口与浏览器环境
 
-部署完成后逐项检查：
+| 内容 | 当前要求 | 说明 |
+| --- | --- | --- |
+| 后端端口 | `8080` | Flask 服务端口，也是推荐演示入口 |
+| 前端开发端口 | `3000` | 仅开发模式使用 |
+| 浏览器 | Chromium / Chrome / Firefox / Edge 均可 | 用于打开 Web 页面 |
+| 局域网访问 | 需要龙芯机器 IP 和防火墙放行 | 平板访问后期再处理 |
 
-- `git --version` 正常。
-- `node -v` 为 `v20.19.4`。
-- `npm -v` 为 `10.8.2`。
-- `python3 --version` 为 `3.10+`，推荐 `3.12.x`。
-- `cd frontend && npm ci && npm run build` 成功。
-- `cd backend && python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt` 成功。
-- `python app.py` 可以启动。
-- `curl http://127.0.0.1:8080/api/health` 返回 `ok`。
-- 浏览器可以打开 `http://127.0.0.1:8080`。
-- 页面能看到智能诊断台、异常接入、分析诊断、检修向导、知识图谱等 MVP 页面。
+MVP 演示优先准备 `8080` 端口即可。
 
-## 13. 建议交付给队友的下载内容
+## 10. 暂不需要下载或部署的内容
 
-如果龙芯机器网络不稳定，建议提前准备：
+| 内容 | 当前状态 | 是否需要准备 |
+| --- | --- | --- |
+| Docker | 龙芯平台当前不用 Docker | 不需要 |
+| Docker 镜像 | 项目没有 Docker 部署方案 | 不需要 |
+| 数据库安装包 | 当前使用 JSON 文件 | 不需要 |
+| Neo4j / 图数据库 | 知识图谱目前前端静态展示 + JSON 数据 | 不需要 |
+| 向量数据库 | 当前未接真实 RAG | 不需要 |
+| 本地大模型权重 | 当前未接本地模型推理 | 不需要 |
+| CUDA / GPU 驱动 | 当前无 GPU 推理需求 | 不需要 |
+| OpenAI / 云 API Key | 骨架当前不依赖云 API | 暂不需要 |
+| 语音 TTS 包 | 语音播报仅预留/模拟 | 不需要 |
+| 视频输入依赖 | 视频输入仅预留/模拟 | 不需要 |
+| WebRTC / 实时通信服务 | 专家连线仅预留/模拟 | 不需要 |
+| 图片上传服务 | MVP 第一阶段不做图片上传 | 不需要 |
+| 三维建模工具 | 不做复杂三维建模 | 不需要 |
 
-- Git 仓库源码压缩包，或确保能访问 GitHub 仓库。
-- Node.js `20.19.4` 的龙芯可用安装包。
-- npm 依赖缓存或 `frontend/package-lock.json` 对应依赖包。
-- Python 3、venv、pip 的系统安装包。
-- `Flask==3.0.3` 及其传递依赖的离线包。
+## 11. 最终准备清单
 
-当前 MVP 不需要下载模型权重、Docker 镜像、数据库安装包或三维资源。
+队友部署前建议确认已经准备好：
+
+- 龙芯 Linux 可用系统环境。
+- Git、curl、ca-certificates、tar、gzip、unzip。
+- 基础编译工具链，作为特殊架构依赖编译备用。
+- Node.js `20.19.4`。
+- npm `10.8.2`。
+- `frontend/package-lock.json` 对应的 npm 依赖包或可联网 npm 源。
+- Python `3.10+`，推荐 `3.12.x`。
+- pip 和 venv。
+- `Flask==3.0.3` 及其 6 个传递依赖包。
+- GitHub 仓库源码 `KevinRunzhi/LA`。
+- `backend/data/` 下全部 JSON 演示数据。
+- 浏览器环境。
+- `8080` 端口可用。
+
+当前最小可运行 MVP 只需要上述内容，不需要额外模型、数据库、Docker 或多媒体服务。
