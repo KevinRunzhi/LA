@@ -1206,12 +1206,6 @@ function RightStepPanel({
           <h2>诊断流程</h2>
           <span>已生成 {visiblePhaseSteps.length}</span>
         </div>
-        <div className="flow-generation-note">
-          {visiblePhaseLimit === 0 && "请先完成异常接入，系统将生成后续诊断流程。"}
-          {visiblePhaseLimit === 1 && "已根据异常信息生成分析诊断流程。"}
-          {visiblePhaseLimit === 2 && "已根据诊断结论生成检修向导。"}
-          {visiblePhaseLimit === 3 && "检修记录与知识回流流程已生成。"}
-        </div>
         <div className="phase-list">
           {visiblePhaseSteps.map((phase, phaseIndex) => (
             <div className={classNames("phase-item", phaseIndex === activePhase && "active", phaseIndex < activePhase && "done")} key={phase.title}>

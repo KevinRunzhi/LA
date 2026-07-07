@@ -1571,7 +1571,7 @@ h2 {
   padding: 18px;
   overflow: hidden;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(280px, 58%) minmax(230px, 1fr);
   gap: 14px;
 }
 
@@ -1599,17 +1599,6 @@ h2 {
   gap: 12px;
   overflow: auto;
   padding-right: 4px;
-}
-
-.flow-generation-note {
-  color: var(--color-muted);
-  border: 1px dashed #c8d6ea;
-  border-radius: 8px;
-  background: #fbfdff;
-  padding: 10px;
-  font-size: 12px;
-  line-height: 1.5;
-  margin-bottom: 12px;
 }
 
 .phase-item {
@@ -1990,6 +1979,10 @@ h2 {
 .assistant-chat {
   position: static;
   width: 100%;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   background: #fff;
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -2010,7 +2003,7 @@ h2 {
   padding: 10px 12px;
   color: var(--color-muted);
   font-size: 13px;
-  max-height: 96px;
+  min-height: 0;
   overflow: auto;
 }
 
