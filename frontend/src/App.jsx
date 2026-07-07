@@ -13,10 +13,13 @@ import {
   MapPin,
   Menu,
   MessageCircle,
+  Mic,
+  Paperclip,
   Send,
   Settings,
   ShieldCheck,
   UserRound,
+  Video,
   Wrench,
   Zap,
 } from "lucide-react";
@@ -127,6 +130,20 @@ const generatedDiagnosisPlan = [
   "生成散热异常诊断结论与检修向导",
 ];
 
+const quickPrompts = [
+  "工控机高温告警怎么办？",
+  "PLC 通信中断如何排查？",
+  "电源模块指示灯异常",
+  "滤网堵塞如何处理？",
+];
+
+const modalityActions = [
+  { label: "图片", status: "预留", icon: ImagePlus },
+  { label: "视频", status: "模拟", icon: Video },
+  { label: "语音", status: "模拟", icon: Mic },
+  { label: "文件", status: "预留", icon: Paperclip },
+];
+
 function classNames(...items) {
   return items.filter(Boolean).join(" ");
 }
@@ -134,9 +151,10 @@ function classNames(...items) {
 export default function App() {
   const [navOpen, setNavOpen] = useState(false);
   const [activePage, setActivePage] = useState("workbench");
-  const [stage, setStage] = useState("input");
+  const [stage, setStage] = useState("home");
   const [health, setHealth] = useState("连接中");
   const [scenario, setScenario] = useState(null);
+  const [homeDraft, setHomeDraft] = useState("");
   const [input, setInput] = useState(defaultInput);
   const [diagnosis, setDiagnosis] = useState(null);
   const [steps, setSteps] = useState([]);
@@ -179,6 +197,7 @@ export default function App() {
   const currentStep = steps[activeStep];
 
   const activePhase = useMemo(() => {
+    if (stage === "home") return 0;
     if (stage === "input") return 0;
     if (stage === "analysis" || stage === "diagnosis") return 1;
     if (stage === "guide") return 2;
@@ -296,14 +315,22 @@ export default function App() {
 
   function openNavPage(pageId) {
     setActivePage(pageId);
-    if (pageId !== "workbench") {
-      setStage("input");
+    if (pageId === "workbench" && !diagnosis && !record && stage !== "input") {
+      setStage("home");
     }
+  }
+
+  function enterIntakeFromHome(value = homeDraft) {
+    const nextInput = value.trim() || defaultInput;
+    setInput(nextInput);
+    setActivePage("workbench");
+    setStage("input");
+    setActiveIntakeStep(0);
   }
 
   function jumpToPhase(phaseIndex) {
     setActivePage("workbench");
-    if (phaseIndex === 0) setStage("input");
+    if (phaseIndex === 0) setStage(stage === "home" ? "home" : "input");
     if (phaseIndex === 1 && diagnosis) setStage(stage === "analysis" ? "analysis" : "diagnosis");
     if (phaseIndex === 2 && diagnosis) setStage("guide");
     if (phaseIndex === 3 && record) setStage("record");
@@ -341,7 +368,7 @@ export default function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">站控慧眼</p>
-            <h1>{activePage === "graph" ? "知识图谱" : "智能诊断台"}</h1>
+            <h1>{activePage === "graph" ? "知识图谱" : stage === "home" ? "智能诊断入口" : "智能诊断台"}</h1>
           </div>
           <div className="topbar-meta">
             <span><MapPin size={16} /> {scenario?.site || "某输气场站"} · {scenario?.cabinet || "站控柜 A01"}</span>
@@ -356,6 +383,14 @@ export default function App() {
           <RecordPage record={record} onBuildRecord={buildRecord} />
         ) : activePage === "settings" ? (
           <PlaceholderPage title="设置" text="后续配置设备类型、故障类型、专家 Agent 和演示数据重置。" />
+        ) : stage === "home" ? (
+          <HomeStage
+            draft={homeDraft}
+            onDraft={setHomeDraft}
+            onSubmit={() => enterIntakeFromHome()}
+            onQuickPrompt={(prompt) => setHomeDraft(prompt)}
+            onUseQuickPrompt={enterIntakeFromHome}
+          />
         ) : (
           <section className="stage-layout">
             <div className="stage-card">
@@ -454,6 +489,75 @@ export default function App() {
         )}
       </main>
     </div>
+  );
+}
+
+function HomeStage({ draft, onDraft, onSubmit, onQuickPrompt, onUseQuickPrompt }) {
+  return (
+    <section className="home-stage">
+      <div className="home-copy">
+        <p className="eyebrow">智能诊断入口</p>
+        <h2>早上好李师傅</h2>
+        <p>描述现场现象，系统会先整理异常信息，再进入步骤式诊断流程。</p>
+      </div>
+
+      <div className="home-console">
+        <div className="home-input-box">
+          <textarea
+            value={draft}
+            onChange={(event) => onDraft(event.target.value)}
+            placeholder="描述现场现象，例如：工控机温度告警、风扇声音异常、前面板风扇转速很低..."
+          />
+          <button className="home-send-button" onClick={onSubmit} aria-label="开始异常接入">
+            <Send size={20} />
+          </button>
+        </div>
+        <div className="home-tools">
+          {modalityActions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <button key={action.label} type="button" title={`${action.label} ${action.status}`}>
+                <Icon size={16} />
+                <span>{action.label}</span>
+                <small>{action.status}</small>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="quick-prompt-area">
+        <span>或试试这些常见问题</span>
+        <div>
+          {quickPrompts.map((prompt, index) => (
+            <button
+              key={prompt}
+              onClick={() => {
+                onQuickPrompt(prompt);
+                if (index === 0) onUseQuickPrompt(prompt);
+              }}
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="home-context-strip">
+        <article>
+          <span>当前场站</span>
+          <strong>某输气场站 · 站控柜 A01</strong>
+        </article>
+        <article>
+          <span>已加载知识</span>
+          <strong>散热异常 · 检修向导 · 专家修正</strong>
+        </article>
+        <article>
+          <span>后续流程</span>
+          <strong>异常接入后自动生成</strong>
+        </article>
+      </div>
+    </section>
   );
 }
 
