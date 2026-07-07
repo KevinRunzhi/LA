@@ -1766,6 +1766,115 @@ h2 {
   max-width: 760px;
 }
 
+.settings-page {
+  min-height: 0;
+  padding: 18px;
+  overflow: auto;
+}
+
+.settings-panel {
+  min-height: calc(100vh - 118px);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 22px;
+}
+
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 16px;
+}
+
+.settings-head h2 {
+  font-size: 22px;
+}
+
+.settings-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-content: start;
+}
+
+.settings-section {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 16px;
+}
+
+.settings-section .section-heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.settings-field {
+  display: grid;
+  gap: 7px;
+}
+
+.settings-field span,
+.settings-note {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.settings-field input,
+.settings-field select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #c8d6ea;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--color-text);
+  outline: none;
+  padding: 9px 11px;
+}
+
+.settings-field input:focus,
+.settings-field select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.settings-check {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px 12px;
+  color: #334155;
+}
+
+.settings-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+}
+
+.saved-badge {
+  color: #166534;
+  background: #effaf2;
+  border: 1px solid #c9ecd0;
+  border-radius: 999px;
+  padding: 4px 9px;
+}
+
 .assistant-chat {
   position: static;
   width: 100%;
@@ -1833,6 +1942,7 @@ h2 {
   }
 
   .stage-layout,
+  .settings-grid,
   .graph-page,
   .guide-screen,
   .intake-step-screen,

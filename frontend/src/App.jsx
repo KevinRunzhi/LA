@@ -395,7 +395,15 @@ export default function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">站控慧眼</p>
-            <h1>{activePage === "graph" ? "知识图谱" : stage === "home" ? "智能诊断入口" : "智能诊断台"}</h1>
+            <h1>
+              {activePage === "graph"
+                ? "知识图谱"
+                : activePage === "settings"
+                  ? "设置"
+                  : stage === "home"
+                    ? "智能诊断入口"
+                    : "智能诊断台"}
+            </h1>
           </div>
           <div className="topbar-meta">
             <span><MapPin size={16} /> {currentUser.site || scenario?.site || "某输气场站"} · {currentUser.team}</span>
@@ -413,7 +421,7 @@ export default function App() {
         ) : activePage === "records" ? (
           <RecordPage record={record} onBuildRecord={buildRecord} />
         ) : activePage === "settings" ? (
-          <PlaceholderPage title="设置" text="后续配置设备类型、故障类型、专家 Agent 和演示数据重置。" />
+          <SettingsPage currentUser={currentUser} onSave={setCurrentUser} />
         ) : stage === "home" ? (
           <HomeStage
             draft={homeDraft}
@@ -1356,6 +1364,175 @@ function RecordPage({ record, onBuildRecord }) {
       <h2>{record ? record.record_id : "暂无检修记录"}</h2>
       <p>{record ? record.conclusion : "完成步骤式检修向导后，将在这里生成本次检修记录。"}</p>
       <button className="primary-button" onClick={onBuildRecord}>生成演示记录</button>
+    </section>
+  );
+}
+
+function SettingsPage({ currentUser, onSave }) {
+  const [form, setForm] = useState({
+    name: currentUser.name,
+    site: currentUser.site,
+    team: currentUser.team,
+    role: currentUser.role,
+    deviceScope: "站控柜 A01 · 工控机",
+    notification: "仅高优先级告警",
+    voiceMode: "仅检修步骤播报",
+    exportFormat: "PDF 作业卡",
+    expertMode: "异常结论后可提交专家审核",
+    autoSaveRecord: true,
+    showSafetyConfirm: true,
+  });
+  const [saved, setSaved] = useState(false);
+
+  function updateField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+    setSaved(false);
+  }
+
+  function saveSettings(event) {
+    event.preventDefault();
+    onSave({
+      ...currentUser,
+      name: form.name.trim() || currentUser.name,
+      site: form.site.trim() || currentUser.site,
+      team: form.team.trim() || currentUser.team,
+      role: form.role,
+    });
+    setSaved(true);
+  }
+
+  return (
+    <section className="settings-page">
+      <form className="settings-panel" onSubmit={saveSettings}>
+        <div className="settings-head">
+          <div>
+            <p className="eyebrow">个人与工作环境</p>
+            <h2>日常使用设置</h2>
+          </div>
+          <button className="primary-button" type="submit">保存设置</button>
+        </div>
+
+        <div className="settings-grid">
+          <section className="settings-section">
+            <div className="section-heading compact">
+              <h3>账号资料</h3>
+              {saved && <span className="saved-badge">已保存</span>}
+            </div>
+            <label className="settings-field">
+              <span>显示姓名</span>
+              <input value={form.name} onChange={(event) => updateField("name", event.target.value)} />
+            </label>
+            <label className="settings-field">
+              <span>当前身份</span>
+              <select value={form.role} onChange={(event) => updateField("role", event.target.value)}>
+                <option>一线检修人员</option>
+                <option>专家审核人员</option>
+                <option>运维管理员</option>
+              </select>
+            </label>
+          </section>
+
+          <section className="settings-section">
+            <div className="section-heading compact">
+              <h3>场站与班组</h3>
+              <span>同步顶部栏</span>
+            </div>
+            <label className="settings-field">
+              <span>所属场站</span>
+              <input value={form.site} onChange={(event) => updateField("site", event.target.value)} />
+            </label>
+            <label className="settings-field">
+              <span>班组</span>
+              <input value={form.team} onChange={(event) => updateField("team", event.target.value)} />
+            </label>
+          </section>
+
+          <section className="settings-section">
+            <div className="section-heading compact">
+              <h3>默认设备范围</h3>
+              <span>诊断入口默认使用</span>
+            </div>
+            <label className="settings-field">
+              <span>设备范围</span>
+              <select value={form.deviceScope} onChange={(event) => updateField("deviceScope", event.target.value)}>
+                <option>站控柜 A01 · 工控机</option>
+                <option>站控柜全部工控设备</option>
+                <option>当前场站全部设备</option>
+              </select>
+            </label>
+            <div className="settings-note">当前 MVP 主流程仍固定为 ACP-4000 / IPC-610 工控机散热异常。</div>
+          </section>
+
+          <section className="settings-section">
+            <div className="section-heading compact">
+              <h3>通知与语音</h3>
+              <span>现场使用偏好</span>
+            </div>
+            <label className="settings-field">
+              <span>告警通知</span>
+              <select value={form.notification} onChange={(event) => updateField("notification", event.target.value)}>
+                <option>仅高优先级告警</option>
+                <option>全部告警</option>
+                <option>关闭通知</option>
+              </select>
+            </label>
+            <label className="settings-field">
+              <span>语音播报</span>
+              <select value={form.voiceMode} onChange={(event) => updateField("voiceMode", event.target.value)}>
+                <option>仅检修步骤播报</option>
+                <option>诊断结论与检修步骤播报</option>
+                <option>关闭语音播报</option>
+              </select>
+            </label>
+          </section>
+
+          <section className="settings-section">
+            <div className="section-heading compact">
+              <h3>作业卡与专家协同</h3>
+              <span>检修闭环</span>
+            </div>
+            <label className="settings-field">
+              <span>导出格式</span>
+              <select value={form.exportFormat} onChange={(event) => updateField("exportFormat", event.target.value)}>
+                <option>PDF 作业卡</option>
+                <option>Word 作业卡</option>
+                <option>打印版记录</option>
+              </select>
+            </label>
+            <label className="settings-field">
+              <span>专家协同</span>
+              <select value={form.expertMode} onChange={(event) => updateField("expertMode", event.target.value)}>
+                <option>异常结论后可提交专家审核</option>
+                <option>检修完成后提交专家审核</option>
+                <option>仅人工需要时提交</option>
+              </select>
+            </label>
+          </section>
+
+          <section className="settings-section">
+            <div className="section-heading compact">
+              <h3>流程确认</h3>
+              <span>安全习惯</span>
+            </div>
+            <label className="settings-check">
+              <input
+                type="checkbox"
+                checked={form.showSafetyConfirm}
+                onChange={(event) => updateField("showSafetyConfirm", event.target.checked)}
+              />
+              <span>检修向导中始终显示安全确认</span>
+            </label>
+            <label className="settings-check">
+              <input
+                type="checkbox"
+                checked={form.autoSaveRecord}
+                onChange={(event) => updateField("autoSaveRecord", event.target.checked)}
+              />
+              <span>检修完成后自动生成记录</span>
+            </label>
+          </section>
+        </div>
+      </form>
     </section>
   );
 }
