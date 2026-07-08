@@ -1243,6 +1243,14 @@ h2 {
   background: #f8fbff;
 }
 
+.reserved-action span {
+  color: var(--color-muted);
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+
 .diagnosis-report {
   display: grid;
   grid-template-columns: 1.1fr 1fr;

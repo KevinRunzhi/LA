@@ -19,12 +19,14 @@ import {
   MessageCircle,
   Mic,
   Paperclip,
+  PhoneCall,
   Search,
   Send,
   Settings,
   ShieldCheck,
   UserRound,
   Video,
+  Volume2,
   Wrench,
   Zap,
 } from "lucide-react";
@@ -1157,6 +1159,16 @@ function GuideStage({
         <button className="ghost-button" onClick={onPrev}><ChevronLeft size={16} /> 上一步</button>
         <button className="primary-button" onClick={onNext} disabled={!allChecksDone}>
           完成并继续 <ChevronRight size={16} />
+        </button>
+        <button className="ghost-button reserved-action" title="演示按钮，后续接入专家电话会诊">
+          <PhoneCall size={16} />
+          专家电话会诊
+          <span>预留</span>
+        </button>
+        <button className="ghost-button reserved-action" title="演示按钮，后续接入语音播报">
+          <Volume2 size={16} />
+          语音播报
+          <span>预留</span>
         </button>
         <button className="ghost-button" onClick={onRecord}>生成检修记录</button>
       </div>
