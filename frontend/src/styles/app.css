@@ -1489,6 +1489,21 @@ h2 {
   object-fit: contain;
 }
 
+.guide-frame-image {
+  animation: guideImageFade 220ms ease-out both;
+}
+
+@keyframes guideImageFade {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .guide-visual-note {
   border: 1px solid var(--color-border);
   border-radius: 8px;

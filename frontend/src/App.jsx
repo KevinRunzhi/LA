@@ -137,29 +137,29 @@ const guideVisuals = {
         label: "TEMP/FAN 指示灯区域",
         status: "灯组确认",
         check: "TEMP/FAN 灯状态",
-        image: "/images/guide/ipc-panel-indicators.png",
-        detail: "后续替换为已标注的 TEMP/FAN 灯组图片。绿色表示正常，红色表示异常。",
+        image: "/images/guide/guide-step01-temp-fan.png",
+        detail: "查看已标注的 TEMP/FAN 灯组：绿灯表示正常，红灯表示异常。当前演示按红灯异常进入散热告警排查。",
       },
       {
         label: "双风扇模块",
         status: "转速确认",
         check: "风扇 rpm",
-        image: "/images/guide/ipc-panel-indicators.png",
-        detail: "后续替换为已标注的双风扇模块图片。结合声音和转速确认风扇是否低速、异响或停转。",
+        image: "/images/guide/guide-step01-fan-rpm.png",
+        detail: "查看已标注的双风扇模块，结合现场声音和状态判断风扇是否低速、异响或停转。",
       },
       {
         label: "蜂鸣/告警指示面板",
         status: "告警确认",
         check: "蜂鸣器状态",
         image: "/images/guide/ipc-panel-indicators.png",
-        detail: "后续替换为已标注的蜂鸣/告警指示面板图片。若现场伴随蜂鸣，需要结合红色告警灯确认异常来源。",
+        detail: "当前暂无单独标注图。若现场伴随蜂鸣，结合指示灯区域判断：绿灯正常，红灯异常。",
       },
       {
         label: "温度灯组",
         status: "温度确认",
         check: "系统/CPU 温度",
-        image: "/images/guide/ipc-panel-indicators.png",
-        detail: "后续替换为已标注的温度灯组图片。结合系统温度 >55°C、CPU 温度 >70°C 的阈值判断过热风险。",
+        image: "/images/guide/guide-step01-temp-cpu.png",
+        detail: "查看已标注的温度灯组：绿灯表示正常，红灯表示异常。这里不展示具体温度数值，只确认灯态。",
       },
     ],
   },
@@ -1100,7 +1100,7 @@ function GuideStage({
         {visual ? (
           <div className="guide-visual-card">
             <div className="guide-image-frame">
-              <img src={visualImage} alt={visualAlt} />
+              <img className="guide-frame-image" key={visualImage} src={visualImage} alt={visualAlt} />
             </div>
             <div className="guide-visual-note">
               <div className="guide-note-head">
