@@ -165,6 +165,47 @@ const guideVisuals = {
       },
     ],
   },
+  "step-02-safety": {
+    defaultImage: "/images/guide/guide-step02-front-view.png",
+    defaultAlt: "工控机前视图与安全准备位置",
+    frames: [
+      {
+        label: "通知负责人",
+        status: "安全确认",
+        check: "通知负责人",
+        image: "/images/guide/guide-step02-front-view.png",
+        detail: "开始安全准备前，先通知值班负责人，确认当前设备可以进入检修流程。",
+      },
+      {
+        label: "正常关机",
+        status: "电源确认",
+        check: "正常关机",
+        image: "/images/guide/guide-step02-shutdown.png",
+        detail: "按正常流程关闭系统，确认电源开关位置，避免直接带电拆装。",
+      },
+      {
+        label: "拔除所有电源",
+        status: "断电确认",
+        check: "拔除所有电源",
+        image: "/images/guide/guide-step02-front-view.png",
+        detail: "关机后拔除所有电源线，确认设备处于断电状态后再进入后续检查。",
+      },
+      {
+        label: "等待冷却",
+        status: "冷却确认",
+        check: "等待冷却",
+        image: "/images/guide/guide-step02-front-view.png",
+        detail: "设备断电后等待冷却，避免高温部件导致烫伤或误判。",
+      },
+      {
+        label: "防静电",
+        status: "防护确认",
+        check: "防静电",
+        image: "/images/guide/guide-step02-front-view.png",
+        detail: "执行拆检前佩戴防静电手环，避免静电损伤工控机部件。",
+      },
+    ],
+  },
 };
 
 const generatedDiagnosisPlan = [
