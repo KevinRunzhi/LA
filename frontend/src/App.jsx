@@ -137,47 +137,43 @@ const guideVisuals = {
     annotations: [
       {
         label: "TEMP/FAN 指示灯区域",
-        status: "异常",
-        tone: "danger",
-        x: 72,
-        y: 70,
-        width: 13,
-        height: 15,
+        status: "灯组确认",
+        x: 70,
+        y: 72.5,
+        width: 14,
+        height: 10,
         check: "TEMP/FAN 灯状态",
-        detail: "观察 TEMP 与 FAN 相关灯位。绿色表示正常，红色表示异常；当前演示按 TEMP/FAN 告警处理。",
+        detail: "框选下方温度与 FAN 灯组。绿色表示正常，红色表示异常；当前演示按 TEMP/FAN 告警处理。",
       },
       {
         label: "双风扇模块",
-        status: "待确认",
-        tone: "warning",
-        x: 51,
-        y: 31,
-        width: 38,
+        status: "转速确认",
+        x: 44.5,
+        y: 30.5,
+        width: 39,
         height: 20,
         check: "风扇 rpm",
-        detail: "结合声音和转速确认风扇是否低速、异响或停转。风扇转速低于 500 rpm 时进入散热异常排查。",
+        detail: "框选上方双风扇模块。结合声音和转速确认风扇是否低速、异响或停转。",
       },
       {
-        label: "通风区域",
-        status: "正常",
-        tone: "normal",
-        x: 31,
-        y: 62,
-        width: 32,
+        label: "蜂鸣/告警指示面板",
+        status: "告警确认",
+        x: 69.8,
+        y: 67.5,
+        width: 17,
         height: 22,
-        check: "站控柜位置",
-        detail: "确认设备位于站控柜 A01，并观察前面板通风区域是否明显遮挡或堵塞。",
+        check: "蜂鸣器状态",
+        detail: "框选整块指示灯面板。若现场伴随蜂鸣，需要结合红色告警灯确认异常来源。",
       },
       {
-        label: "POWER 状态",
-        status: "正常",
-        tone: "normal",
-        x: 66,
-        y: 64,
-        width: 4,
-        height: 7,
-        check: "蜂鸣器状态",
-        detail: "POWER 绿色表示供电状态正常；如伴随蜂鸣，需继续确认告警灯和温度阈值。",
+        label: "温度灯组",
+        status: "温度确认",
+        x: 68.7,
+        y: 72,
+        width: 10,
+        height: 10,
+        check: "系统/CPU 温度",
+        detail: "框选温度灯组，结合系统温度 >55°C、CPU 温度 >70°C 的阈值判断过热风险。",
       },
     ],
   },
@@ -1094,7 +1090,7 @@ function GuideStage({
     setFocusedCheck(guideVisuals[currentStep.id]?.annotations[0]?.check || currentStep.checks[0]);
   }, [currentStep.id, currentStep.checks]);
 
-  const activeAnnotation = visual?.annotations.find((annotation) => annotation.check === focusedCheck) || visual?.annotations[0];
+  const activeAnnotation = visual?.annotations.find((annotation) => annotation.check === focusedCheck);
 
   return (
     <div className="stage-content guide-stage">
@@ -1136,13 +1132,13 @@ function GuideStage({
                 );
               })}
             </div>
-            <div className={classNames("guide-visual-note", activeAnnotation?.tone)}>
+            <div className="guide-visual-note">
               <div className="guide-note-head">
                 <span className="guide-callout-line" />
-                <strong>{activeAnnotation?.label || visual.focusTitle}</strong>
-                <em>{activeAnnotation?.status}</em>
+                <strong>{activeAnnotation?.label || "当前检查项"}</strong>
+                <em>{activeAnnotation?.status || "文字确认"}</em>
               </div>
-              <p>{activeAnnotation?.detail || visual.focusText}</p>
+              <p>{activeAnnotation?.detail || "该检查项暂不做图片框选，按右侧检查项完成确认即可。"}</p>
               <div>
                 <span className="normal">绿色正常</span>
                 <span className="danger">红色异常</span>
