@@ -676,8 +676,8 @@ h2 {
 
 .location-pulse {
   position: absolute;
-  left: 51.5%;
-  top: 66%;
+  left: 54.8%;
+  top: 62.5%;
   width: 16px;
   height: 16px;
   border-radius: 50%;
@@ -689,8 +689,8 @@ h2 {
 
 .location-label {
   position: absolute;
-  left: 53%;
-  top: 69%;
+  left: 56.4%;
+  top: 66%;
   display: grid;
   gap: 3px;
   border: 1px solid #bfdbfe;
