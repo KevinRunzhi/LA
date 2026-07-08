@@ -1441,6 +1441,8 @@ h2 {
   display: grid;
   grid-template-columns: 42% minmax(0, 1fr);
   gap: 18px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .image-placeholder {
@@ -1463,8 +1465,9 @@ h2 {
 .guide-visual-card {
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-rows: auto auto;
+  align-content: start;
+  gap: 10px;
 }
 
 .guide-image-frame {
@@ -1492,16 +1495,7 @@ h2 {
 }
 
 .guide-focus-box span {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  background: #64748b;
-  box-shadow: 0 0 0 7px rgba(100, 116, 139, 0.16);
-  opacity: 0.72;
+  display: none;
 }
 
 .guide-focus-box i {
@@ -1516,26 +1510,6 @@ h2 {
   border-radius: 6px;
   transform: translate(-50%, -50%);
   opacity: 0;
-}
-
-.guide-focus-box.normal span {
-  background: #16a34a;
-  box-shadow: 0 0 0 7px rgba(22, 163, 74, 0.16);
-}
-
-.guide-focus-box.danger span {
-  background: #dc2626;
-  box-shadow: 0 0 0 7px rgba(220, 38, 38, 0.18);
-  animation: markerPulse 1.5s ease-out infinite;
-}
-
-.guide-focus-box.warning span {
-  background: #f59e0b;
-  box-shadow: 0 0 0 7px rgba(245, 158, 11, 0.18);
-}
-
-.guide-focus-box.active span {
-  opacity: 1;
 }
 
 .guide-focus-box.active i {
@@ -1595,16 +1569,16 @@ h2 {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: #fbfdff;
-  padding: 11px;
+  padding: 9px 10px;
   display: grid;
-  gap: 7px;
+  gap: 6px;
 }
 
 .guide-note-head {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
 }
 
 .guide-callout-line {
@@ -1673,20 +1647,20 @@ h2 {
 .guide-visual-note p {
   margin: 0;
   color: #334155;
-  line-height: 1.5;
-  font-size: 13px;
+  line-height: 1.42;
+  font-size: 12px;
 }
 
-.guide-visual-note div {
+.guide-visual-note > div:last-child {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
-.guide-visual-note span {
+.guide-visual-note > div:last-child span {
   border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 12px;
+  padding: 3px 7px;
+  font-size: 11px;
 }
 
 .guide-visual-note .normal {
