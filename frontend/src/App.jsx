@@ -128,6 +128,21 @@ const thresholdInputs = [
   ["CPU 温度", "> 70°C", "判断过热风险", "结合系统温度判断过热风险"],
 ];
 
+const guideVisuals = {
+  "step-01-location": {
+    image: "/images/guide/ipc-panel-indicators.png",
+    alt: "工控机前面板与指示灯区域",
+    focusTitle: "指示灯状态确认",
+    focusText: "绿色表示正常，红色表示异常。本步重点确认 TEMP/FAN、蜂鸣器和风扇转速状态。",
+    annotations: [
+      { label: "TEMP/FAN 指示灯区域", status: "异常", tone: "danger", x: 72, y: 70, check: "TEMP/FAN 灯状态" },
+      { label: "双风扇模块", status: "待确认", tone: "warning", x: 51, y: 31, check: "风扇 rpm" },
+      { label: "通风区域", status: "正常", tone: "normal", x: 31, y: 62, check: "站控柜位置" },
+      { label: "POWER 状态", status: "正常", tone: "normal", x: 66, y: 64, check: "蜂鸣器状态" },
+    ],
+  },
+};
+
 const generatedDiagnosisPlan = [
   "解析现场异常描述与告警信号",
   "匹配 ACP-4000 / IPC-610 散热结构",
@@ -1032,6 +1047,7 @@ function GuideStage({
   const completedChecks = currentStep.checks.filter((check) => checkedItems.includes(check)).length;
   const allChecksDone = completedChecks === currentStep.checks.length;
   const checkProgress = Math.round((completedChecks / currentStep.checks.length) * 100);
+  const visual = guideVisuals[currentStep.id];
 
   return (
     <div className="stage-content guide-stage">
@@ -1050,11 +1066,41 @@ function GuideStage({
         </div>
       </div>
       <div className="guide-screen">
-        <div className="image-placeholder">
-          <Cpu size={34} />
-          <strong>图片待补充</strong>
-          <span>{currentStep.placeholder}</span>
-        </div>
+        {visual ? (
+          <div className="guide-visual-card">
+            <div className="guide-image-frame">
+              <img src={visual.image} alt={visual.alt} />
+              {visual.annotations.map((annotation) => {
+                const active = checkedItems.includes(annotation.check);
+                return (
+                  <div
+                    key={annotation.label}
+                    className={classNames("guide-marker", annotation.tone, active && "active")}
+                    style={{ left: `${annotation.x}%`, top: `${annotation.y}%` }}
+                  >
+                    <span />
+                    <strong>{annotation.label}</strong>
+                    <em>{annotation.status}</em>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="guide-visual-note">
+              <strong>{visual.focusTitle}</strong>
+              <p>{visual.focusText}</p>
+              <div>
+                <span className="normal">绿色正常</span>
+                <span className="danger">红色异常</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="image-placeholder">
+            <Cpu size={34} />
+            <strong>图片待补充</strong>
+            <span>{currentStep.placeholder}</span>
+          </div>
+        )}
         <div className="guide-info">
           <div>
             <strong>检查项 · {completedChecks} / {currentStep.checks.length}</strong>
