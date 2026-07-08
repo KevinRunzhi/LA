@@ -274,6 +274,47 @@ const guideVisuals = {
       },
     ],
   },
+  "step-05-verify": {
+    defaultImage: "/images/guide/guide-step02-front-view.png",
+    defaultAlt: "工控机恢复运行与验证前视图",
+    frames: [
+      {
+        label: "告警解除",
+        status: "恢复确认",
+        check: "TEMP/FAN 告警解除",
+        image: "/images/guide/guide-step02-front-view.png",
+        detail: "恢复供电后观察前面板状态，确认 TEMP/FAN 告警解除，无持续蜂鸣或异常提示。",
+      },
+      {
+        label: "风扇运行",
+        status: "转速确认",
+        check: "风扇 > 500 rpm",
+        image: "/images/guide/guide-step02-front-view.png",
+        detail: "恢复运行后确认风扇正常转动，转速恢复到安全范围，再继续观察温度变化。",
+      },
+      {
+        label: "系统温度",
+        status: "温度确认",
+        check: "系统 ≤ 55°C",
+        image: "/images/guide/guide-step02-front-view.png",
+        detail: "确认系统温度回落到允许范围，避免清理后仍存在散热不足。",
+      },
+      {
+        label: "CPU 温度",
+        status: "温度确认",
+        check: "CPU ≤ 70°C",
+        image: "/images/guide/guide-step02-front-view.png",
+        detail: "确认 CPU 温度处于允许范围，若仍持续升高，需要返回风道和风扇检查。",
+      },
+      {
+        label: "数据上传",
+        status: "通信确认",
+        check: "数据上传稳定",
+        image: "/images/guide/guide-step02-front-view.png",
+        detail: "连续观察运行状态和数据上传，确认设备恢复后站控数据保持稳定。",
+      },
+    ],
+  },
 };
 
 const generatedDiagnosisPlan = [
