@@ -135,10 +135,50 @@ const guideVisuals = {
     focusTitle: "指示灯状态确认",
     focusText: "绿色表示正常，红色表示异常。本步重点确认 TEMP/FAN、蜂鸣器和风扇转速状态。",
     annotations: [
-      { label: "TEMP/FAN 指示灯区域", status: "异常", tone: "danger", x: 72, y: 70, check: "TEMP/FAN 灯状态" },
-      { label: "双风扇模块", status: "待确认", tone: "warning", x: 51, y: 31, check: "风扇 rpm" },
-      { label: "通风区域", status: "正常", tone: "normal", x: 31, y: 62, check: "站控柜位置" },
-      { label: "POWER 状态", status: "正常", tone: "normal", x: 66, y: 64, check: "蜂鸣器状态" },
+      {
+        label: "TEMP/FAN 指示灯区域",
+        status: "异常",
+        tone: "danger",
+        x: 72,
+        y: 70,
+        width: 13,
+        height: 15,
+        check: "TEMP/FAN 灯状态",
+        detail: "观察 TEMP 与 FAN 相关灯位。绿色表示正常，红色表示异常；当前演示按 TEMP/FAN 告警处理。",
+      },
+      {
+        label: "双风扇模块",
+        status: "待确认",
+        tone: "warning",
+        x: 51,
+        y: 31,
+        width: 38,
+        height: 20,
+        check: "风扇 rpm",
+        detail: "结合声音和转速确认风扇是否低速、异响或停转。风扇转速低于 500 rpm 时进入散热异常排查。",
+      },
+      {
+        label: "通风区域",
+        status: "正常",
+        tone: "normal",
+        x: 31,
+        y: 62,
+        width: 32,
+        height: 22,
+        check: "站控柜位置",
+        detail: "确认设备位于站控柜 A01，并观察前面板通风区域是否明显遮挡或堵塞。",
+      },
+      {
+        label: "POWER 状态",
+        status: "正常",
+        tone: "normal",
+        x: 66,
+        y: 64,
+        width: 4,
+        height: 7,
+        check: "蜂鸣器状态",
+        detail: "POWER 绿色表示供电状态正常；如伴随蜂鸣，需继续确认告警灯和温度阈值。",
+      },
     ],
   },
 };
@@ -1048,6 +1088,13 @@ function GuideStage({
   const allChecksDone = completedChecks === currentStep.checks.length;
   const checkProgress = Math.round((completedChecks / currentStep.checks.length) * 100);
   const visual = guideVisuals[currentStep.id];
+  const [focusedCheck, setFocusedCheck] = useState(visual?.annotations[0]?.check || currentStep.checks[0]);
+
+  useEffect(() => {
+    setFocusedCheck(guideVisuals[currentStep.id]?.annotations[0]?.check || currentStep.checks[0]);
+  }, [currentStep.id, currentStep.checks]);
+
+  const activeAnnotation = visual?.annotations.find((annotation) => annotation.check === focusedCheck) || visual?.annotations[0];
 
   return (
     <div className="stage-content guide-stage">
@@ -1071,23 +1118,31 @@ function GuideStage({
             <div className="guide-image-frame">
               <img src={visual.image} alt={visual.alt} />
               {visual.annotations.map((annotation) => {
-                const active = checkedItems.includes(annotation.check);
+                const active = annotation.check === activeAnnotation?.check;
                 return (
                   <div
                     key={annotation.label}
-                    className={classNames("guide-marker", annotation.tone, active && "active")}
-                    style={{ left: `${annotation.x}%`, top: `${annotation.y}%` }}
+                    className={classNames("guide-focus-box", annotation.tone, active && "active")}
+                    style={{
+                      left: `${annotation.x}%`,
+                      top: `${annotation.y}%`,
+                      width: `${annotation.width}%`,
+                      height: `${annotation.height}%`,
+                    }}
                   >
                     <span />
-                    <strong>{annotation.label}</strong>
-                    <em>{annotation.status}</em>
+                    <i />
                   </div>
                 );
               })}
             </div>
-            <div className="guide-visual-note">
-              <strong>{visual.focusTitle}</strong>
-              <p>{visual.focusText}</p>
+            <div className={classNames("guide-visual-note", activeAnnotation?.tone)}>
+              <div className="guide-note-head">
+                <span className="guide-callout-line" />
+                <strong>{activeAnnotation?.label || visual.focusTitle}</strong>
+                <em>{activeAnnotation?.status}</em>
+              </div>
+              <p>{activeAnnotation?.detail || visual.focusText}</p>
               <div>
                 <span className="normal">绿色正常</span>
                 <span className="danger">红色异常</span>
@@ -1108,8 +1163,15 @@ function GuideStage({
               {currentStep.checks.map((check, index) => (
                 <button
                   key={check}
-                  className={classNames("check-step-item", checkedItems.includes(check) && "checked")}
-                  onClick={() => onToggleCheck(check)}
+                  className={classNames(
+                    "check-step-item",
+                    checkedItems.includes(check) && "checked",
+                    focusedCheck === check && "focused"
+                  )}
+                  onClick={() => {
+                    setFocusedCheck(check);
+                    onToggleCheck(check);
+                  }}
                 >
                   <span>{checkedItems.includes(check) ? <Check size={16} /> : index + 1}</span>
                   <p>{check}</p>
