@@ -180,14 +180,14 @@ const guideVisuals = {
         label: "正常关机",
         status: "电源确认",
         check: "正常关机",
-        image: "/images/guide/guide-step02-shutdown.png",
+        image: "/images/guide/guide-step02-shutdown-switch.png",
         detail: "按正常流程关闭系统，确认电源开关位置，避免直接带电拆装。",
       },
       {
         label: "拔除所有电源",
         status: "断电确认",
         check: "拔除所有电源",
-        image: "/images/guide/guide-step02-front-view.png",
+        image: "/images/guide/guide-step02-unplug-power.png",
         detail: "关机后拔除所有电源线，确认设备处于断电状态后再进入后续检查。",
       },
       {
