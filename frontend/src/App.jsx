@@ -240,6 +240,40 @@ const guideVisuals = {
       },
     ],
   },
+  "step-04-filter-fan": {
+    defaultImage: "/images/guide/guide-step04-door-filter.jpg",
+    defaultAlt: "滤网、风扇和 FAN 接线检查示意",
+    frames: [
+      {
+        label: "门滤网检查",
+        status: "滤网确认",
+        check: "门滤网积尘",
+        image: "/images/guide/guide-step04-door-filter.jpg",
+        detail: "查看前部门滤网拆装示意，确认滤网是否积尘、堵塞或变形。",
+      },
+      {
+        label: "风扇滤网检查",
+        status: "滤网确认",
+        check: "风扇滤网积尘",
+        image: "/images/guide/guide-step04-fan-filter.jpg",
+        detail: "查看风扇滤网拆装示意，确认滤网是否积尘并影响进风。",
+      },
+      {
+        label: "风扇模块检查",
+        status: "风扇确认",
+        check: "风扇异响/停转/低速",
+        image: "/images/guide/guide-step04-fan-module.png",
+        detail: "查看风扇模块结构，确认是否存在异响、停转或低速运行。",
+      },
+      {
+        label: "FAN 接线顺序",
+        status: "接线确认",
+        check: "FAN1/FAN2 顺序",
+        image: "/images/guide/guide-step04-fan-wiring.jpg",
+        detail: "查看主板 FAN 接口位置，拆装前记录接线顺序，恢复时核对 FAN1/FAN2 连接。",
+      },
+    ],
+  },
 };
 
 const generatedDiagnosisPlan = [
