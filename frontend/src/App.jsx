@@ -130,50 +130,36 @@ const thresholdInputs = [
 
 const guideVisuals = {
   "step-01-location": {
-    image: "/images/guide/ipc-panel-indicators.png",
-    alt: "工控机前面板与指示灯区域",
-    focusTitle: "指示灯状态确认",
-    focusText: "绿色表示正常，红色表示异常。本步重点确认 TEMP/FAN、蜂鸣器和风扇转速状态。",
-    annotations: [
+    defaultImage: "/images/guide/ipc-panel-indicators.png",
+    defaultAlt: "工控机前面板与指示灯区域",
+    frames: [
       {
         label: "TEMP/FAN 指示灯区域",
         status: "灯组确认",
-        x: 59.1,
-        y: 57.7,
-        width: 9.1,
-        height: 5.4,
         check: "TEMP/FAN 灯状态",
-        detail: "框选下方温度与 FAN 灯组。绿色表示正常，红色表示异常；当前演示按 TEMP/FAN 告警处理。",
+        image: "/images/guide/ipc-panel-indicators.png",
+        detail: "后续替换为已标注的 TEMP/FAN 灯组图片。绿色表示正常，红色表示异常。",
       },
       {
         label: "双风扇模块",
         status: "转速确认",
-        x: 44.5,
-        y: 30.5,
-        width: 39,
-        height: 20,
         check: "风扇 rpm",
-        detail: "框选上方双风扇模块。结合声音和转速确认风扇是否低速、异响或停转。",
+        image: "/images/guide/ipc-panel-indicators.png",
+        detail: "后续替换为已标注的双风扇模块图片。结合声音和转速确认风扇是否低速、异响或停转。",
       },
       {
         label: "蜂鸣/告警指示面板",
         status: "告警确认",
-        x: 59.2,
-        y: 54.6,
-        width: 9.8,
-        height: 14.0,
         check: "蜂鸣器状态",
-        detail: "框选整块指示灯面板。若现场伴随蜂鸣，需要结合红色告警灯确认异常来源。",
+        image: "/images/guide/ipc-panel-indicators.png",
+        detail: "后续替换为已标注的蜂鸣/告警指示面板图片。若现场伴随蜂鸣，需要结合红色告警灯确认异常来源。",
       },
       {
         label: "温度灯组",
         status: "温度确认",
-        x: 59.1,
-        y: 57.7,
-        width: 9.1,
-        height: 5.4,
         check: "系统/CPU 温度",
-        detail: "框选温度灯组，结合系统温度 >55°C、CPU 温度 >70°C 的阈值判断过热风险。",
+        image: "/images/guide/ipc-panel-indicators.png",
+        detail: "后续替换为已标注的温度灯组图片。结合系统温度 >55°C、CPU 温度 >70°C 的阈值判断过热风险。",
       },
     ],
   },
@@ -1084,13 +1070,15 @@ function GuideStage({
   const allChecksDone = completedChecks === currentStep.checks.length;
   const checkProgress = Math.round((completedChecks / currentStep.checks.length) * 100);
   const visual = guideVisuals[currentStep.id];
-  const [focusedCheck, setFocusedCheck] = useState(visual?.annotations[0]?.check || currentStep.checks[0]);
+  const [focusedCheck, setFocusedCheck] = useState(visual?.frames[0]?.check || currentStep.checks[0]);
 
   useEffect(() => {
-    setFocusedCheck(guideVisuals[currentStep.id]?.annotations[0]?.check || currentStep.checks[0]);
+    setFocusedCheck(guideVisuals[currentStep.id]?.frames[0]?.check || currentStep.checks[0]);
   }, [currentStep.id, currentStep.checks]);
 
-  const activeAnnotation = visual?.annotations.find((annotation) => annotation.check === focusedCheck);
+  const activeFrame = visual?.frames.find((frame) => frame.check === focusedCheck);
+  const visualImage = activeFrame?.image || visual?.defaultImage;
+  const visualAlt = activeFrame?.label || visual?.defaultAlt;
 
   return (
     <div className="stage-content guide-stage">
@@ -1112,37 +1100,14 @@ function GuideStage({
         {visual ? (
           <div className="guide-visual-card">
             <div className="guide-image-frame">
-              <img src={visual.image} alt={visual.alt} />
-              {visual.annotations.map((annotation) => {
-                const active = annotation.check === activeAnnotation?.check;
-                return (
-                  <div
-                    key={annotation.label}
-                    className={classNames("guide-focus-box", annotation.tone, active && "active")}
-                    style={{
-                      left: `${annotation.x}%`,
-                      top: `${annotation.y}%`,
-                      width: `${annotation.width}%`,
-                      height: `${annotation.height}%`,
-                    }}
-                  >
-                    <span />
-                    <i />
-                  </div>
-                );
-              })}
+              <img src={visualImage} alt={visualAlt} />
             </div>
             <div className="guide-visual-note">
               <div className="guide-note-head">
-                <span className="guide-callout-line" />
-                <strong>{activeAnnotation?.label || "当前检查项"}</strong>
-                <em>{activeAnnotation?.status || "文字确认"}</em>
+                <strong>{activeFrame?.label || "当前检查项"}</strong>
+                <em>{activeFrame?.status || "文字确认"}</em>
               </div>
-              <p>{activeAnnotation?.detail || "该检查项暂不做图片框选，按右侧检查项完成确认即可。"}</p>
-              <div>
-                <span className="normal">绿色正常</span>
-                <span className="danger">红色异常</span>
-              </div>
+              <p>{activeFrame?.detail || "该检查项暂不切换图片，按右侧检查项完成确认即可。"}</p>
             </div>
           </div>
         ) : (

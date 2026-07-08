@@ -1441,8 +1441,7 @@ h2 {
   display: grid;
   grid-template-columns: 42% minmax(0, 1fr);
   gap: 18px;
-  overflow: auto;
-  padding-right: 4px;
+  overflow: hidden;
 }
 
 .image-placeholder {
@@ -1467,7 +1466,7 @@ h2 {
   display: grid;
   grid-template-rows: auto auto;
   align-content: start;
-  gap: 10px;
+  gap: 8px;
 }
 
 .guide-image-frame {
@@ -1488,83 +1487,6 @@ h2 {
   object-fit: contain;
 }
 
-.guide-focus-box {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
-.guide-focus-box span {
-  display: none;
-}
-
-.guide-focus-box i {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 100%;
-  height: 100%;
-  min-width: 28px;
-  min-height: 22px;
-  border: 2px solid rgba(100, 116, 139, 0.65);
-  border-radius: 6px;
-  transform: translate(-50%, -50%);
-  opacity: 0;
-}
-
-.guide-focus-box.active i {
-  opacity: 1;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 999px rgba(15, 23, 42, 0.08), 0 0 0 4px rgba(37, 99, 235, 0.12);
-}
-
-.guide-focus-box.active::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 100%;
-  width: 1px;
-  height: 38px;
-  background: var(--color-primary);
-  opacity: 0.72;
-}
-
-.guide-focus-box.active.danger i {
-  border-color: #dc2626;
-  box-shadow: 0 0 0 999px rgba(15, 23, 42, 0.08), 0 0 0 4px rgba(220, 38, 38, 0.13);
-}
-
-.guide-focus-box.active.danger::after {
-  background: #dc2626;
-}
-
-.guide-focus-box.active.normal i {
-  border-color: #16a34a;
-  box-shadow: 0 0 0 999px rgba(15, 23, 42, 0.08), 0 0 0 4px rgba(22, 163, 74, 0.13);
-}
-
-.guide-focus-box.active.normal::after {
-  background: #16a34a;
-}
-
-.guide-focus-box.active.warning i {
-  border-color: #f59e0b;
-  box-shadow: 0 0 0 999px rgba(15, 23, 42, 0.08), 0 0 0 4px rgba(245, 158, 11, 0.14);
-}
-
-.guide-focus-box.active.warning::after {
-  background: #f59e0b;
-}
-
-@keyframes markerPulse {
-  70% {
-    box-shadow: 0 0 0 13px rgba(220, 38, 38, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 7px rgba(220, 38, 38, 0);
-  }
-}
-
 .guide-visual-note {
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -1576,28 +1498,9 @@ h2 {
 
 .guide-note-head {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-}
-
-.guide-callout-line {
-  height: 1px;
-  border-radius: 999px;
-  background: #94a3b8;
-  position: relative;
-}
-
-.guide-callout-line::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #94a3b8;
-  transform: translateY(-50%);
 }
 
 .guide-note-head em {
@@ -1609,70 +1512,11 @@ h2 {
   padding: 4px 8px;
 }
 
-.guide-visual-note.danger {
-  border-color: #fecaca;
-  background: #fffafa;
-}
-
-.guide-visual-note.danger .guide-callout-line,
-.guide-visual-note.danger .guide-callout-line::before {
-  background: #dc2626;
-}
-
-.guide-visual-note.danger .guide-note-head em {
-  color: #991b1b;
-  background: #fef2f2;
-}
-
-.guide-visual-note.normal .guide-callout-line,
-.guide-visual-note.normal .guide-callout-line::before {
-  background: #16a34a;
-}
-
-.guide-visual-note.normal .guide-note-head em {
-  color: #166534;
-  background: #effaf2;
-}
-
-.guide-visual-note.warning .guide-callout-line,
-.guide-visual-note.warning .guide-callout-line::before {
-  background: #f59e0b;
-}
-
-.guide-visual-note.warning .guide-note-head em {
-  color: #92400e;
-  background: #fff8ed;
-}
-
 .guide-visual-note p {
   margin: 0;
   color: #334155;
   line-height: 1.42;
   font-size: 12px;
-}
-
-.guide-visual-note > div:last-child {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.guide-visual-note > div:last-child span {
-  border-radius: 999px;
-  padding: 3px 7px;
-  font-size: 11px;
-}
-
-.guide-visual-note .normal {
-  color: #166534;
-  background: #effaf2;
-  border: 1px solid #c9ecd0;
-}
-
-.guide-visual-note .danger {
-  color: #991b1b;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
 }
 
 .guide-info {
@@ -1682,7 +1526,12 @@ h2 {
 }
 
 .guide-stage {
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.guide-stage .stage-actions {
+  align-self: end;
+  padding-top: 8px;
 }
 
 .check-step-list {
