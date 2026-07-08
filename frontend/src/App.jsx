@@ -206,6 +206,40 @@ const guideVisuals = {
       },
     ],
   },
+  "step-03-airflow": {
+    defaultImage: "/images/guide/guide-step03-env-temperature.png",
+    defaultAlt: "工控机机柜环境与风道检查",
+    frames: [
+      {
+        label: "环境温度",
+        status: "环境确认",
+        check: "环境温度 ≤ 40°C",
+        image: "/images/guide/guide-step03-env-temperature.png",
+        detail: "进入风道检查时，先确认机柜环境温度不高于 40°C，再继续检查通风条件。",
+      },
+      {
+        label: "进风口",
+        status: "风道确认",
+        check: "进风口无遮挡",
+        image: "/images/guide/guide-step03-air-in-out.png",
+        detail: "查看已标注的风扇/风道区域，确认进风口没有遮挡物和明显积尘。",
+      },
+      {
+        label: "出风口",
+        status: "风道确认",
+        check: "出风口无遮挡",
+        image: "/images/guide/guide-step03-air-in-out.png",
+        detail: "查看已标注的风扇/风道区域，确认出风口保持畅通，热风可以正常排出。",
+      },
+      {
+        label: "机箱开孔",
+        status: "开孔确认",
+        check: "机箱开孔无遮挡",
+        image: "/images/guide/guide-step03-chassis-openings.png",
+        detail: "查看已标注的机箱开孔区域，确认开孔无遮挡，避免影响空气流通。",
+      },
+    ],
+  },
 };
 
 const generatedDiagnosisPlan = [
