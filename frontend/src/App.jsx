@@ -890,8 +890,7 @@ function InputStage({
                 <span>系统识别</span>
               </div>
               <div className="site-map-preview">
-                <div className="cabinet-outline primary" />
-                <div className="cabinet-outline secondary" />
+                <img src="/images/site-station-overview.png" alt="油气管道场站区域示意图" />
                 <div className="location-pulse" />
                 <div className="location-label">
                   <strong>站控柜 A01</strong>
