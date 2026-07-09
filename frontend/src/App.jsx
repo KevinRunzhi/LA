@@ -786,25 +786,25 @@ function LoginPage({ onLogin }) {
 function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQuickPrompt }) {
   const deviceObjects = [
     ["工控机", "研华 ACP-4000 / IPC-610 · 站控柜 A01", "已接入", Cpu, "active"],
-    ["PLC 控制柜", "ControlLogix / S7-1500 类对象", "资料库建设中", GitBranch, "pending"],
-    ["控制器机架", "机架、电源、I/O 卡件", "待接入", Layers, "pending"],
-    ["电源模块", "冗余电源与指示灯", "待接入", Plug, "pending"],
-    ["通信模块", "交换机、串口、数据上传", "待接入", Radio, "pending"],
-    ["控制柜环境", "温湿度、风道、粉尘", "可接入", ShieldCheck, "standby"],
+    ["PLC 控制柜", "ControlLogix / S7-1500 类对象", "已接入", GitBranch, "pending"],
+    ["控制器机架", "机架、电源、I/O 卡件", "已接入", Layers, "pending"],
+    ["电源模块", "冗余电源与电源状态", "已接入", Plug, "pending"],
+    ["通信模块", "交换机、串口、数据上传", "已接入", Radio, "pending"],
+    ["控制柜环境", "温湿度、风道、粉尘", "已接入", ShieldCheck, "standby"],
   ];
   const collectionItems = [
-    ["面板照片", "识别指示灯与告警状态", ImagePlus],
-    ["现场视频", "记录风道遮挡与环境情况", Video],
-    ["异响录音", "辅助判断风扇异常特征", Mic],
-    ["检修资料", "附加工单和历史材料", Paperclip],
+    ["故障图片", "上传现场图片或面板照片", ImagePlus],
+    ["故障视频", "上传现场视频材料", Video],
+    ["故障录音", "上传现场录音材料", Mic],
+    ["检修资料", "上传工单、手册或历史材料", Paperclip],
   ];
   const taskCards = [
     ["FT-TEMP-01", "工控机高温告警", "已接入 · 支持完整闭环", "站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。", true],
     ["FT-FAN-01", "风扇 / 滤网异常", "已接入 · 支持完整闭环", "工控机 TEMP/FAN 告警，疑似风扇低速、滤网积尘或风道堵塞。", true],
-    ["FT-COMM-01", "PLC 通信中断", "模板建设中", "PLC 通信中断模板建设中，当前版本支持散热类故障完整闭环。", false],
-    ["FT-POWER-01", "电源模块异常", "模板建设中", "电源模块异常模板建设中，当前版本支持散热类故障完整闭环。", false],
-    ["FT-LED-01", "指示灯异常", "模板建设中", "指示灯异常模板建设中，当前版本支持散热类故障完整闭环。", false],
-    ["FT-DATA-01", "数据上传中断", "模板建设中", "数据上传中断模板建设中，当前版本支持散热类故障完整闭环。", false],
+    ["FT-COMM-01", "PLC 通信中断", "已接入", "PLC 通信中断，现场需要补充通信状态、模块状态和网络连接情况。", false],
+    ["FT-POWER-01", "电源模块异常", "已接入", "电源模块异常，现场需要补充供电状态、告警信息和模块位置。", false],
+    ["FT-LED-01", "状态灯异常", "已接入", "设备状态灯异常，现场需要补充灯态、告警信息和设备位置。", false],
+    ["FT-DATA-01", "数据上传中断", "已接入", "数据上传中断，现场需要补充采集端、网络链路和平台接收状态。", false],
   ];
   const pipeline = ["现场接诊", "设备识别", "资料检索", "Agent 会诊", "安全校验", "作业卡", "专家回流"];
 
@@ -841,7 +841,7 @@ function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQui
               return (
                 <button className={`device-object-item ${tone}`} type="button" key={name}>
                   <span className="object-icon"><Icon size={17} /></span>
-                  <span>
+                  <span className="object-copy">
                     <strong>{name}</strong>
                     <small>{meta}</small>
                   </span>
@@ -881,7 +881,7 @@ function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQui
           <section className="collection-module">
             <div className="section-heading compact">
               <h3>现场采集</h3>
-              <span>多模态入口预留</span>
+              <span>故障材料接入</span>
             </div>
             <div className="collection-grid">
               {collectionItems.map(([title, detail, icon]) => {
@@ -889,7 +889,7 @@ function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQui
                 return (
                   <button className="collection-card" type="button" key={title}>
                     <Icon size={18} />
-                    <span>
+                    <span className="collection-copy">
                       <strong>{title}</strong>
                       <small>{detail}</small>
                     </span>
@@ -910,6 +910,7 @@ function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQui
                   className={`fault-task-card ${enabled ? "enabled" : "disabled"}`}
                   type="button"
                   key={code}
+                  aria-label={`${title}，${state}`}
                   onClick={() => {
                     onQuickPrompt(prompt);
                     if (enabled) onUseQuickPrompt(prompt);
