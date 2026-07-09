@@ -11,6 +11,7 @@ import {
   FileText,
   GitBranch,
   ImagePlus,
+  Layers,
   LayoutDashboard,
   Loader2,
   LogOut,
@@ -20,6 +21,8 @@ import {
   Mic,
   Paperclip,
   PhoneCall,
+  Plug,
+  Radio,
   Search,
   Send,
   Settings,
@@ -781,60 +784,189 @@ function LoginPage({ onLogin }) {
 }
 
 function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQuickPrompt }) {
+  const deviceObjects = [
+    ["工控机", "研华 ACP-4000 / IPC-610 · 站控柜 A01", "已接入", Cpu, "active"],
+    ["PLC 控制柜", "ControlLogix / S7-1500 类对象", "资料库建设中", GitBranch, "pending"],
+    ["控制器机架", "机架、电源、I/O 卡件", "待接入", Layers, "pending"],
+    ["电源模块", "冗余电源与指示灯", "待接入", Plug, "pending"],
+    ["通信模块", "交换机、串口、数据上传", "待接入", Radio, "pending"],
+    ["控制柜环境", "温湿度、风道、粉尘", "可接入", ShieldCheck, "standby"],
+  ];
+  const collectionItems = [
+    ["面板照片", "识别指示灯与告警状态", ImagePlus],
+    ["现场视频", "记录风道遮挡与环境情况", Video],
+    ["异响录音", "辅助判断风扇异常特征", Mic],
+    ["检修资料", "附加工单和历史材料", Paperclip],
+  ];
+  const taskCards = [
+    ["FT-TEMP-01", "工控机高温告警", "已接入 · 支持完整闭环", "站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。", true],
+    ["FT-FAN-01", "风扇 / 滤网异常", "已接入 · 支持完整闭环", "工控机 TEMP/FAN 告警，疑似风扇低速、滤网积尘或风道堵塞。", true],
+    ["FT-COMM-01", "PLC 通信中断", "模板建设中", "PLC 通信中断模板建设中，当前版本支持散热类故障完整闭环。", false],
+    ["FT-POWER-01", "电源模块异常", "模板建设中", "电源模块异常模板建设中，当前版本支持散热类故障完整闭环。", false],
+    ["FT-LED-01", "指示灯异常", "模板建设中", "指示灯异常模板建设中，当前版本支持散热类故障完整闭环。", false],
+    ["FT-DATA-01", "数据上传中断", "模板建设中", "数据上传中断模板建设中，当前版本支持散热类故障完整闭环。", false],
+  ];
+  const pipeline = ["现场接诊", "设备识别", "资料检索", "Agent 会诊", "安全校验", "作业卡", "专家回流"];
+
   return (
     <section className="home-stage">
-      <div className="home-copy">
-        <p className="eyebrow">智能诊断入口</p>
-        <h2>早上好{userName}</h2>
-        <p>描述现场现象，系统会先整理异常信息，再进入步骤式诊断流程。</p>
+      <div className="duty-strip">
+        <div>
+          <span>值班接诊</span>
+          <strong>{userName} · 一线检修人员</strong>
+        </div>
+        <div>
+          <span>当前场站</span>
+          <strong>某输气场站 · 站控区域</strong>
+        </div>
+        <div>
+          <span>接入对象</span>
+          <strong>站控柜 A01 · 工控机</strong>
+        </div>
+        <div>
+          <span>待处理</span>
+          <strong>散热类故障 1 项</strong>
+        </div>
       </div>
 
-      <div className="home-console">
-        <div className="home-input-box">
-          <textarea
-            value={draft}
-            onChange={(event) => onDraft(event.target.value)}
-            placeholder="描述现场现象，例如：工控机温度告警、风扇声音异常、前面板风扇转速很低..."
-          />
-          <div className="home-input-actions">
-            <div className="home-tools">
-              {modalityActions.map((action) => {
-                const Icon = action.icon;
+      <div className="industrial-home-grid">
+        <aside className="device-object-panel">
+          <div className="section-heading compact">
+            <h3>设备对象</h3>
+            <span>台账范围</span>
+          </div>
+          <div className="device-object-list">
+            {deviceObjects.map(([name, meta, status, icon, tone]) => {
+              const Icon = icon;
+              return (
+                <button className={`device-object-item ${tone}`} type="button" key={name}>
+                  <span className="object-icon"><Icon size={17} /></span>
+                  <span>
+                    <strong>{name}</strong>
+                    <small>{meta}</small>
+                  </span>
+                  <em>{status}</em>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+
+        <main className="intake-workbench">
+          <section className="intake-card">
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow">现场接诊</span>
+                <h2>现场异常接诊</h2>
+              </div>
+              <span className="status-badge">散热类模板已接入</span>
+            </div>
+            <p>填写现场现象，系统将整理接诊信息并进入步骤式诊断流程。</p>
+            <div className="intake-line">
+              <input
+                value={draft}
+                onChange={(event) => onDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") onSubmit();
+                }}
+                placeholder="简述现场现象，如：站控柜内工控机温度告警，风扇声音异常..."
+              />
+              <button className="primary-button" onClick={onSubmit}>
+                <Send size={16} />
+                开始接诊
+              </button>
+            </div>
+          </section>
+
+          <section className="collection-module">
+            <div className="section-heading compact">
+              <h3>现场采集</h3>
+              <span>多模态入口预留</span>
+            </div>
+            <div className="collection-grid">
+              {collectionItems.map(([title, detail, icon]) => {
+                const Icon = icon;
                 return (
-                  <button key={action.label} type="button" title={action.label}>
-                    <Icon size={16} />
-                    <span>{action.label}</span>
+                  <button className="collection-card" type="button" key={title}>
+                    <Icon size={18} />
+                    <span>
+                      <strong>{title}</strong>
+                      <small>{detail}</small>
+                    </span>
                   </button>
                 );
               })}
             </div>
-            <div className="home-submit-actions">
-              <button className="home-voice-button" type="button" aria-label="语音输入" title="语音输入">
-                <Mic size={18} />
-              </button>
-              <button className="home-send-button" onClick={onSubmit} aria-label="开始异常接入">
-                <Send size={19} />
-              </button>
+          </section>
+
+          <section className="fault-task-section">
+            <div className="section-heading compact">
+              <h3>快速接诊</h3>
+              <span>按故障类型发起</span>
             </div>
+            <div className="fault-task-grid">
+              {taskCards.map(([code, title, state, prompt, enabled]) => (
+                <button
+                  className={`fault-task-card ${enabled ? "enabled" : "disabled"}`}
+                  type="button"
+                  key={code}
+                  onClick={() => {
+                    onQuickPrompt(prompt);
+                    if (enabled) onUseQuickPrompt(prompt);
+                  }}
+                >
+                  <span>{code}</span>
+                  <strong>{title}</strong>
+                  <small>{state}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+        </main>
+
+        <aside className="maintenance-dynamics">
+          <div className="section-heading compact">
+            <h3>检修动态</h3>
+            <span>今日</span>
           </div>
-        </div>
+          <article>
+            <span className="status-dot warn" />
+            <div>
+              <strong>待专家审核 1 项</strong>
+              <p>站控柜 A01 散热异常记录待复核。</p>
+            </div>
+          </article>
+          <article>
+            <span className="status-dot ok" />
+            <div>
+              <strong>最近诊断记录</strong>
+              <p>工控机 TEMP/FAN 告警，已进入恢复验证。</p>
+            </div>
+          </article>
+          <article>
+            <span className="status-dot info" />
+            <div>
+              <strong>专家经验回流</strong>
+              <p>沙尘环境滤网维护周期：季度调整为月度。</p>
+            </div>
+          </article>
+          <article>
+            <span className="status-dot neutral" />
+            <div>
+              <strong>知识库状态</strong>
+              <p>知识条目 11 · 图谱关系 24 · 判据 5 项</p>
+            </div>
+          </article>
+        </aside>
       </div>
 
-      <div className="quick-prompt-area">
-        <span>或试试这些常见问题</span>
-        <div>
-          {quickPrompts.map((prompt, index) => (
-            <button
-              key={prompt}
-              onClick={() => {
-                onQuickPrompt(prompt);
-                if (index === 0) onUseQuickPrompt(prompt);
-              }}
-            >
-              {prompt}
-            </button>
-          ))}
-        </div>
+      <div className="pipeline-strip">
+        {pipeline.map((item, index) => (
+          <span style={{ animationDelay: `${index * 300}ms` }} key={item}>
+            <i>{index + 1}</i>
+            {item}
+          </span>
+        ))}
       </div>
     </section>
   );
