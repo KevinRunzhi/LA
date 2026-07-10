@@ -1,13 +1,14 @@
 # 龙芯环境 MVP 环境与包下载清单
 
-本文档只列出当前 MVP 需要提前准备、下载或确认的环境与依赖包，不展开安装步骤。目标是让队友在龙芯机器部署前，知道要准备哪些系统组件、Node.js 环境、npm 包、Python 环境、pip 包、源码文件和演示数据。
+本文档只列出当前 MVP 需要提前准备、下载或确认的环境与依赖包，不展开安装步骤。目标是支持龙芯上的 Node 开发态逐模块验证，以及后续最终演示包交付。
 
 当前 MVP 技术栈：
 
 - 前端：React 18 + Vite 6 + lucide-react。
 - 后端：Python 3 + Flask 3。
 - 数据：JSON 预设演示数据。
-- 部署：本机进程运行，Flask 监听 `8080`，可托管前端 `dist` 静态文件。
+- 开发验证：Vite 以 Node 开发态运行，Flask 监听 `8080` 提供 API；每完成一个模块立即在龙芯验证。
+- 最终交付：可构建 `frontend/dist` 并由 Flask 托管，但不替代开发态验证。
 - 不使用：Docker、数据库、向量数据库、本地大模型推理、视频输入、语音播报、真实专家连线。
 
 ## 1. 基础系统环境
@@ -73,8 +74,8 @@
 
 说明：
 
-- 即使最终只用 Flask 托管静态页面，也需要 Vite 先把前端构建成 `frontend/dist`。
-- 如果直接拷贝已经构建好的 `frontend/dist`，龙芯机器上可以临时不装 npm 依赖；但为了后续继续开发和迭代，建议准备完整 Node/npm 环境。
+- 当前开发阶段必须在龙芯准备完整 Node/npm 环境，并使用 Vite 开发态逐模块验证。
+- `frontend/dist` 只用于最终稳定演示或断网兜底，不能代替龙芯开发态兼容性检查。
 
 ## 4. 前端 npm 包准备清单
 
@@ -163,7 +164,7 @@
 | 准备 `package.json` + `package-lock.json` | 龙芯机器可以访问 npm 源 | npm 会按锁文件自动下载需要的包 |
 | 准备 npm 缓存包 | 龙芯机器网络慢或不稳定 | 在可联网环境预先缓存依赖，再拷贝到龙芯机器 |
 | 准备完整 `node_modules` 压缩包 | 网络受限、只做短期演示 | 需要尽量在同架构或龙芯机器上生成，避免平台二进制包不匹配 |
-| 准备 `frontend/dist/` | 只运行演示，不在龙芯上改前端 | 可以减少前端构建需求，但后续开发仍建议保留完整 npm 环境 |
+| 准备 `frontend/dist/` | 最终稳定演示或断网兜底 | 不能替代 Node 开发态逐模块验证 |
 
 ## 5. Python 运行环境
 
@@ -202,61 +203,7 @@
 
 如果需要准备离线 Python 包，至少准备上述 7 个包对应的 wheel 或源码包。
 
-## 7. 项目源码与配置文件
 
-需要准备完整 Git 仓库源码：
-
-```text
-https://github.com/KevinRunzhi/LA.git
-```
-
-当前 MVP 必须包含的关键文件：
-
-| 路径 | 用途 | 是否必须 |
-| --- | --- | --- |
-| `.nvmrc` | 固定 Node.js 版本为 `20.19.4` | 必须 |
-| `README.md` | 项目基础说明 | 建议 |
-| `frontend/package.json` | 前端直接依赖与脚本 | 必须 |
-| `frontend/package-lock.json` | 前端锁定依赖版本 | 必须 |
-| `frontend/index.html` | 前端入口 HTML | 必须 |
-| `frontend/src/App.jsx` | MVP 主界面逻辑 | 必须 |
-| `frontend/src/main.jsx` | React 入口 | 必须 |
-| `frontend/src/styles/app.css` | 页面样式 | 必须 |
-| `frontend/vite.config.js` | Vite 配置和 API 代理 | 必须 |
-| `backend/app.py` | Flask 后端入口 | 必须 |
-| `backend/requirements.txt` | 后端 Python 直接依赖 | 必须 |
-| `scripts/dev.sh` | 开发命令提示脚本 | 可选 |
-
-如果只做演示部署，还可以提前准备构建产物：
-
-| 路径 | 用途 |
-| --- | --- |
-| `frontend/dist/` | 前端生产构建产物，由 Flask 后端托管 |
-
-## 8. MVP 演示数据文件
-
-当前 MVP 不接数据库，以下 JSON 文件就是演示数据来源。
-
-| 文件 | 用途 | 是否必须 |
-| --- | --- | --- |
-| `backend/data/demo_scenario.json` | 工控机高温、风道堵塞、散热异常的演示场景 | 必须 |
-| `backend/data/guide_steps.json` | 检修向导步骤 | 必须 |
-| `backend/data/knowledge_items.json` | 知识检索证据条目 | 必须 |
-| `backend/data/graph_relations.json` | 知识图谱关系 | 必须 |
-| `backend/data/expert_reviews.json` | 专家审核模拟结果 | 必须 |
-
-这些 JSON 文件需要随代码一起部署。当前不需要准备 MySQL、PostgreSQL、SQLite、Neo4j 或向量数据库。
-
-## 9. 端口与浏览器环境
-
-| 内容 | 当前要求 | 说明 |
-| --- | --- | --- |
-| 后端端口 | `8080` | Flask 服务端口，也是推荐演示入口 |
-| 前端开发端口 | `3000` | 仅开发模式使用 |
-| 浏览器 | Chromium / Chrome / Firefox / Edge 均可 | 用于打开 Web 页面 |
-| 局域网访问 | 需要龙芯机器 IP 和防火墙放行 | 平板访问后期再处理 |
-
-MVP 演示优先准备 `8080` 端口即可。
 
 ## 10. 暂不需要下载或部署的内容
 
@@ -290,9 +237,3 @@ MVP 演示优先准备 `8080` 端口即可。
 - Python `3.10+`，推荐 `3.12.x`。
 - pip 和 venv。
 - `Flask==3.0.3` 及其 6 个传递依赖包。
-- GitHub 仓库源码 `KevinRunzhi/LA`。
-- `backend/data/` 下全部 JSON 演示数据。
-- 浏览器环境。
-- `8080` 端口可用。
-
-当前最小可运行 MVP 只需要上述内容，不需要额外模型、数据库、Docker 或多媒体服务。

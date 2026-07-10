@@ -19,8 +19,10 @@ import {
   Menu,
   MessageCircle,
   Mic,
+  Music2,
   Paperclip,
   PhoneCall,
+  Play,
   Plug,
   Radio,
   Search,
@@ -31,6 +33,7 @@ import {
   Video,
   Volume2,
   Wrench,
+  X,
   Zap,
 } from "lucide-react";
 import { api } from "./api/client";
@@ -52,6 +55,11 @@ const intakeTasks = [
     title: "描述现场现象",
     value: "温度告警、风扇声音异常",
     detail: "请描述现场看到的异常现象，系统将整理为诊断输入。",
+  },
+  {
+    title: "设备位置识别",
+    value: "某输气场站 · 站控柜 A01",
+    detail: "根据现场描述与设备台账匹配场站、区域和机柜位置，并由工程师确认。",
   },
   {
     title: "补充设备型号",
@@ -112,11 +120,6 @@ const equipmentOptionGroups = [
     label: "设备型号",
     helper: "推荐型号匹配",
     options: ["研华 ACP-4000 / IPC-610", "预留型号选项", "预留型号选项"],
-  },
-  {
-    label: "设备位置",
-    helper: "场站位置确认",
-    options: ["站控柜 A01 内部工控机", "预留位置选项", "预留位置选项"],
   },
   {
     label: "设备角色",
@@ -336,22 +339,43 @@ const intakeTransitionAgents = [
     agentName: "接诊 Agent",
     runningTitle: "接诊 Agent 正在生成下一步",
     doneTitle: "接诊 Agent 已生成下一步",
-    runningSubtitle: "正在根据现场描述生成设备补充页面",
-    doneSubtitle: "已生成“补充设备型号”页面",
+    runningSubtitle: "正在根据现场描述生成设备位置识别任务",
+    doneSubtitle: "已生成“设备位置识别”任务",
     lines: [
       "现场描述已接入，系统正在整理异常关键词和场站位置线索。",
       "识别到散热相关信号：温度告警、风扇声音异常、风扇转速偏低。",
-      "匹配异常接入流程：下一步需要确认设备型号、位置、角色和关联告警。",
-      "生成下一步页面：补充设备型号。",
+      "匹配场站设备台账：当前异常可能位于控制中心 / 站控柜 A01。",
+      "生成下一步任务：设备位置识别。",
     ],
     evidence: [
       "现场异常描述：温度告警、风扇声音异常、风扇转速偏低",
       "场站位置提示：控制中心 / 站控柜 A01 / 工控机区域",
-      "异常接入规则：先定位设备对象，再进入阈值确认",
+      "异常接入规则：先确认设备位置，再补充设备对象",
       "知识图谱节点：站控柜、工控机、散热异常、TEMP/FAN 告警",
-      "MVP 演示流程：描述现象后进入设备补充页",
+      "MVP 演示流程：描述现象后先生成位置识别任务",
     ],
-    result: "已生成设备补充页面。下一步请确认设备型号、设备位置、设备角色和关联告警。",
+    result: "已生成设备位置识别任务。下一步请确认场站、控制中心和站控柜位置。",
+  },
+  {
+    agentName: "位置识别 Agent",
+    runningTitle: "位置识别 Agent 正在生成下一步",
+    doneTitle: "位置识别 Agent 已生成下一步",
+    runningSubtitle: "正在根据已确认位置生成设备信息补充任务",
+    doneSubtitle: "已生成“补充设备信息”任务",
+    lines: [
+      "设备位置已由工程师确认，系统正在读取站控柜 A01 设备台账。",
+      "匹配到工控机、PLC 控制柜、通信模块等已登记设备对象。",
+      "当前异常描述与工控机散热告警特征相关，需要进一步确认具体型号和角色。",
+      "生成下一步任务：补充设备信息。",
+    ],
+    evidence: [
+      "位置确认：某输气场站 / 控制中心 / 站控柜 A01",
+      "设备台账：站控柜 A01 已登记工控机与控制模块",
+      "现场材料：图片、视频和音频证据集合",
+      "异常关键词：温度告警、风扇声音异常、风扇转速偏低",
+      "接入规则：位置确认后补充设备型号、角色与关联告警",
+    ],
+    result: "已生成设备信息补充任务。下一步请确认设备型号、设备角色和关联告警。",
   },
   {
     agentName: "设备识别 Agent",
@@ -575,6 +599,107 @@ function classNames(...items) {
   return items.filter(Boolean).join(" ");
 }
 
+function formatFileSize(bytes = 0) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function materialTypeLabel(type) {
+  if (type === "video") return "故障视频";
+  if (type === "audio") return "故障音频";
+  return "故障图片";
+}
+
+function MaterialMosaic({ materials, compact = false, onPreview, onRemove }) {
+  if (!materials.length) {
+    return (
+      <div className={classNames("material-mosaic-empty", compact && "compact")}>
+        <ImagePlus size={20} />
+        <div>
+          <strong>尚未接入现场材料</strong>
+          <span>可选择故障图片、视频或音频</span>
+        </div>
+      </div>
+    );
+  }
+
+  const visibleMaterials = materials.slice(0, 9);
+  const remainingCount = Math.max(0, materials.length - visibleMaterials.length);
+
+  return (
+    <div className={classNames("material-mosaic", compact && "compact", `count-${Math.min(materials.length, 9)}`)}>
+      {visibleMaterials.map((material, index) => (
+        <article className="material-mosaic-item" key={material.id}>
+          <button type="button" className="material-mosaic-preview" onClick={() => onPreview(material.id)}>
+            <span className="material-mosaic-media">
+              {material.type === "image" && <img src={material.url} alt="" />}
+              {material.type === "video" && (
+                <>
+                  <video src={material.url} muted preload="metadata" aria-hidden="true" />
+                  <i className="material-play-mark"><Play size={14} fill="currentColor" /></i>
+                </>
+              )}
+              {material.type === "audio" && (
+                <span className="material-audio-mark"><Music2 size={22} /><i /><i /><i /><i /></span>
+              )}
+              {remainingCount > 0 && index === visibleMaterials.length - 1 && (
+                <span className="material-overflow-mark">+{remainingCount}</span>
+              )}
+            </span>
+            <span className="material-mosaic-meta">
+              <small>{materialTypeLabel(material.type)}</small>
+              <strong>{material.name}</strong>
+              <em>{formatFileSize(material.size)}</em>
+            </span>
+          </button>
+          <button type="button" className="material-tile-remove" onClick={() => onRemove(material.id)} aria-label={`删除 ${material.name}`}>
+            <X size={12} />
+          </button>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function MaterialPreviewModal({ material, onClose }) {
+  useEffect(() => {
+    function closeOnEscape(event) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
+  return (
+    <div className="material-preview-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section className="material-preview-modal" role="dialog" aria-modal="true" aria-label={`${materialTypeLabel(material.type)}预览`}>
+        <header>
+          <div>
+            <span>{materialTypeLabel(material.type)}</span>
+            <strong>{material.name}</strong>
+            <small>{formatFileSize(material.size)} · 当前浏览器会话</small>
+          </div>
+          <button type="button" onClick={onClose} aria-label="关闭材料预览"><X size={18} /></button>
+        </header>
+        <div className="material-preview-body">
+          {material.type === "image" && <img src={material.url} alt={`故障图片：${material.name}`} />}
+          {material.type === "video" && <video src={material.url} controls autoPlay preload="metadata" />}
+          {material.type === "audio" && (
+            <div className="material-audio-player">
+              <Music2 size={38} />
+              <strong>{material.name}</strong>
+              <audio src={material.url} controls autoPlay />
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(defaultUser);
@@ -584,6 +709,10 @@ export default function App() {
   const [health, setHealth] = useState("连接中");
   const [scenario, setScenario] = useState(null);
   const [homeDraft, setHomeDraft] = useState("");
+  const [intakeMaterials, setIntakeMaterials] = useState([]);
+  const [activeMaterialId, setActiveMaterialId] = useState(null);
+  const [previewMaterialId, setPreviewMaterialId] = useState(null);
+  const materialUrlsRef = useRef(new Set());
   const [input, setInput] = useState(defaultInput);
   const [diagnosis, setDiagnosis] = useState(null);
   const [steps, setSteps] = useState([]);
@@ -634,7 +763,23 @@ export default function App() {
       .catch(() => setHealth("后端未连接"));
   }, []);
 
+  useEffect(() => () => {
+    materialUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    materialUrlsRef.current.clear();
+  }, []);
+
+  useEffect(() => {
+    if (!intakeMaterials.length) {
+      setActiveMaterialId(null);
+      return;
+    }
+    if (!intakeMaterials.some((item) => item.id === activeMaterialId)) {
+      setActiveMaterialId(intakeMaterials[0].id);
+    }
+  }, [activeMaterialId, intakeMaterials]);
+
   const currentStep = steps[activeStep];
+  const previewMaterial = intakeMaterials.find((item) => item.id === previewMaterialId) || null;
 
   const activePhase = useMemo(() => {
     if (stage === "home") return 0;
@@ -730,6 +875,54 @@ export default function App() {
 
   function updateIntakeSelection(label, value) {
     setIntakeSelections((current) => ({ ...current, [label]: value }));
+  }
+
+  function addIntakeMaterials(fileList, requestedType, replaceId = null) {
+    const files = Array.from(fileList || []).filter((file) => {
+      if (requestedType === "video") return file.type.startsWith("video/");
+      if (requestedType === "audio") return file.type.startsWith("audio/");
+      return file.type.startsWith("image/");
+    });
+    if (!files.length) return;
+
+    if (replaceId) removeIntakeMaterial(replaceId);
+
+    const addedAt = Date.now();
+    const nextItems = files.map((file, index) => {
+      const url = URL.createObjectURL(file);
+      materialUrlsRef.current.add(url);
+      return {
+        id: `material-${addedAt}-${index}`,
+        type: requestedType,
+        name: file.name,
+        size: file.size,
+        url,
+      };
+    });
+    setIntakeMaterials((current) => [...current, ...nextItems]);
+    setActiveMaterialId(nextItems[0].id);
+  }
+
+  function removeIntakeMaterial(materialId) {
+    if (previewMaterialId === materialId) setPreviewMaterialId(null);
+    setIntakeMaterials((current) => {
+      const target = current.find((item) => item.id === materialId);
+      if (target) {
+        URL.revokeObjectURL(target.url);
+        materialUrlsRef.current.delete(target.url);
+      }
+      return current.filter((item) => item.id !== materialId);
+    });
+  }
+
+  function clearIntakeMaterials() {
+    intakeMaterials.forEach((item) => {
+      URL.revokeObjectURL(item.url);
+      materialUrlsRef.current.delete(item.url);
+    });
+    setIntakeMaterials([]);
+    setActiveMaterialId(null);
+    setPreviewMaterialId(null);
   }
 
   function runStageTransition(type, fromIndex, onDone) {
@@ -882,6 +1075,7 @@ export default function App() {
     setActivePage("workbench");
     setStage("home");
     setHomeDraft("");
+    clearIntakeMaterials();
   }
 
   if (!isAuthenticated) {
@@ -961,7 +1155,13 @@ export default function App() {
           <HomeStage
             draft={homeDraft}
             userName={currentUser.name}
+            materials={intakeMaterials}
+            activeMaterialId={activeMaterialId}
             onDraft={setHomeDraft}
+            onAddMaterials={addIntakeMaterials}
+            onSelectMaterial={setActiveMaterialId}
+            onRemoveMaterial={removeIntakeMaterial}
+            onPreviewMaterial={setPreviewMaterialId}
             onSubmit={() => enterIntakeFromHome()}
             onQuickPrompt={(prompt) => setHomeDraft(prompt)}
             onUseQuickPrompt={enterIntakeFromHome}
@@ -1003,9 +1203,11 @@ export default function App() {
               }}
             />
             <div className="stage-card">
-              {stage === "input" && (
+              {stage === "input" && activeIntakeStep < 4 && (
                 <InputStage
                   input={input}
+                  materials={intakeMaterials}
+                  activeMaterialId={activeMaterialId}
                   loading={loading}
                   activeStep={activeIntakeStep}
                   selections={intakeSelections}
@@ -1017,12 +1219,29 @@ export default function App() {
                   autoRecognized={autoRecognized}
                   equipmentTraceCount={equipmentTraceCount}
                   onInput={setInput}
+                  onAddMaterials={addIntakeMaterials}
+                  onSelectMaterial={setActiveMaterialId}
+                  onRemoveMaterial={removeIntakeMaterial}
+                  onPreviewMaterial={setPreviewMaterialId}
                   onAutoFill={autoFillIntakeSelections}
                   onSelectionChange={updateIntakeSelection}
                   onThresholdChange={updateThresholdValue}
                   onApplyThresholdSuggestion={applyThresholdSuggestion}
                   onSelectStep={selectIntakeStep}
                   onContinue={continueIntakeStep}
+                  onStart={startDiagnosis}
+                />
+              )}
+              {stage === "input" && activeIntakeStep === 4 && (
+                <IntakeSummaryStage
+                  input={input}
+                  materials={intakeMaterials}
+                  selections={intakeSelections}
+                  thresholdValues={thresholdValues}
+                  loading={loading}
+                  onPreviewMaterial={setPreviewMaterialId}
+                  onRemoveMaterial={removeIntakeMaterial}
+                  onEdit={selectIntakeStep}
                   onStart={startDiagnosis}
                 />
               )}
@@ -1084,6 +1303,7 @@ export default function App() {
           </section>
         )}
       </main>
+      {previewMaterial && <MaterialPreviewModal material={previewMaterial} onClose={() => setPreviewMaterialId(null)} />}
     </div>
   );
 }
@@ -1141,7 +1361,23 @@ function LoginPage({ onLogin }) {
   );
 }
 
-function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQuickPrompt }) {
+function HomeStage({
+  draft,
+  userName,
+  materials,
+  activeMaterialId,
+  onDraft,
+  onAddMaterials,
+  onSelectMaterial,
+  onRemoveMaterial,
+  onPreviewMaterial,
+  onSubmit,
+  onQuickPrompt,
+  onUseQuickPrompt,
+}) {
+  const imageInputRef = useRef(null);
+  const videoInputRef = useRef(null);
+  const audioInputRef = useRef(null);
   const deviceObjects = [
     ["工控机", "研华 ACP-4000 / IPC-610 · 站控柜 A01", "已接入", Cpu, "active"],
     ["PLC 控制柜", "ControlLogix / S7-1500 类对象", "已接入", GitBranch, "pending"],
@@ -1151,10 +1387,10 @@ function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQui
     ["控制柜环境", "温湿度、风道、粉尘", "已接入", ShieldCheck, "standby"],
   ];
   const collectionItems = [
-    ["故障图片", "上传现场图片或面板照片", ImagePlus],
-    ["故障视频", "上传现场视频材料", Video],
-    ["故障录音", "上传现场录音材料", Mic],
-    ["检修资料", "上传工单、手册或历史材料", Paperclip],
+    { type: "image", title: "故障图片", detail: "选择现场照片或面板照片", icon: ImagePlus, enabled: true },
+    { type: "video", title: "故障视频", detail: "选择现场环境或设备视频", icon: Video, enabled: true },
+    { type: "audio", title: "故障录音", detail: "选择异响或现场语音材料", icon: Mic, enabled: true },
+    { type: "document", title: "检修资料", detail: "工单与手册入口 · 后续接入", icon: Paperclip, enabled: false },
   ];
   const taskCards = [
     ["FT-TEMP-01", "温度告警", "当前演示闭环", "站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。", true],
@@ -1244,19 +1480,83 @@ function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQui
               <span>故障材料接入</span>
             </div>
             <div className="collection-grid">
-              {collectionItems.map(([title, detail, icon]) => {
-                const Icon = icon;
+              {collectionItems.map((item) => {
+                const Icon = item.icon;
+                const count = materials.filter((material) => material.type === item.type).length;
                 return (
-                  <button className="collection-card" type="button" key={title}>
+                  <button
+                    className={classNames("collection-card", item.enabled && "enabled", count > 0 && "has-material")}
+                    type="button"
+                    key={item.title}
+                    onClick={() => {
+                      if (item.type === "image") imageInputRef.current?.click();
+                      if (item.type === "video") videoInputRef.current?.click();
+                      if (item.type === "audio") audioInputRef.current?.click();
+                    }}
+                    aria-disabled={!item.enabled}
+                  >
                     <Icon size={18} />
                     <span className="collection-copy">
-                      <strong>{title}</strong>
-                      <small>{detail}</small>
+                      <strong>{item.title}</strong>
+                      <small>{item.detail}</small>
                     </span>
+                    <em>{count > 0 ? `${count} 项` : item.enabled ? "选择文件" : "预留"}</em>
                   </button>
                 );
               })}
             </div>
+            <input
+              ref={imageInputRef}
+              className="visually-hidden-input"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(event) => {
+                onAddMaterials(event.target.files, "image");
+                event.target.value = "";
+              }}
+            />
+            <input
+              ref={videoInputRef}
+              className="visually-hidden-input"
+              type="file"
+              accept="video/*"
+              multiple
+              onChange={(event) => {
+                onAddMaterials(event.target.files, "video");
+                event.target.value = "";
+              }}
+            />
+            <input
+              ref={audioInputRef}
+              className="visually-hidden-input"
+              type="file"
+              accept="audio/*"
+              multiple
+              onChange={(event) => {
+                onAddMaterials(event.target.files, "audio");
+                event.target.value = "";
+              }}
+            />
+
+            <section className={classNames("home-material-dock", materials.length > 0 && "has-materials")} aria-live="polite">
+              <div className="material-dock-head">
+                <div>
+                  <span>现场证据</span>
+                  <strong>{materials.length > 0 ? `已选入 ${materials.length} 项材料` : "尚未选择现场材料"}</strong>
+                </div>
+                <small>{materials.length > 0 ? "将随接诊信息进入中央证据画布" : "可直接使用预置样例继续演示"}</small>
+              </div>
+              <MaterialMosaic
+                materials={materials}
+                compact
+                onPreview={(materialId) => {
+                  onSelectMaterial(materialId);
+                  onPreviewMaterial(materialId);
+                }}
+                onRemove={onRemoveMaterial}
+              />
+            </section>
           </section>
 
           <section className="fault-task-section">
@@ -1342,8 +1642,90 @@ function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQui
   );
 }
 
+function IntakeSummaryStage({
+  input,
+  materials,
+  selections,
+  thresholdValues,
+  loading,
+  onPreviewMaterial,
+  onRemoveMaterial,
+  onEdit,
+  onStart,
+}) {
+  const materialCounts = materials.reduce((counts, material) => ({
+    ...counts,
+    [material.type]: (counts[material.type] || 0) + 1,
+  }), {});
+
+  return (
+    <div className="stage-content intake-summary-stage">
+      <header className="intake-summary-hero">
+        <div>
+          <p className="eyebrow">异常接入 · 摘要确认</p>
+          <h2>接入摘要</h2>
+          <p>现场信息已完成汇总。请在启动诊断前核对故障对象、现场材料和运行状态。</p>
+        </div>
+        <span><Check size={15} /> 接入信息已就绪</span>
+      </header>
+
+      <div className="intake-summary-dashboard">
+        <section className="summary-overview-card">
+          <header><div><small>01 / 现场事件</small><h3>异常事件概览</h3></div><button onClick={() => onEdit(0)}>返回修改</button></header>
+          <p className="summary-incident-text">{input || defaultInput}</p>
+          <div className="summary-fact-grid">
+            <p><span>设备型号</span><strong>{selections["设备型号"]}</strong></p>
+            <p><span>设备角色</span><strong>{selections["设备角色"]}</strong></p>
+            <p><span>关联告警</span><strong>{selections["关联告警"]}</strong></p>
+            <p><span>故障位置</span><strong>控制中心 · 站控柜 A01</strong></p>
+          </div>
+        </section>
+
+        <section className="summary-location-card">
+          <header><div><small>02 / 故障位置</small><h3>某输气场站 · 控制中心 · 站控柜 A01</h3></div><button onClick={() => onEdit(1)}>修改</button></header>
+          <div className="summary-location-map">
+            <img src="/images/site-station-overview.png" alt="某输气场站控制中心站控柜 A01 故障点" />
+            <div className="location-pulse" />
+            <MapPin size={21} />
+          </div>
+        </section>
+
+        <section className="summary-material-card">
+          <header>
+            <div><small>03 / 现场材料</small><h3>已接入 {materials.length} 项证据</h3></div>
+            <span>图片 {materialCounts.image || 0} · 视频 {materialCounts.video || 0} · 音频 {materialCounts.audio || 0}</span>
+          </header>
+          <MaterialMosaic materials={materials} compact onPreview={onPreviewMaterial} onRemove={onRemoveMaterial} />
+        </section>
+
+        <section className="summary-status-card">
+          <header><div><small>04 / 告警与运行参数</small><h3>已确认运行状态</h3></div><button onClick={() => onEdit(3)}>修改</button></header>
+          <div className="summary-status-grid">
+            {thresholdInputs.map(([label]) => (
+              <p key={label}><span>{label}</span><strong>{thresholdValues[label]}</strong></p>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <footer className="intake-summary-launch">
+        <div>
+          <span>诊断输入已准备完成</span>
+          <strong>将基于 {materials.length} 项现场材料、1 个设备对象、4 项运行参数和检修知识依据启动多 Agent 会诊。</strong>
+        </div>
+        <button className="primary-button" onClick={onStart} disabled={loading}>
+          {loading ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
+          {loading ? "正在启动诊断" : "启动智能诊断"}
+        </button>
+      </footer>
+    </div>
+  );
+}
+
 function InputStage({
   input,
+  materials,
+  activeMaterialId,
   loading,
   activeStep,
   selections,
@@ -1353,6 +1735,10 @@ function InputStage({
   autoRecognizing,
   autoRecognized,
   equipmentTraceCount,
+  onAddMaterials,
+  onSelectMaterial,
+  onRemoveMaterial,
+  onPreviewMaterial,
   onAutoFill,
   onSelectionChange,
   onThresholdChange,
@@ -1361,12 +1747,16 @@ function InputStage({
   onContinue,
   onStart,
 }) {
+  const addImageInputRef = useRef(null);
+  const addVideoInputRef = useRef(null);
+  const addAudioInputRef = useRef(null);
   const intakeContinueRunning = triageAgentStatus === "running" && activeTransition?.type === "intake";
   const transitionFrom = intakeContinueRunning ? activeTransition.fromIndex : -1;
   const deviceComplete = equipmentOptionGroups.every((group) => selections[group.label]);
   const thresholdComplete = thresholdInputs.every(([label]) => thresholdValues[label]?.trim());
-  const deviceCompleted = activeStep > 1 || transitionFrom === 1;
-  const thresholdCompleted = activeStep > 2 || transitionFrom === 2;
+  const locationCompleted = activeStep > 1 || transitionFrom === 1;
+  const deviceCompleted = activeStep > 2 || transitionFrom === 2;
+  const thresholdCompleted = activeStep > 3 || transitionFrom === 3;
   const equipmentRecognitionSteps = [
     "读取现场描述",
     "匹配设备台账",
@@ -1383,26 +1773,78 @@ function InputStage({
           <h2>现场接诊工作区</h2>
           <p>Agent 会根据现场输入，在当前页面逐步生成需要工程师确认的任务。</p>
         </div>
-        <span className={classNames("intake-generation-state", intakeContinueRunning && "running", activeStep === 3 && "ready")}>
-          {intakeContinueRunning ? <Loader2 size={14} className="spin" /> : activeStep === 3 ? <Check size={14} /> : <Radio size={14} />}
-          {intakeContinueRunning ? "正在生成下一项任务" : activeStep === 3 ? "接入信息已就绪" : "等待现场确认"}
+        <span className={classNames("intake-generation-state", intakeContinueRunning && "running", activeStep === 4 && "ready")}>
+          {intakeContinueRunning ? <Loader2 size={14} className="spin" /> : activeStep === 4 ? <Check size={14} /> : <Radio size={14} />}
+          {intakeContinueRunning ? "正在生成下一项任务" : activeStep === 4 ? "接入信息已就绪" : "等待现场确认"}
         </span>
       </div>
 
       <div className="dynamic-intake-board" data-active-step={activeStep}>
         <section className="dynamic-site-context">
           <div className="dynamic-site-toolbar">
-            <div><MapPin size={15} /><span>故障位置</span><strong>某输气场站 · 站控柜 A01</strong></div>
-            <span className="dynamic-fault-status"><i /> 散热异常区域</span>
+            <div><Paperclip size={15} /><span>现场材料</span><strong>{materials.length > 0 ? `已接入 ${materials.length} 项` : "等待材料接入"}</strong></div>
+            <span className="dynamic-fault-status"><i /> {materials.length > 0 ? "现场证据已就绪" : "可使用预置案例"}</span>
           </div>
-          <div className="dynamic-site-map">
-            <img src="/images/site-station-overview.png" alt="油气管道场站区域示意图" />
-            <div className="location-pulse" />
-            <div className="location-label">
-              <strong>站控柜 A01</strong>
-              <span>工控机区域</span>
-            </div>
+          <div className="dynamic-context-layout">
+            <section className="evidence-collection-panel">
+              <div className="evidence-panel-head">
+                <div>
+                  <span>现场证据集合</span>
+                  <strong>图片 · 视频 · 音频</strong>
+                </div>
+                <small>点击材料后放大预览</small>
+              </div>
+              <MaterialMosaic
+                materials={materials}
+                onPreview={(materialId) => {
+                  onSelectMaterial(materialId);
+                  onPreviewMaterial(materialId);
+                }}
+                onRemove={onRemoveMaterial}
+              />
+              <div className="evidence-material-toolbar">
+                <div className="evidence-material-actions">
+                  <button type="button" onClick={() => addImageInputRef.current?.click()}><ImagePlus size={13} /> 添加图片</button>
+                  <button type="button" onClick={() => addVideoInputRef.current?.click()}><Video size={13} /> 添加视频</button>
+                  <button type="button" onClick={() => addAudioInputRef.current?.click()}><Mic size={13} /> 添加音频</button>
+                </div>
+                <span>仅在当前浏览器会话中预览</span>
+              </div>
+            </section>
           </div>
+          <input
+            ref={addImageInputRef}
+            className="visually-hidden-input"
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(event) => {
+              onAddMaterials(event.target.files, "image");
+              event.target.value = "";
+            }}
+          />
+          <input
+            ref={addVideoInputRef}
+            className="visually-hidden-input"
+            type="file"
+            accept="video/*"
+            multiple
+            onChange={(event) => {
+              onAddMaterials(event.target.files, "video");
+              event.target.value = "";
+            }}
+          />
+          <input
+            ref={addAudioInputRef}
+            className="visually-hidden-input"
+            type="file"
+            accept="audio/*"
+            multiple
+            onChange={(event) => {
+              onAddMaterials(event.target.files, "audio");
+              event.target.value = "";
+            }}
+          />
           <div className="dynamic-symptom-strip">
             <span>现场描述</span>
             <p>{input || defaultInput}</p>
@@ -1418,9 +1860,44 @@ function InputStage({
           )}
 
           {activeStep >= 1 && (
-            <section className={classNames("intake-floating-card intake-device-card", deviceCompleted && "completed")}>
+            <section className={classNames("intake-floating-card intake-location-card", locationCompleted && "completed")}>
               <div className="intake-floating-head">
                 <span>01</span>
+                <div>
+                  <small>{locationCompleted ? "已确认故障点" : "接诊 Agent 生成"}</small>
+                  <h3>{locationCompleted ? "某输气场站 · 控制中心 · 站控柜 A01" : "设备位置识别"}</h3>
+                </div>
+                <em>{locationCompleted ? "已确认" : "需要确认"}</em>
+              </div>
+              {!locationCompleted ? (
+                <>
+                  <div className="location-task-body">
+                    <div className="location-task-map">
+                      <img src="/images/site-station-overview.png" alt="识别到的设备所在场站" />
+                      <div className="location-pulse" />
+                      <MapPin className="location-map-pin" size={18} />
+                    </div>
+                    <p className="location-map-caption"><MapPin size={13} /> 控制中心 · 站控柜 A01</p>
+                  </div>
+                  <button className="primary-button intake-card-action" onClick={onContinue} disabled={intakeContinueRunning}>
+                    确认设备位置 <ChevronRight size={15} />
+                  </button>
+                </>
+              ) : (
+                <div className="location-confirmed-visual">
+                  <img src="/images/site-station-overview.png" alt="某输气场站控制中心站控柜 A01 故障点" />
+                  <div className="location-pulse" />
+                  <MapPin className="location-map-pin" size={19} />
+                  <button type="button" onClick={() => onSelectStep(1)}>修改位置</button>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeStep >= 2 && (
+            <section className={classNames("intake-floating-card intake-device-card", deviceCompleted && "completed")}>
+              <div className="intake-floating-head">
+                <span>02</span>
                 <div><small>设备识别 Agent 生成</small><h3>补充设备信息</h3></div>
                 <em>{deviceCompleted ? "已完成" : "需要确认"}</em>
               </div>
@@ -1469,17 +1946,17 @@ function InputStage({
                   </div>
                   <div className="intake-result-foot">
                     <span><Cpu size={13} /> 台账与现场特征匹配完成</span>
-                    <button onClick={() => onSelectStep(1)}>修改信息</button>
+                    <button onClick={() => onSelectStep(2)}>修改信息</button>
                   </div>
                 </div>
               )}
             </section>
           )}
 
-          {activeStep >= 2 && (
+          {activeStep >= 3 && (
             <section className={classNames("intake-floating-card intake-threshold-card", thresholdCompleted && "completed")}>
               <div className="intake-floating-head">
-                <span>02</span>
+                <span>03</span>
                 <div><small>告警解析 Agent 生成</small><h3>确认告警与运行状态</h3></div>
                 <em>{thresholdCompleted ? "已完成" : "需要确认"}</em>
               </div>
@@ -1507,23 +1984,23 @@ function InputStage({
                   </div>
                   <div className="intake-result-foot warning">
                     <span><AlertTriangle size={13} /> 已确认散热告警与运行状态</span>
-                    <button onClick={() => onSelectStep(2)}>修改信息</button>
+                    <button onClick={() => onSelectStep(3)}>修改信息</button>
                   </div>
                 </div>
               )}
             </section>
           )}
 
-          {activeStep >= 3 && (
+          {activeStep >= 4 && (
             <section className="intake-floating-card intake-summary-card">
               <div className="intake-floating-head">
-                <span>03</span>
+                <span>04</span>
                 <div><small>接诊 Agent 汇总生成</small><h3>接入信息已就绪</h3></div>
                 <em>可诊断</em>
               </div>
               <div className="intake-summary-facts">
                 <p><span>设备</span><strong>{selections["设备型号"]}</strong></p>
-                <p><span>位置</span><strong>{selections["设备位置"]}</strong></p>
+                <p><span>位置</span><strong>控制中心 · 站控柜 A01</strong></p>
                 <p><span>告警</span><strong>{thresholdValues["TEMP/FAN LED"]} · {thresholdValues["风扇转速"]}</strong></p>
               </div>
               <div className="intake-diagnosis-tasks">
@@ -2072,6 +2549,7 @@ function FlowPanel({
   onSelectAnalysis,
   onSelectStep,
 }) {
+  const [collapsed, setCollapsed] = useState(true);
   const visiblePhaseLimit = getVisiblePhaseLimit(stage);
   const visiblePhaseSteps = phaseSteps.slice(0, visiblePhaseLimit + 1);
   const transitionRunning = activeTransition?.status === "running";
@@ -2085,11 +2563,20 @@ function FlowPanel({
     (visiblePhaseLimit >= 3 ? 1 : 0);
 
   return (
-    <aside className="flow-panel">
+    <aside className={classNames("flow-panel", collapsed && "collapsed")}>
       <section className="flow-box">
         <div className="section-heading compact">
-          <h2>诊断流程</h2>
-          <span>已生成 {generatedStepCount} 步</span>
+          {!collapsed && <h2>诊断流程</h2>}
+          {!collapsed && <span>已生成 {generatedStepCount} 步</span>}
+          <button
+            type="button"
+            className="flow-collapse-toggle"
+            aria-label={collapsed ? "展开诊断流程" : "收起诊断流程"}
+            title={collapsed ? "展开诊断流程" : "收起诊断流程"}
+            onClick={() => setCollapsed((value) => !value)}
+          >
+            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
         </div>
         <div className="phase-list">
           {visiblePhaseSteps.map((phase, phaseIndex) => (
@@ -2633,7 +3120,8 @@ function getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentSt
   if (stage === "input") {
     const suggestions = [
       "请补充温度告警、风扇声音、前面板灯态，以及是否有现场图片或视频材料。",
-      "建议先选择设备型号、设备位置、设备角色和关联告警，系统会按演示流程整理接入信息。",
+      "请先核对系统匹配出的场站、控制中心和站控柜位置，确认后再生成设备信息任务。",
+      "建议确认设备型号、设备角色和关联告警，系统会按演示流程整理接入信息。",
       "重点核对 TEMP/FAN、风扇转速、系统温度和 CPU 温度，阈值后续可改为真实 API 返回。",
       "接入信息确认后，可以触发散热异常方向的多 Agent 会诊。",
     ];
@@ -2683,8 +3171,9 @@ function getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep
   const text = message.trim();
   if (stage === "input") {
     if (activeIntakeStep === 0) return "建议把现象拆成三类记录：告警灯态、声音/转速、温度变化。当前演示会优先识别为工控机散热异常。";
-    if (activeIntakeStep === 1) return "本步建议先确认设备型号为 ACP-4000 / IPC-610，再补充站控柜 A01、工控机角色和 TEMP/FAN 关联告警。";
-    if (activeIntakeStep === 2) return "阈值可以先按演示值填写：风扇 <500 rpm、系统温度 >55°C、CPU 温度 >70°C。后续接 API 后可由设备数据自动带入。";
+    if (activeIntakeStep === 1) return "当前先确认位置匹配结果：某输气场站、控制中心、站控柜 A01。位置确认后系统再读取该机柜的设备台账。";
+    if (activeIntakeStep === 2) return "本步建议确认设备型号为 ACP-4000 / IPC-610，再补充工控机角色和 TEMP/FAN 关联告警。";
+    if (activeIntakeStep === 3) return "阈值可以先按演示值填写：风扇 <500 rpm、系统温度 >55°C、CPU 温度 >70°C。后续接 API 后可由设备数据自动带入。";
     return "接入信息已经足够触发诊断。建议点击触发诊断，让系统进入多 Agent 会诊并生成诊断结论。";
   }
 

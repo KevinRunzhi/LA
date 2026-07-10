@@ -1,27 +1,46 @@
-# LA MVP
+# LA 工业设备智能接诊系统
 
-工控设备异常检测与故障分析系统 MVP 骨架。
+当前项目是面向油气场站工控设备检修的演示型 MVP。
 
-## 开发环境
+## 当前开发状态
 
-开发目录：
+- 当前阶段：`R0 / P0`，进行中。
+- 当前目标：接诊思考过渡、照片与台账匹配、详细信息动态补充。
+- 当前主案例：研华 ACP-4000 / IPC-610 散热异常。
+- 当前能力以案例 JSON 和前端模拟为主，不接真实大模型或真实多模态识别。
 
-```bash
-~/projects/LA
+完整文档从 [`Docs/README.md`](./Docs/README.md) 开始阅读。不要使用旧状态文档判断当前进度。
+
+## 固定环境
+
+```text
+Node.js 20.19.4
+npm 10.8.2
+Python 3.10+
 ```
 
-技术栈：
+唯一开发目录：
 
-- Frontend: React + Vite
-- Backend: Python 3 + Flask
-- Data: JSON seed data
+```bash
+/home/kevin/projects/LA
+```
 
-## 启动后端
+## WSL 开发启动
+
+前端：
+
+```bash
+cd ~/projects/LA/frontend
+npm install
+npm run dev
+```
+
+后端：
 
 ```bash
 cd ~/projects/LA/backend
 python3 -m venv .venv
-. .venv/bin/activate
+source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
 ```
@@ -32,42 +51,8 @@ python app.py
 curl http://127.0.0.1:8080/api/health
 ```
 
-后端会同时托管前端构建产物。执行过 `npm run build` 后，也可以直接访问：
+## 龙芯开发原则
 
-```text
-http://127.0.0.1:8080
-```
+龙芯同样使用 Node.js `20.19.4` 开发态启动前端。每完成一个 R/P 模块就同步到龙芯验证，不等待全部功能完成后再适配。
 
-## 启动前端
-
-```bash
-cd ~/projects/LA/frontend
-npm install
-npm run dev
-```
-
-访问：
-
-```text
-http://127.0.0.1:3000
-```
-
-如果 Windows 浏览器无法打开 `3000`，优先使用后端托管入口：
-
-```text
-http://127.0.0.1:8080
-```
-
-## MVP 范围
-
-第一版只做一个设备、一个故障、一个闭环：
-
-- 研华 ACP-4000 / IPC-610 工控机
-- 高温告警 / 风道堵塞 / 散热异常
-- 诊断摘要
-- 步骤式检修向导
-- 图片占位区
-- 检修记录
-- 专家修正回流
-
-MVP 不做图片上传、图片插入、真实图片展示、Docker、真实视频、真实语音或真实连线专家。
+具体步骤见 [`Docs/loongarch-mvp-deployment-and-startup-guide.md`](./Docs/loongarch-mvp-deployment-and-startup-guide.md)。
