@@ -5171,6 +5171,43 @@ body {
   font-size: 10px;
 }
 
+.intake-symptom-edit-card {
+  grid-column: 3 / 11;
+  grid-row: 8 / 13;
+  border-left-color: #D6A04A;
+}
+
+.intake-symptom-editor {
+  display: grid;
+  gap: 6px;
+}
+
+.intake-symptom-editor > span,
+.intake-symptom-editor > small {
+  color: #8096A4;
+  font-size: 9px;
+}
+
+.intake-symptom-editor textarea {
+  width: 100%;
+  min-height: 86px;
+  resize: vertical;
+  border: 1px solid #385064;
+  border-radius: 5px;
+  outline: 0;
+  background: #091522;
+  color: #DCE8ED;
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.intake-symptom-editor textarea:focus {
+  border-color: #55B8C2;
+  box-shadow: 0 0 0 2px rgba(85, 184, 194, 0.12);
+}
+
 .intake-floating-card {
   width: auto;
   max-height: none;
@@ -5412,6 +5449,69 @@ body {
   padding: 0 9px;
   font-size: 11px;
 }
+
+.field-source-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 4px;
+  border: 1px solid rgba(85, 184, 194, 0.34);
+  border-radius: 4px;
+  background: rgba(85, 184, 194, 0.08);
+  color: #8ED8DC;
+  padding: 3px 5px;
+  font-size: 8px;
+  line-height: 1;
+}
+
+.field-source-badge.manual {
+  border-color: rgba(214, 160, 74, 0.4);
+  background: rgba(214, 160, 74, 0.09);
+  color: #E6BF7A;
+}
+
+.intake-branch-note {
+  display: grid;
+  gap: 2px;
+  border: 1px solid rgba(88, 185, 139, 0.34);
+  border-left: 3px solid #58B98B;
+  border-radius: 5px;
+  background: rgba(88, 185, 139, 0.08);
+  padding: 7px 8px;
+}
+
+.intake-branch-note > span {
+  color: #79CDA3;
+  font-size: 8px;
+}
+
+.intake-branch-note > strong {
+  color: #D7E8DF;
+  font-size: 10px;
+}
+
+.intake-branch-note > p {
+  margin: 0;
+  color: #91A6B1;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.intake-branch-note.warning {
+  border-color: rgba(214, 160, 74, 0.38);
+  border-left-color: #D6A04A;
+  background: rgba(214, 160, 74, 0.08);
+}
+
+.intake-branch-note.warning > span { color: #E4B968; }
+
+.intake-branch-note.danger {
+  border-color: rgba(219, 112, 112, 0.4);
+  border-left-color: #DB7070;
+  background: rgba(219, 112, 112, 0.08);
+}
+
+.intake-branch-note.danger > span { color: #EE9999; }
 
 .intake-card-action {
   justify-self: end;
@@ -6812,6 +6912,12 @@ body {
   font-size: 10px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.intake-summary-hero > span.warning {
+  border-color: rgba(214, 160, 74, 0.44);
+  background: rgba(214, 160, 74, 0.1);
+  color: #E4B968;
 }
 
 .intake-summary-dashboard {

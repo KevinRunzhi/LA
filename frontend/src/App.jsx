@@ -119,19 +119,71 @@ const equipmentOptionGroups = [
   {
     label: "设备型号",
     helper: "推荐型号匹配",
-    options: ["研华 ACP-4000 / IPC-610", "预留型号选项", "预留型号选项"],
+    source: "设备台账",
+    options: ["研华 ACP-4000 / IPC-610", "西门子 IPC647E 工控机", "PLC 控制柜"],
   },
   {
     label: "设备角色",
     helper: "系统角色确认",
-    options: ["站控画面与数据采集终端", "预留角色选项", "预留角色选项"],
+    source: "设备台账",
+    options: ["站控画面与数据采集终端", "工程师站与监控终端", "PLC 逻辑控制单元"],
   },
   {
     label: "关联告警",
     helper: "异常信号确认",
-    options: ["TEMP/FAN、蜂鸣、温度升高", "预留告警选项", "预留告警选项"],
+    source: "现场描述 + 告警规则",
+    options: ["TEMP/FAN、蜂鸣、温度升高", "仅温度升高（无 TEMP/FAN）", "通信中断 / 数据不上送"],
   },
 ];
+
+function getIntakeBranch(selections, thresholdValues) {
+  const model = selections["设备型号"] || "";
+  const alarm = selections["关联告警"] || "";
+  const led = thresholdValues["TEMP/FAN LED"] || "";
+  const fan = thresholdValues["风扇转速"] || "";
+
+  if (model.includes("PLC") || alarm.includes("通信")) {
+    return {
+      id: "equipment-mismatch",
+      label: "设备链路重新评估",
+      tone: "danger",
+      title: "当前设备或告警与散热知识链不一致",
+      detail: "系统已暂停沿用工控机散热结论，下一步应补充控制器状态、通信模块和数据上送信息。",
+      diagnosis: "控制器 / 通信链路待补充",
+    };
+  }
+
+  if (alarm.includes("无 TEMP/FAN") || led.includes("正常") || led.includes("未点亮")) {
+    return {
+      id: "thermal-without-alarm",
+      label: "告警证据重新评估",
+      tone: "warning",
+      title: "强告警证据减少，调整诊断优先级",
+      detail: "TEMP/FAN 未告警但温度仍偏高，优先核对环境温度、风道积尘和温度传感器。",
+      diagnosis: "环境散热 / 传感器复核优先",
+    };
+  }
+
+  if (fan && !fan.includes("<") && !fan.includes("低")) {
+    return {
+      id: "normal-fan",
+      label: "运行值重新评估",
+      tone: "warning",
+      title: "风扇转速未显示低速特征",
+      detail: "诊断重点由风扇故障调整为机柜环境、风道阻塞和温度采集偏差。",
+      diagnosis: "环境散热路径优先",
+    };
+  }
+
+  return {
+    id: "standard-thermal",
+    label: "标准散热分支",
+    tone: "success",
+    title: "告警与运行值共同指向散热链路",
+    detail: "TEMP/FAN 告警、风扇低速和温度升高相互印证，继续生成散热异常诊断任务。",
+    diagnosis: "工控机散热异常方向",
+  };
+}
 
 const thresholdInputs = [
   ["TEMP/FAN LED", "告警", "保留告警状态", "前面板告警灯点亮或蜂鸣提示"],
@@ -139,6 +191,17 @@ const thresholdInputs = [
   ["系统温度", "> 55°C", "触发散热异常判断", "触发散热异常判断"],
   ["CPU 温度", "> 70°C", "判断过热风险", "结合系统温度判断过热风险"],
 ];
+
+const controlBranchInputs = [
+  ["控制器 RUN LED", "运行", "采用控制器运行状态", "确认控制器是否仍处于运行态"],
+  ["通信模块 LINK", "异常", "标记通信链路异常", "核对通信模块、交换机端口与链路灯"],
+  ["数据上送", "中断", "标记数据上送中断", "确认站控画面是否持续收到设备数据"],
+  ["电源状态", "正常", "保留电源正常状态", "排除控制器或通信模块掉电"],
+];
+
+function getBranchThresholdInputs(intakeBranch) {
+  return intakeBranch?.id === "equipment-mismatch" ? controlBranchInputs : thresholdInputs;
+}
 
 const guideVisuals = {
   "step-01-location": {
@@ -467,6 +530,67 @@ const diagnosisTransitionAgents = [
   },
 ];
 
+function getBranchTransitionConfig(intakeBranch, fromIndex, fallback) {
+  if (intakeBranch?.id === "equipment-mismatch" && fromIndex === 2) {
+    return {
+      ...fallback,
+      runningSubtitle: "正在重新评估设备对象并生成控制器/通信状态任务",
+      doneSubtitle: "已生成“控制器与通信状态确认”页面",
+      lines: [
+        "工程师已将设备对象修正为 PLC 控制柜，系统停止沿用工控机散热知识链。",
+        "关联告警已变更为通信中断 / 数据不上送，当前需要核对控制器与通信模块状态。",
+        "重新生成确认字段：控制器 RUN、通信 LINK、数据上送、电源状态。",
+        "生成下一步页面：控制器与通信状态确认。",
+      ],
+      evidence: [
+        "工程师修正：设备型号为 PLC 控制柜",
+        "工程师修正：设备角色为 PLC 逻辑控制单元",
+        "关联告警：通信中断 / 数据不上送",
+        "设备台账：控制器、通信模块与电源模块",
+        "分支规则：设备或告警不一致时停止沿用散热结论",
+      ],
+      result: "已根据工程师修正重新生成控制器与通信状态任务，不再使用 TEMP/FAN 散热字段。",
+    };
+  }
+
+  if (intakeBranch?.id === "equipment-mismatch" && fromIndex === 3) {
+    return {
+      ...fallback,
+      runningSubtitle: "正在把控制器与通信状态整理为接入摘要",
+      doneSubtitle: "已生成“控制器 / 通信链路接入摘要”",
+      lines: [
+        "控制器与通信状态已接入，系统正在核对 RUN、LINK、数据上送和电源状态。",
+        "当前输入指向控制器 / 通信链路，不再沿用工控机散热异常方向。",
+        "整理诊断输入：PLC 设备对象、通信告警、控制器状态和数据上送状态。",
+        "生成下一步页面：接入摘要确认。",
+      ],
+      evidence: [
+        "控制器 RUN 状态",
+        "通信模块 LINK 状态",
+        "数据上送状态",
+        "电源状态",
+        "工程师对设备与告警的修正记录",
+      ],
+      result: "已生成控制器 / 通信链路接入摘要，下一步请复核后启动诊断。",
+    };
+  }
+
+  if (intakeBranch?.id === "thermal-without-alarm" && fromIndex === 3) {
+    return {
+      ...fallback,
+      lines: [
+        "TEMP/FAN 未显示告警，但系统温度与 CPU 温度仍偏高。",
+        "强告警证据减少，系统降低风扇故障优先级。",
+        "重新排序诊断方向：环境温度、风道积尘、温度传感器优先。",
+        "生成下一步页面：接入摘要确认。",
+      ],
+      result: "已按无灯态高温分支生成摘要，下一步优先复核环境散热与温度传感器。",
+    };
+  }
+
+  return fallback;
+}
+
 const guideTransitionAgents = [
   {
     agentName: "安全隔离 Agent",
@@ -737,6 +861,7 @@ export default function App() {
   const [autoRecognizing, setAutoRecognizing] = useState(false);
   const [autoRecognized, setAutoRecognized] = useState(false);
   const [equipmentTraceCount, setEquipmentTraceCount] = useState(0);
+  const [equipmentFieldSources, setEquipmentFieldSources] = useState({});
 
   useEffect(() => {
     Promise.all([
@@ -780,6 +905,10 @@ export default function App() {
 
   const currentStep = steps[activeStep];
   const previewMaterial = intakeMaterials.find((item) => item.id === previewMaterialId) || null;
+  const intakeBranch = useMemo(
+    () => getIntakeBranch(intakeSelections, thresholdValues),
+    [intakeSelections, thresholdValues]
+  );
 
   const activePhase = useMemo(() => {
     if (stage === "home") return 0;
@@ -875,6 +1004,8 @@ export default function App() {
 
   function updateIntakeSelection(label, value) {
     setIntakeSelections((current) => ({ ...current, [label]: value }));
+    setEquipmentFieldSources((current) => ({ ...current, [label]: "工程师手动确认" }));
+    setAutoRecognized(false);
   }
 
   function addIntakeMaterials(fileList, requestedType, replaceId = null) {
@@ -988,12 +1119,18 @@ export default function App() {
     [1, 2, 3, 4, 5].forEach((count, index) => {
       window.setTimeout(() => setEquipmentTraceCount(count), 520 * (index + 1));
     });
+    setEquipmentFieldSources({});
+    equipmentOptionGroups.forEach((group, index) => {
+      window.setTimeout(() => {
+        setIntakeSelections((current) => ({ ...current, [group.label]: group.options[0] }));
+        setEquipmentFieldSources((current) => ({ ...current, [group.label]: group.source }));
+      }, 760 * (index + 1));
+    });
     window.setTimeout(() => {
-      setIntakeSelections(Object.fromEntries(equipmentOptionGroups.map((group) => [group.label, group.options[0]])));
       setAutoRecognizing(false);
       setAutoRecognized(true);
       setEquipmentTraceCount(5);
-    }, 3100);
+    }, 2850);
   }
 
   function updateThresholdValue(label, value) {
@@ -1212,6 +1349,8 @@ export default function App() {
                   activeStep={activeIntakeStep}
                   selections={intakeSelections}
                   thresholdValues={thresholdValues}
+                  intakeBranch={intakeBranch}
+                  equipmentFieldSources={equipmentFieldSources}
                   triageAgentStatus={triageAgentStatus}
                   activeTransition={activeTransition}
                   triageTraceCount={triageTraceCount}
@@ -1238,6 +1377,7 @@ export default function App() {
                   materials={intakeMaterials}
                   selections={intakeSelections}
                   thresholdValues={thresholdValues}
+                  intakeBranch={intakeBranch}
                   loading={loading}
                   onPreviewMaterial={setPreviewMaterialId}
                   onRemoveMaterial={removeIntakeMaterial}
@@ -1299,6 +1439,7 @@ export default function App() {
               analysisSubStep={activeDiagnosisTask}
               currentStep={currentStep}
               diagnosis={diagnosis}
+              intakeBranch={intakeBranch}
             />
           </section>
         )}
@@ -1647,12 +1788,15 @@ function IntakeSummaryStage({
   materials,
   selections,
   thresholdValues,
+  intakeBranch,
   loading,
   onPreviewMaterial,
   onRemoveMaterial,
   onEdit,
   onStart,
 }) {
+  const activeThresholdInputs = getBranchThresholdInputs(intakeBranch);
+  const branchBlocked = intakeBranch.id === "equipment-mismatch";
   const materialCounts = materials.reduce((counts, material) => ({
     ...counts,
     [material.type]: (counts[material.type] || 0) + 1,
@@ -1666,12 +1810,15 @@ function IntakeSummaryStage({
           <h2>接入摘要</h2>
           <p>现场信息已完成汇总。请在启动诊断前核对故障对象、现场材料和运行状态。</p>
         </div>
-        <span><Check size={15} /> 接入信息已就绪</span>
+        <span className={branchBlocked ? "warning" : undefined}>
+          {branchBlocked ? <AlertTriangle size={15} /> : <Check size={15} />}
+          {branchBlocked ? "分支信息待补充" : "接入信息已就绪"}
+        </span>
       </header>
 
       <div className="intake-summary-dashboard">
         <section className="summary-overview-card">
-          <header><div><small>01 / 现场事件</small><h3>异常事件概览</h3></div><button onClick={() => onEdit(0)}>返回修改</button></header>
+          <header><div><small>01 / 现场事件</small><h3>异常事件概览</h3></div><button onClick={() => onEdit(2)}>修改设备信息</button></header>
           <p className="summary-incident-text">{input || defaultInput}</p>
           <div className="summary-fact-grid">
             <p><span>设备型号</span><strong>{selections["设备型号"]}</strong></p>
@@ -1701,21 +1848,26 @@ function IntakeSummaryStage({
         <section className="summary-status-card">
           <header><div><small>04 / 告警与运行参数</small><h3>已确认运行状态</h3></div><button onClick={() => onEdit(3)}>修改</button></header>
           <div className="summary-status-grid">
-            {thresholdInputs.map(([label]) => (
+            {activeThresholdInputs.map(([label]) => (
               <p key={label}><span>{label}</span><strong>{thresholdValues[label]}</strong></p>
             ))}
+          </div>
+          <div className={classNames("intake-branch-note", intakeBranch.tone)}>
+            <span>{intakeBranch.label}</span>
+            <strong>{intakeBranch.title}</strong>
+            <p>{intakeBranch.detail}</p>
           </div>
         </section>
       </div>
 
       <footer className="intake-summary-launch">
         <div>
-          <span>诊断输入已准备完成</span>
-          <strong>将基于 {materials.length} 项现场材料、1 个设备对象、4 项运行参数和检修知识依据启动多 Agent 会诊。</strong>
+          <span>{branchBlocked ? "已识别非主演示诊断分支" : "诊断输入已准备完成"}</span>
+          <strong>将基于 {materials.length} 项现场材料、1 个设备对象和 4 项运行参数，按“{intakeBranch.diagnosis}”启动多 Agent 会诊。</strong>
         </div>
-        <button className="primary-button" onClick={onStart} disabled={loading}>
+        <button className="primary-button" onClick={onStart} disabled={loading || branchBlocked}>
           {loading ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
-          {loading ? "正在启动诊断" : "启动智能诊断"}
+          {loading ? "正在启动诊断" : branchBlocked ? "需补充通信诊断案例" : "启动智能诊断"}
         </button>
       </footer>
     </div>
@@ -1730,11 +1882,14 @@ function InputStage({
   activeStep,
   selections,
   thresholdValues,
+  intakeBranch,
+  equipmentFieldSources,
   triageAgentStatus,
   activeTransition,
   autoRecognizing,
   autoRecognized,
   equipmentTraceCount,
+  onInput,
   onAddMaterials,
   onSelectMaterial,
   onRemoveMaterial,
@@ -1753,7 +1908,8 @@ function InputStage({
   const intakeContinueRunning = triageAgentStatus === "running" && activeTransition?.type === "intake";
   const transitionFrom = intakeContinueRunning ? activeTransition.fromIndex : -1;
   const deviceComplete = equipmentOptionGroups.every((group) => selections[group.label]);
-  const thresholdComplete = thresholdInputs.every(([label]) => thresholdValues[label]?.trim());
+  const activeThresholdInputs = getBranchThresholdInputs(intakeBranch);
+  const thresholdComplete = activeThresholdInputs.every(([label]) => thresholdValues[label]?.trim());
   const locationCompleted = activeStep > 1 || transitionFrom === 1;
   const deviceCompleted = activeStep > 2 || transitionFrom === 2;
   const thresholdCompleted = activeStep > 3 || transitionFrom === 3;
@@ -1852,11 +2008,34 @@ function InputStage({
         </section>
 
         <div className="dynamic-intake-tasks" aria-live="polite">
-          {activeStep === 0 && (
+          {activeStep === 0 && intakeContinueRunning && (
             <div className="intake-generating-card">
               <Loader2 size={18} className="spin" />
               <div><strong>接诊 Agent 正在分析</strong><span>解析现象并匹配设备台账</span></div>
             </div>
+          )}
+
+          {activeStep === 0 && !intakeContinueRunning && (
+            <section className="intake-floating-card intake-symptom-edit-card">
+              <div className="intake-floating-head">
+                <span>00</span>
+                <div><small>现场信息重新确认</small><h3>修改异常事件描述</h3></div>
+                <em>待重新分析</em>
+              </div>
+              <label className="intake-symptom-editor">
+                <span>现场异常描述</span>
+                <textarea
+                  value={input}
+                  aria-label="现场异常描述"
+                  onChange={(event) => onInput(event.target.value)}
+                  rows={4}
+                />
+                <small>修改后将重新运行接诊 Agent，并重新确认位置、设备、告警和接入摘要。</small>
+              </label>
+              <button className="primary-button intake-card-action" onClick={onContinue} disabled={!input.trim()}>
+                <Radio size={15} /> 重新分析并更新接入信息
+              </button>
+            </section>
           )}
 
           {activeStep >= 1 && (
@@ -1918,9 +2097,19 @@ function InputStage({
                             <option value={option} key={`${group.label}-${option}-${index}`}>{option}</option>
                           ))}
                         </select>
+                        {equipmentFieldSources[group.label] && (
+                          <small className={classNames("field-source-badge", equipmentFieldSources[group.label].includes("工程师") && "manual")}>
+                            来源 · {equipmentFieldSources[group.label]}
+                          </small>
+                        )}
                       </label>
                     ))}
                   </div>
+                  {intakeBranch.id !== "standard-thermal" && (
+                    <div className={classNames("intake-branch-note", intakeBranch.tone)}>
+                      <span>{intakeBranch.label}</span><strong>{intakeBranch.title}</strong><p>{intakeBranch.detail}</p>
+                    </div>
+                  )}
                   <div className="intake-recognition-row">
                     <div>
                       <strong>{autoRecognizing ? "设备识别 Agent 正在读取" : autoRecognized ? "系统建议已生成" : "可自动读取现场与台账信息"}</strong>
@@ -1957,19 +2146,25 @@ function InputStage({
             <section className={classNames("intake-floating-card intake-threshold-card", thresholdCompleted && "completed")}>
               <div className="intake-floating-head">
                 <span>03</span>
-                <div><small>告警解析 Agent 生成</small><h3>确认告警与运行状态</h3></div>
+                <div>
+                  <small>告警解析 Agent 生成</small>
+                  <h3>{intakeBranch.id === "equipment-mismatch" ? "确认控制器与通信状态" : "确认告警与运行状态"}</h3>
+                </div>
                 <em>{thresholdCompleted ? "已完成" : "需要确认"}</em>
               </div>
               {!thresholdCompleted ? (
                 <>
                   <div className="intake-field-grid threshold-fields">
-                    {thresholdInputs.map(([label, value, suggestion]) => (
+                    {activeThresholdInputs.map(([label, value, suggestion]) => (
                       <label key={label}>
                         <span>{label}</span>
                         <input value={thresholdValues[label] || ""} aria-label={label} onChange={(event) => onThresholdChange(label, event.target.value)} />
                         <button type="button" onClick={() => onApplyThresholdSuggestion(label, value)}>采用建议：{suggestion}</button>
                       </label>
                     ))}
+                  </div>
+                  <div className={classNames("intake-branch-note", intakeBranch.tone)}>
+                    <span>{intakeBranch.label}</span><strong>{intakeBranch.title}</strong><p>{intakeBranch.detail}</p>
                   </div>
                   <button className="primary-button intake-card-action" onClick={onContinue} disabled={!thresholdComplete || intakeContinueRunning}>
                     确认告警状态 <ChevronRight size={15} />
@@ -1978,7 +2173,7 @@ function InputStage({
               ) : (
                 <div className="intake-retained-result">
                   <div className="intake-result-grid threshold-result-grid">
-                    {thresholdInputs.map(([label]) => (
+                    {activeThresholdInputs.map(([label]) => (
                       <p key={label}><span>{label}</span><strong>{thresholdValues[label]}</strong></p>
                     ))}
                   </div>
@@ -3116,17 +3311,21 @@ function PlaceholderPage({ title, text }) {
   );
 }
 
-function getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentStep, diagnosis) {
+function getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentStep, diagnosis, intakeBranch) {
   if (stage === "input") {
     const suggestions = [
       "请补充温度告警、风扇声音、前面板灯态，以及是否有现场图片或视频材料。",
       "请先核对系统匹配出的场站、控制中心和站控柜位置，确认后再生成设备信息任务。",
-      "建议确认设备型号、设备角色和关联告警，系统会按演示流程整理接入信息。",
-      "重点核对 TEMP/FAN、风扇转速、系统温度和 CPU 温度，阈值后续可改为真实 API 返回。",
-      "接入信息确认后，可以触发散热异常方向的多 Agent 会诊。",
+      `建议确认设备型号、设备角色和关联告警。当前重新评估结果：${intakeBranch?.detail || "等待字段确认"}`,
+      intakeBranch?.id === "equipment-mismatch"
+        ? "设备对象已修正为 PLC 控制柜，请核对控制器 RUN、通信 LINK、数据上送和电源状态。"
+        : `重点核对 TEMP/FAN、风扇转速、系统温度和 CPU 温度。当前分支：${intakeBranch?.diagnosis || "等待运行值确认"}`,
+      `接入信息确认后，将按“${intakeBranch?.diagnosis || "当前诊断方向"}”启动多 Agent 会诊。`,
     ];
     return {
-      label: `异常接入 · ${intakeTasks[activeIntakeStep]?.title || "现场信息"}`,
+      label: activeIntakeStep === 3 && intakeBranch?.id === "equipment-mismatch"
+        ? "异常接入 · 控制器与通信状态"
+        : `异常接入 · ${intakeTasks[activeIntakeStep]?.title || "现场信息"}`,
       suggestion: suggestions[activeIntakeStep] || suggestions[0],
     };
   }
@@ -3212,8 +3411,9 @@ function AssistantChat({
   analysisSubStep,
   currentStep,
   diagnosis,
+  intakeBranch,
 }) {
-  const context = getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentStep, diagnosis);
+  const context = getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentStep, diagnosis, intakeBranch);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([]);
   const [thinking, setThinking] = useState(false);
@@ -3325,9 +3525,12 @@ function AssistantChat({
     diagnosis: diagnosisTransitionAgents,
     guide: guideTransitionAgents,
   };
-  const transitionConfig = activeTransition
+  const baseTransitionConfig = activeTransition
     ? transitionConfigMap[activeTransition.type]?.[activeTransition.fromIndex]
     : null;
+  const transitionConfig = activeTransition?.type === "intake"
+    ? getBranchTransitionConfig(intakeBranch, activeTransition.fromIndex, baseTransitionConfig)
+    : baseTransitionConfig;
   const showTriageAgent = Boolean(activeTransition && transitionConfig);
   const triageStreamLines = transitionConfig?.lines || [];
   const triageEvidenceItems = transitionConfig?.evidence || [];
