@@ -34,7 +34,11 @@ import {
   Zap,
 } from "lucide-react";
 import { api } from "./api/client";
+import { SourceCard } from "./components/chat/SourceCard";
+import { StreamingMarkdown } from "./components/chat/StreamingMarkdown";
+import { ThinkingProcess } from "./components/chat/ThinkingProcess";
 import { defaultInput } from "./data/fallbackDemo";
+import { assistantSources, buildMaintenanceAnswer, retrievalStatuses } from "./data/streamingAssistantDemo";
 
 const navItems = [
   { id: "workbench", label: "工作台", icon: LayoutDashboard },
@@ -327,6 +331,226 @@ const generatedDiagnosisPlan = [
   "生成散热异常诊断结论与检修向导",
 ];
 
+const intakeTransitionAgents = [
+  {
+    agentName: "接诊 Agent",
+    runningTitle: "接诊 Agent 正在生成下一步",
+    doneTitle: "接诊 Agent 已生成下一步",
+    runningSubtitle: "正在根据现场描述生成设备补充页面",
+    doneSubtitle: "已生成“补充设备型号”页面",
+    lines: [
+      "现场描述已接入，系统正在整理异常关键词和场站位置线索。",
+      "识别到散热相关信号：温度告警、风扇声音异常、风扇转速偏低。",
+      "匹配异常接入流程：下一步需要确认设备型号、位置、角色和关联告警。",
+      "生成下一步页面：补充设备型号。",
+    ],
+    evidence: [
+      "现场异常描述：温度告警、风扇声音异常、风扇转速偏低",
+      "场站位置提示：控制中心 / 站控柜 A01 / 工控机区域",
+      "异常接入规则：先定位设备对象，再进入阈值确认",
+      "知识图谱节点：站控柜、工控机、散热异常、TEMP/FAN 告警",
+      "MVP 演示流程：描述现象后进入设备补充页",
+    ],
+    result: "已生成设备补充页面。下一步请确认设备型号、设备位置、设备角色和关联告警。",
+  },
+  {
+    agentName: "设备识别 Agent",
+    runningTitle: "设备识别 Agent 正在生成下一步",
+    doneTitle: "设备识别 Agent 已生成下一步",
+    runningSubtitle: "正在根据设备对象生成灯态与阈值确认页面",
+    doneSubtitle: "已生成“确认灯值和阈值”页面",
+    lines: [
+      "设备对象已补充，系统正在核对站控柜 A01 内工控机信息。",
+      "识别到主演示设备：研华 ACP-4000 / IPC-610 工控机。",
+      "匹配散热异常判据：TEMP/FAN 灯、蜂鸣器、风扇转速、系统温度、CPU 温度。",
+      "生成下一步页面：确认灯值和阈值。",
+    ],
+    evidence: [
+      "设备型号：研华 ACP-4000 / IPC-610",
+      "设备位置：控制中心 / 站控柜 A01",
+      "设备角色：站控机 / 工控机",
+      "维修指导：ACP-4000 / IPC-610 散热与风扇模块检查项",
+      "告警知识：TEMP/FAN、蜂鸣器、风扇 rpm、系统温度、CPU 温度",
+    ],
+    result: "已生成告警与阈值确认页面。下一步请核对灯态、蜂鸣器、风扇转速和温度阈值。",
+  },
+  {
+    agentName: "告警解析 Agent",
+    runningTitle: "告警解析 Agent 正在生成下一步",
+    doneTitle: "告警解析 Agent 已生成下一步",
+    runningSubtitle: "正在把灯态和阈值整理为接入确认项",
+    doneSubtitle: "已生成“接入信息确认”页面",
+    lines: [
+      "灯态与阈值信息已接入，系统正在判断异常信号是否指向散热链路。",
+      "TEMP/FAN 告警、风扇低速和温度升高共同指向风道或风扇模块异常。",
+      "整理诊断输入：现场描述、设备对象、灯态阈值和关联告警。",
+      "生成下一步页面：接入信息确认。",
+    ],
+    evidence: [
+      "TEMP/FAN 灯态：红灯为异常，绿灯为正常",
+      "风扇状态：转速偏低或停转会触发散热异常方向",
+      "阈值规则：风扇 rpm、系统温度、CPU 温度共同参与判断",
+      "知识图谱节点：灯态、蜂鸣器、风扇模块、温度阈值",
+      "安全提示：进入拆检前必须完成接入信息确认",
+    ],
+    result: "已生成接入信息确认页面。下一步请复核系统整理出的诊断输入，再触发分析诊断。",
+  },
+];
+
+const diagnosisTransitionAgents = [
+  {
+    agentName: "结论生成 Agent",
+    runningTitle: "结论生成 Agent 正在生成下一步",
+    doneTitle: "结论生成 Agent 已生成下一步",
+    runningSubtitle: "正在把多 Agent 会诊结果整理为诊断结论页面",
+    doneSubtitle: "已生成“弹出并生成诊断结论”页面",
+    lines: [
+      "多 Agent 会诊已完成，系统正在汇总分析诊断、操作合规和知识检索结果。",
+      "正在检索 TEMP/FAN 告警、风扇转速偏低、系统温度升高等知识图谱节点。",
+      "正在对可能原因排序：风道堵塞 / 滤网积尘、风扇低速或停转、机柜环境通风异常。",
+      "生成下一步页面：弹出并生成诊断结论。",
+    ],
+    evidence: [
+      "分析诊断 Agent 输出：优先检查风道堵塞、滤网积尘和风扇异常",
+      "操作合规 Agent 输出：拆检前必须正常关机、拔除电源并佩戴防静电手环",
+      "知识检索 Agent 输出：命中 TEMP/FAN 告警、风扇转速 <500 rpm、系统温度 >55°C",
+      "ACP-4000 / IPC-610 散热系统资料",
+      "相似故障案例：工控机高温告警与风道堵塞",
+      "知识图谱节点：工控机、散热异常、风扇模块、滤网积尘",
+    ],
+    result: "已生成诊断结论页面。下一步请查看可能原因排序，并决定是否进入步骤式检修向导。",
+  },
+  {
+    agentName: "检修编排 Agent",
+    runningTitle: "检修编排 Agent 正在生成下一步",
+    doneTitle: "检修编排 Agent 已生成下一步",
+    runningSubtitle: "正在把诊断结论转成步骤式检修向导",
+    doneSubtitle: "已生成“确认告警与定位设备”页面",
+    lines: [
+      "诊断结论已确认，系统正在把散热异常结论转成工程师可执行的检修步骤。",
+      "正在匹配安全作业顺序：先确认告警与设备位置，再进入断电隔离和风道检查。",
+      "正在生成检查项、图片提示、阈值提醒和安全说明。",
+      "生成下一步页面：确认告警与定位设备。",
+    ],
+    evidence: [
+      "诊断结论：一次工控机散热相关异常",
+      "可能原因排序：风道堵塞 / 滤网积尘、风扇低速或停转、机柜环境异常",
+      "安全检修规则：先确认告警与定位，再执行断电和拆检",
+      "维修指导：ACP-4000 / IPC-610 散热系统检修步骤",
+      "MVP 检修向导结构：告警定位、安全隔离、风道检查、部件检查、恢复验证",
+    ],
+    result: "已生成检修向导第一页。下一步请确认 TEMP/FAN、蜂鸣器、风扇状态和设备位置。",
+  },
+];
+
+const guideTransitionAgents = [
+  {
+    agentName: "安全隔离 Agent",
+    runningTitle: "安全隔离 Agent 正在生成下一步",
+    doneTitle: "安全隔离 Agent 已生成下一步",
+    runningSubtitle: "正在根据告警定位结果生成安全隔离页面",
+    doneSubtitle: "已生成“安全隔离与断电”页面",
+    lines: [
+      "告警与设备位置已确认，系统正在判断是否允许进入拆检前准备。",
+      "正在匹配站控柜 A01 工控机的断电、冷却和防静电要求。",
+      "正在生成工程师逐项确认的安全检查项。",
+      "生成下一步页面：安全隔离与断电。",
+    ],
+    evidence: [
+      "当前设备位置：控制中心 / 站控柜 A01 / 工控机区域",
+      "告警确认结果：TEMP/FAN 异常、蜂鸣器状态、风扇状态",
+      "安全规则：通知负责人、正常关机、拔除电源、等待冷却",
+      "防静电要求：拆检前佩戴防静电手环",
+      "ACP-4000 / IPC-610 维护注意事项",
+    ],
+    result: "已生成安全隔离与断电页面。下一步请按顺序完成负责人通知、正常关机、断电冷却和防静电确认。",
+  },
+  {
+    agentName: "风道检查 Agent",
+    runningTitle: "风道检查 Agent 正在生成下一步",
+    doneTitle: "风道检查 Agent 已生成下一步",
+    runningSubtitle: "正在根据安全隔离状态生成环境与风道检查页面",
+    doneSubtitle: "已生成“检查机柜环境与风道”页面",
+    lines: [
+      "安全隔离已完成，系统正在生成非带电状态下的环境与风道检查项。",
+      "正在匹配环境温度、进风口、出风口和机箱开孔无遮挡要求。",
+      "正在组织图片提示和逐项勾选检查顺序。",
+      "生成下一步页面：检查机柜环境与风道。",
+    ],
+    evidence: [
+      "安全隔离结果：已完成关机、断电、冷却和防静电确认",
+      "环境要求：机柜环境温度小于等于 40°C",
+      "进风口 / 出风口无遮挡要求",
+      "机箱开孔无遮挡要求",
+      "散热异常知识节点：风道堵塞、通风条件异常",
+    ],
+    result: "已生成机柜环境与风道检查页面。下一步请确认环境温度、进风口、出风口和机箱开孔是否无遮挡。",
+  },
+  {
+    agentName: "散热部件检查 Agent",
+    runningTitle: "散热部件检查 Agent 正在生成下一步",
+    doneTitle: "散热部件检查 Agent 已生成下一步",
+    runningSubtitle: "正在根据风道检查结果生成滤网、风扇与接线页面",
+    doneSubtitle: "已生成“检查滤网、风扇与接线”页面",
+    lines: [
+      "环境与风道检查已完成，系统正在进入散热部件层面的检查编排。",
+      "正在匹配门滤网、风扇滤网、风扇异响、低速停转和 FAN1/FAN2 接线顺序。",
+      "正在生成滤网、风扇模块和接线示意的检查项。",
+      "生成下一步页面：检查滤网、风扇与接线。",
+    ],
+    evidence: [
+      "风道检查结果：环境温度、进风口、出风口、机箱开孔已确认",
+      "维修指导：滤网拆装与清理说明",
+      "风扇模块检查项：积尘、异响、低速、停转",
+      "FAN1/FAN2 接线与灯态知识节点",
+      "相似案例：滤网积尘导致工控机温度告警",
+    ],
+    result: "已生成滤网、风扇与接线检查页面。下一步请检查滤网积尘、风扇状态和 FAN 接线顺序。",
+  },
+  {
+    agentName: "恢复验证 Agent",
+    runningTitle: "恢复验证 Agent 正在生成下一步",
+    doneTitle: "恢复验证 Agent 已生成下一步",
+    runningSubtitle: "正在根据散热部件处理结果生成恢复验证页面",
+    doneSubtitle: "已生成“恢复运行与验证”页面",
+    lines: [
+      "滤网、风扇与接线检查已完成，系统正在生成恢复上电后的验证步骤。",
+      "正在匹配风扇转速、系统温度、CPU 温度和连续观察时间要求。",
+      "正在生成恢复运行、告警解除、数据上传稳定性的确认项。",
+      "生成下一步页面：恢复运行与验证。",
+    ],
+    evidence: [
+      "散热部件检查结果：滤网、风扇、接线已处理",
+      "阈值规则：风扇转速恢复到正常范围",
+      "阈值规则：系统温度和 CPU 温度恢复到安全范围",
+      "恢复验证要求：连续观察不少于 10 分钟",
+      "站控数据要求：数据上传稳定，无新增告警",
+    ],
+    result: "已生成恢复运行与验证页面。下一步请恢复上电并连续观察风扇、温度、告警和数据上传状态。",
+  },
+  {
+    agentName: "记录归档 Agent",
+    runningTitle: "记录归档 Agent 正在生成下一步",
+    doneTitle: "记录归档 Agent 已生成下一步",
+    runningSubtitle: "正在根据恢复验证结果生成检修记录页面",
+    doneSubtitle: "已生成“检修记录”页面",
+    lines: [
+      "恢复运行与验证已完成，系统正在整理本次检修闭环。",
+      "正在汇总诊断结论、已完成步骤、关键确认项和恢复验证结果。",
+      "正在生成可打印作业卡、专家审核和知识回流所需字段。",
+      "生成下一步页面：检修记录。",
+    ],
+    evidence: [
+      "诊断结论：站控柜 A01 工控机散热异常",
+      "已完成检查项：告警定位、安全隔离、风道检查、部件检查、恢复验证",
+      "处理结果：滤网、风扇、接线与温度阈值已完成确认",
+      "记录字段：设备、故障、步骤完成情况、专家状态",
+      "知识回流要求：保留现场现象、处理结论和专家审核结果",
+    ],
+    result: "已生成检修记录页面。下一步可打印作业卡、提交专家审核，并将结论回流知识库。",
+  },
+];
+
 const quickPrompts = [
   "工控机高温告警怎么办？",
   "PLC 通信中断如何排查？",
@@ -377,8 +601,13 @@ export default function App() {
   const [thresholdValues, setThresholdValues] = useState(
     Object.fromEntries(thresholdInputs.map(([label, value]) => [label, value]))
   );
+  const [triageAgentStatus, setTriageAgentStatus] = useState("idle");
+  const [triageTraceCount, setTriageTraceCount] = useState(0);
+  const [triageCharCount, setTriageCharCount] = useState(0);
+  const [activeTransition, setActiveTransition] = useState(null);
   const [autoRecognizing, setAutoRecognizing] = useState(false);
   const [autoRecognized, setAutoRecognized] = useState(false);
+  const [equipmentTraceCount, setEquipmentTraceCount] = useState(0);
 
   useEffect(() => {
     Promise.all([
@@ -389,7 +618,13 @@ export default function App() {
       api.graph(),
     ])
       .then(([healthResult, scenarioResult, stepResult, evidenceResult, graphResult]) => {
-        setHealth(healthResult.status === "ok" ? "后端已连接" : "后端异常");
+        setHealth(
+          healthResult.status === "ok"
+            ? "后端已连接"
+            : healthResult.status === "offline"
+              ? "本地演示模式"
+              : "后端异常"
+        );
         setScenario(scenarioResult);
         setInput(scenarioResult.default_input || defaultInput);
         setSteps(stepResult);
@@ -424,8 +659,10 @@ export default function App() {
       } else {
         setActiveAgentIndex(diagnosis.agents.length);
         timers.push(window.setTimeout(() => {
-          setActiveDiagnosisTask(diagnosisTasks.length - 1);
-          setStage("diagnosis");
+          runStageTransition("diagnosis", 0, () => {
+            setActiveDiagnosisTask(diagnosisTasks.length - 1);
+            setStage("diagnosis");
+          });
         }, 700));
       }
     }
@@ -436,6 +673,8 @@ export default function App() {
 
   async function startDiagnosis() {
     setLoading(true);
+    setActiveTransition(null);
+    setTriageAgentStatus("idle");
     try {
       const result = await api.startDiagnosis(input || defaultInput);
       setDiagnosis(result);
@@ -450,23 +689,28 @@ export default function App() {
   }
 
   async function enterGuide() {
-    setSteps(await api.steps());
-    setStage("guide");
-    setActiveStep(0);
+    if (triageAgentStatus === "running") return;
+    runStageTransition("diagnosis", 1, async () => {
+      setSteps(await api.steps());
+      setStage("guide");
+      setActiveStep(0);
+    });
   }
 
   async function completeCurrentStep() {
-    if (!currentStep) return;
-    await api.completeStep(currentStep.id);
-    const latestSteps = await api.steps();
-    setSteps(latestSteps);
-    if (activeStep < latestSteps.length - 1) {
-      setActiveStep(activeStep + 1);
-    } else {
-      const result = await api.generateRecord();
-      setRecord(result);
-      setStage("record");
-    }
+    if (!currentStep || triageAgentStatus === "running") return;
+    runStageTransition("guide", activeStep, async () => {
+      await api.completeStep(currentStep.id);
+      const latestSteps = await api.steps();
+      setSteps(latestSteps);
+      if (activeStep < latestSteps.length - 1) {
+        setActiveStep(activeStep + 1);
+      } else {
+        const result = await api.generateRecord();
+        setRecord(result);
+        setStage("record");
+      }
+    });
   }
 
   function toggleGuideCheck(stepId, check) {
@@ -488,13 +732,75 @@ export default function App() {
     setIntakeSelections((current) => ({ ...current, [label]: value }));
   }
 
+  function runStageTransition(type, fromIndex, onDone) {
+    setTriageAgentStatus("running");
+    setTriageTraceCount(0);
+    setTriageCharCount(0);
+    setActiveTransition({
+      type,
+      fromIndex,
+      status: "running",
+      charCount: 0,
+    });
+
+    let currentCount = 0;
+    const typingTimer = window.setInterval(() => {
+      currentCount += 1;
+      setTriageCharCount(currentCount);
+      setActiveTransition((current) => (
+        current && current.type === type && current.fromIndex === fromIndex
+          ? { ...current, charCount: currentCount }
+          : current
+      ));
+    }, 48);
+
+    [1, 2, 3, 4].forEach((count, index) => {
+      window.setTimeout(() => setTriageTraceCount(count), 980 * (index + 1));
+    });
+
+    window.setTimeout(() => window.clearInterval(typingTimer), 7200);
+    window.setTimeout(() => {
+      setTriageAgentStatus("done");
+      setTriageCharCount(999);
+      setActiveTransition((current) => (
+        current && current.type === type && current.fromIndex === fromIndex
+          ? { ...current, status: "done", charCount: 999 }
+          : current
+      ));
+      window.setTimeout(() => {
+        Promise.resolve(onDone?.());
+      }, 520);
+    }, 7200);
+  }
+
+  function continueIntakeStep() {
+    if (activeIntakeStep >= intakeTasks.length - 1 || triageAgentStatus === "running") return;
+    const nextStep = Math.min(intakeTasks.length - 1, activeIntakeStep + 1);
+    runStageTransition("intake", activeIntakeStep, () => setActiveIntakeStep(nextStep));
+  }
+
+  function selectIntakeStep(index) {
+    if (triageAgentStatus === "running") return;
+    setActiveTransition(null);
+    setTriageAgentStatus("idle");
+    setTriageTraceCount(0);
+    setTriageCharCount(0);
+    setActiveIntakeStep(index);
+  }
+
   function autoFillIntakeSelections() {
     setAutoRecognizing(true);
+    setAutoRecognized(false);
+    setEquipmentTraceCount(0);
+    [1, 2, 3, 4, 5].forEach((count, index) => {
+      window.setTimeout(() => setEquipmentTraceCount(count), 520 * (index + 1));
+    });
     window.setTimeout(() => {
       setIntakeSelections(Object.fromEntries(equipmentOptionGroups.map((group) => [group.label, group.options[0]])));
       setAutoRecognizing(false);
       setAutoRecognized(true);
-    }, 850);
+      setEquipmentTraceCount(5);
+    }, 3100);
   }
 
   function updateThresholdValue(label, value) {
@@ -509,6 +815,15 @@ export default function App() {
     const result = await api.generateRecord();
     setRecord(result);
     setStage("record");
+  }
+
+  function buildRecordFromGuide() {
+    if (triageAgentStatus === "running") return;
+    runStageTransition("guide", guideTransitionAgents.length - 1, async () => {
+      const result = await api.generateRecord();
+      setRecord(result);
+      setStage("record");
+    });
   }
 
   async function approveExpertReview() {
@@ -531,9 +846,20 @@ export default function App() {
     setActivePage("workbench");
     setStage("input");
     setActiveIntakeStep(0);
+    setIntakeSelections({});
+    setTriageAgentStatus("idle");
+    setTriageTraceCount(0);
+    setTriageCharCount(0);
+    setActiveTransition(null);
+    setAutoRecognizing(false);
+    setAutoRecognized(false);
+    setEquipmentTraceCount(0);
   }
 
   function jumpToPhase(phaseIndex) {
+    if (triageAgentStatus === "running") return;
+    setActiveTransition(null);
+    setTriageAgentStatus("idle");
     setActivePage("workbench");
     if (phaseIndex === 0) setStage(stage === "home" ? "home" : "input");
     if (phaseIndex === 1 && diagnosis) setStage(stage === "analysis" ? "analysis" : "diagnosis");
@@ -606,7 +932,15 @@ export default function App() {
           <div className="topbar-meta">
             <span><MapPin size={16} /> {currentUser.site || scenario?.site || "某输气场站"} · {currentUser.team}</span>
             <span><UserRound size={16} /> {currentUser.name} · {currentUser.role}</span>
-            <span className={classNames("health-pill", health === "后端已连接" && "ok")}>{health}</span>
+            <span
+              className={classNames(
+                "health-pill",
+                health === "后端已连接" && "ok",
+                health === "本地演示模式" && "demo"
+              )}
+            >
+              {health}
+            </span>
             <button className="topbar-logout" onClick={handleLogout} title="退出登录">
               <LogOut size={15} />
               退出
@@ -631,6 +965,40 @@ export default function App() {
           />
         ) : (
           <section className="stage-layout">
+            <FlowPanel
+              activePhase={activePhase}
+              steps={steps}
+              activeStep={activeStep}
+              activeIntakeStep={activeIntakeStep}
+              stage={stage}
+              analysisSubStep={activeDiagnosisTask}
+              activeAgentIndex={activeAgentIndex}
+              activeTransition={activeTransition}
+              onSelectPhase={jumpToPhase}
+              onSelectIntake={(index) => {
+                setActivePage("workbench");
+                setStage("input");
+                selectIntakeStep(index);
+              }}
+              onSelectAnalysis={(index) => {
+                if (diagnosis && triageAgentStatus !== "running") {
+                  setActivePage("workbench");
+                  setStage("diagnosis");
+                  setActiveTransition(null);
+                  setTriageAgentStatus("idle");
+                  setActiveDiagnosisTask(index);
+                }
+              }}
+              onSelectStep={(index) => {
+                if (diagnosis && triageAgentStatus !== "running") {
+                  setActivePage("workbench");
+                  setStage("guide");
+                  setActiveTransition(null);
+                  setTriageAgentStatus("idle");
+                  setActiveStep(index);
+                }
+              }}
+            />
             <div className="stage-card">
               {stage === "input" && (
                 <InputStage
@@ -639,14 +1007,18 @@ export default function App() {
                   activeStep={activeIntakeStep}
                   selections={intakeSelections}
                   thresholdValues={thresholdValues}
+                  triageAgentStatus={triageAgentStatus}
+                  triageTraceCount={triageTraceCount}
                   autoRecognizing={autoRecognizing}
                   autoRecognized={autoRecognized}
+                  equipmentTraceCount={equipmentTraceCount}
                   onInput={setInput}
                   onAutoFill={autoFillIntakeSelections}
                   onSelectionChange={updateIntakeSelection}
                   onThresholdChange={updateThresholdValue}
                   onApplyThresholdSuggestion={applyThresholdSuggestion}
-                  onSelectStep={setActiveIntakeStep}
+                  onSelectStep={selectIntakeStep}
+                  onContinue={continueIntakeStep}
                   onStart={startDiagnosis}
                 />
               )}
@@ -661,6 +1033,7 @@ export default function App() {
                   diagnosis={diagnosis}
                   evidence={evidence}
                   activeTask={activeDiagnosisTask}
+                  transitionRunning={triageAgentStatus === "running"}
                   onSelectTask={setActiveDiagnosisTask}
                   onEnterGuide={enterGuide}
                 />
@@ -671,10 +1044,11 @@ export default function App() {
                   activeStep={activeStep}
                   totalSteps={steps.length}
                   checkedItems={checkedGuideItems[currentStep.id] || []}
+                  transitionRunning={triageAgentStatus === "running"}
                   onToggleCheck={(check) => toggleGuideCheck(currentStep.id, check)}
                   onPrev={() => setActiveStep(Math.max(0, activeStep - 1))}
                   onNext={completeCurrentStep}
-                  onRecord={buildRecord}
+                  onRecord={buildRecordFromGuide}
                 />
               )}
               {stage === "record" && (
@@ -692,36 +1066,16 @@ export default function App() {
               )}
             </div>
 
-            <RightStepPanel
-              activePhase={activePhase}
-              steps={steps}
-              activeStep={activeStep}
-              activeIntakeStep={activeIntakeStep}
+            <AssistantChat
               stage={stage}
+              activeIntakeStep={activeIntakeStep}
+              triageAgentStatus={triageAgentStatus}
+              triageTraceCount={triageTraceCount}
+              triageCharCount={triageCharCount}
+              activeTransition={activeTransition}
               analysisSubStep={activeDiagnosisTask}
-              activeAgentIndex={activeAgentIndex}
               currentStep={currentStep}
               diagnosis={diagnosis}
-              onSelectPhase={jumpToPhase}
-              onSelectIntake={(index) => {
-                setActivePage("workbench");
-                setStage("input");
-                setActiveIntakeStep(index);
-              }}
-              onSelectAnalysis={(index) => {
-                if (diagnosis) {
-                  setActivePage("workbench");
-                  setStage("diagnosis");
-                  setActiveDiagnosisTask(index);
-                }
-              }}
-              onSelectStep={(index) => {
-                if (diagnosis) {
-                  setActivePage("workbench");
-                  setStage("guide");
-                  setActiveStep(index);
-                }
-              }}
             />
           </section>
         )}
@@ -799,12 +1153,17 @@ function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQui
     ["检修资料", "上传工单、手册或历史材料", Paperclip],
   ];
   const taskCards = [
-    ["FT-TEMP-01", "工控机高温告警", "已接入 · 支持完整闭环", "站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。", true],
-    ["FT-FAN-01", "风扇 / 滤网异常", "已接入 · 支持完整闭环", "工控机 TEMP/FAN 告警，疑似风扇低速、滤网积尘或风道堵塞。", true],
-    ["FT-COMM-01", "PLC 通信中断", "已接入", "PLC 通信中断，现场需要补充通信状态、模块状态和网络连接情况。", false],
-    ["FT-POWER-01", "电源模块异常", "已接入", "电源模块异常，现场需要补充供电状态、告警信息和模块位置。", false],
+    ["FT-TEMP-01", "温度告警", "当前演示闭环", "站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。", true],
+    ["FT-FAN-01", "风扇异响 / 转速低", "当前演示闭环", "工控机 TEMP/FAN 告警，疑似风扇低速、滤网积尘或风道堵塞。", true],
+    ["FT-COMM-01", "通信中断", "已接入", "PLC 通信中断，现场需要补充通信状态、模块状态和网络连接情况。", false],
+    ["FT-POWER-01", "电源异常", "已接入", "电源模块异常，现场需要补充供电状态、告警信息和模块位置。", false],
     ["FT-LED-01", "状态灯异常", "已接入", "设备状态灯异常，现场需要补充灯态、告警信息和设备位置。", false],
-    ["FT-DATA-01", "数据上传中断", "已接入", "数据上传中断，现场需要补充采集端、网络链路和平台接收状态。", false],
+    ["FT-DATA-01", "数据不上送", "已接入", "数据上传中断，现场需要补充采集端、网络链路和平台接收状态。", false],
+  ];
+  const readinessItems = [
+    ["异常来源", "站控机温度告警、风扇声音异常"],
+    ["已知材料", "场站定位、设备台账、维修向导"],
+    ["建议动作", "先完成现场描述，再进入异常接入"],
   ];
   const pipeline = ["现场接诊", "设备识别", "资料检索", "Agent 会诊", "安全校验", "作业卡", "专家回流"];
 
@@ -833,7 +1192,7 @@ function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQui
         <aside className="device-object-panel">
           <div className="section-heading compact">
             <h3>设备对象</h3>
-            <span>台账范围</span>
+            <span>场站台账</span>
           </div>
           <div className="device-object-list">
             {deviceObjects.map(([name, meta, status, icon, tone]) => {
@@ -857,11 +1216,11 @@ function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQui
             <div className="section-heading">
               <div>
                 <span className="eyebrow">现场接诊</span>
-                <h2>现场异常接诊</h2>
+                <h2>描述现场现象</h2>
               </div>
-              <span className="status-badge">散热类模板已接入</span>
+              <span className="status-badge">接诊入口</span>
             </div>
-            <p>填写现场现象，系统将整理接诊信息并进入步骤式诊断流程。</p>
+            <p>填写一线人员看到、听到、上传到系统的现象。不要先判断原因，先把现场事实录清楚。</p>
             <div className="intake-line">
               <input
                 value={draft}
@@ -876,10 +1235,7 @@ function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQui
                 开始接诊
               </button>
             </div>
-          </section>
-
-          <section className="collection-module">
-            <div className="section-heading compact">
+            <div className="intake-collection-head">
               <h3>现场采集</h3>
               <span>故障材料接入</span>
             </div>
@@ -927,9 +1283,18 @@ function HomeStage({ draft, userName, onDraft, onSubmit, onQuickPrompt, onUseQui
 
         <aside className="maintenance-dynamics">
           <div className="section-heading compact">
-            <h3>检修动态</h3>
-            <span>今日</span>
+            <h3>接诊状态</h3>
+            <span>工程视角</span>
           </div>
+          {readinessItems.map(([label, value]) => (
+            <article key={label}>
+              <span className="status-dot info" />
+              <div>
+                <strong>{label}</strong>
+                <p>{value}</p>
+              </div>
+            </article>
+          ))}
           <article>
             <span className="status-dot warn" />
             <div>
@@ -979,18 +1344,22 @@ function InputStage({
   activeStep,
   selections,
   thresholdValues,
+  triageAgentStatus,
   autoRecognizing,
   autoRecognized,
+  equipmentTraceCount,
   onInput,
   onAutoFill,
   onSelectionChange,
   onThresholdChange,
   onApplyThresholdSuggestion,
   onSelectStep,
+  onContinue,
   onStart,
 }) {
   const isLastStep = activeStep === intakeTasks.length - 1;
   const selectedValues = equipmentOptionGroups.map((group) => selections[group.label]).filter(Boolean);
+  const intakeContinueRunning = triageAgentStatus === "running";
 
   return (
     <div className="stage-content input-stage">
@@ -1038,6 +1407,13 @@ function InputStage({
 
       {activeStep === 1 && (
         <div className="equipment-option-screen">
+          <EquipmentRecognitionAgent
+            autoRecognizing={autoRecognizing}
+            autoRecognized={autoRecognized}
+            visibleCount={equipmentTraceCount}
+            selectedValues={selectedValues}
+            onAutoFill={onAutoFill}
+          />
           <section className="equipment-option-grid">
             {equipmentOptionGroups.map((group) => (
               <article className="option-group" key={group.label}>
@@ -1060,22 +1436,6 @@ function InputStage({
               </article>
             ))}
           </section>
-          <div className="operation-note">
-            <strong>自动识别</strong>
-            <p>根据现场描述模拟识别设备型号、位置、角色和关联告警。</p>
-            <button className="primary-button" onClick={onAutoFill} disabled={autoRecognizing}>
-              {autoRecognizing ? <Loader2 size={16} className="spin" /> : <Zap size={16} />}
-              {autoRecognizing ? "识别中" : "自动识别并补充"}
-            </button>
-            <div className="recognized-panel">
-              <span>{autoRecognized ? "已识别" : "待识别"}</span>
-              {selectedValues.length > 0 ? (
-                selectedValues.map((value) => <p key={value}>{value}</p>)
-              ) : (
-                <p>暂无补充项，请手动选择或点击自动识别。</p>
-              )}
-            </div>
-          </div>
         </div>
       )}
 
@@ -1136,9 +1496,11 @@ function InputStage({
         {!isLastStep ? (
           <button
             className="primary-button"
-            onClick={() => onSelectStep(Math.min(intakeTasks.length - 1, activeStep + 1))}
+            onClick={onContinue}
+            disabled={intakeContinueRunning}
           >
-            确认并继续 <ChevronRight size={16} />
+            {intakeContinueRunning ? <Loader2 size={16} className="spin" /> : null}
+            {intakeContinueRunning ? "Agent 正在生成下一步" : "确认并继续"} <ChevronRight size={16} />
           </button>
         ) : (
           <button className="primary-button" onClick={onStart} disabled={loading}>
@@ -1148,6 +1510,94 @@ function InputStage({
         )}
       </div>
     </div>
+  );
+}
+
+function AgentStateBadge({ status, idleText = "待启动", runningText = "运行中", doneText = "已完成" }) {
+  const isRunning = status === "running";
+  const isDone = status === "done";
+  return (
+    <span className={classNames("agent-state-badge", isRunning && "running", isDone && "done")}>
+      {isRunning && <Loader2 size={14} className="spin" />}
+      {isDone && <Check size={14} />}
+      {isRunning ? runningText : isDone ? doneText : idleText}
+    </span>
+  );
+}
+
+function AgentTraceList({ items, visibleCount }) {
+  return (
+    <ul className="agent-trace-list">
+      {items.slice(0, visibleCount).map((item) => (
+        <li className="agent-trace-item" key={item}>
+          <span />
+          {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function EquipmentRecognitionAgent({ autoRecognizing, autoRecognized, visibleCount, selectedValues, onAutoFill }) {
+  const traceItems = [
+    "正在思考：优先确认当前异常是否属于已接入设备对象。",
+    "读取现场描述：温度告警、风扇声音异常、风扇转速偏低。",
+    "匹配设备台账：某输气场站 · 站控柜 A01。",
+    "检索维修知识库：ACP-4000 / IPC-610 散热与告警面板。",
+    "生成推荐字段：型号、位置、角色、关联告警。",
+  ];
+  const referenceItems = ["现场描述", "设备台账", "维修知识库"];
+  const status = autoRecognizing ? "running" : autoRecognized ? "done" : "idle";
+  const referenceCount = autoRecognized ? referenceItems.length : Math.max(0, Math.min(referenceItems.length, visibleCount - 1));
+
+  return (
+    <section className="equipment-agent-panel">
+      <div className="equipment-agent-head">
+        <div>
+          <span>设备识别 Agent</span>
+          <h3>自动识别当前检修对象</h3>
+          <p>根据现场描述、设备台账和维修知识库推荐设备补充项。</p>
+        </div>
+        <AgentStateBadge status={status} idleText="待启动" runningText="识别中" doneText="已完成" />
+      </div>
+      <div className="equipment-agent-body">
+        <div className="agent-thinking-card">
+          <div className="agent-thinking-title">
+            <strong>{autoRecognized ? "已完成识别，引用 3 类信息" : autoRecognizing ? "正在识别设备对象" : "等待启动识别"}</strong>
+            <small>{autoRecognized ? "识别结果已填入下方字段" : "启动后展示识别轨迹"}</small>
+          </div>
+          {status === "idle" ? (
+            <p>点击自动设备识别后，系统会按预设流程展示设备匹配轨迹。</p>
+          ) : autoRecognizing && visibleCount === 0 ? (
+            <div className="assistant-thinking-line compact">
+              <Loader2 size={14} className="spin" />
+              <p>正在思考设备对象、现场描述和台账匹配关系...</p>
+            </div>
+          ) : (
+            <AgentTraceList items={traceItems} visibleCount={visibleCount} />
+          )}
+          <div className="agent-reference-chips">
+            {(status === "idle" ? ["待读取信息", "待匹配对象"] : referenceItems.slice(0, referenceCount)).map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+        </div>
+        <div className="agent-result-card">
+          <strong>{autoRecognized ? "推荐补充项" : "操作"}</strong>
+          {autoRecognized && selectedValues.length > 0 ? (
+            <div className="recognized-values">
+              {selectedValues.map((value) => <span key={value}>{value}</span>)}
+            </div>
+          ) : (
+            <p>识别完成后，型号、位置、角色和关联告警会填入下方字段，工程师可继续调整。</p>
+          )}
+          <button className="primary-button" onClick={onAutoFill} disabled={autoRecognizing}>
+            {autoRecognizing ? <Loader2 size={16} className="spin" /> : <Zap size={16} />}
+            {autoRecognizing ? "识别中" : autoRecognized ? "重新识别" : "自动设备识别"}
+          </button>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1232,7 +1682,7 @@ function AgentRunStage({ agents, activeAgentIndex }) {
   );
 }
 
-function DiagnosisStage({ diagnosis, evidence, activeTask, onSelectTask, onEnterGuide }) {
+function DiagnosisStage({ diagnosis, evidence, activeTask, transitionRunning, onSelectTask, onEnterGuide }) {
   const rankedCauses = [
     ["风道堵塞 / 滤网积尘", "优先级高", "现象与风扇声音异常、转速偏低、高温告警相符。"],
     ["风扇低速或停转", "优先级高", "需核对转速是否低于 500 rpm，并检查 FAN1/FAN2 接线顺序。"],
@@ -1327,12 +1777,14 @@ function DiagnosisStage({ diagnosis, evidence, activeTask, onSelectTask, onEnter
           <button
             className="primary-button"
             onClick={() => onSelectTask(Math.min(diagnosisTasks.length - 1, activeTask + 1))}
+            disabled={transitionRunning}
           >
             确认并继续 <ChevronRight size={16} />
           </button>
         ) : (
-          <button className="primary-button" onClick={onEnterGuide}>
-            进入步骤式检修向导 <ChevronRight size={16} />
+          <button className="primary-button" onClick={onEnterGuide} disabled={transitionRunning}>
+            {transitionRunning ? <Loader2 size={16} className="spin" /> : null}
+            {transitionRunning ? "Agent 正在生成下一步" : "进入步骤式检修向导"} <ChevronRight size={16} />
           </button>
         )}
       </div>
@@ -1345,6 +1797,7 @@ function GuideStage({
   activeStep,
   totalSteps,
   checkedItems,
+  transitionRunning,
   onToggleCheck,
   onPrev,
   onNext,
@@ -1353,6 +1806,7 @@ function GuideStage({
   const completedChecks = currentStep.checks.filter((check) => checkedItems.includes(check)).length;
   const allChecksDone = completedChecks === currentStep.checks.length;
   const checkProgress = Math.round((completedChecks / currentStep.checks.length) * 100);
+  const isLastGuideStep = activeStep === totalSteps - 1;
   const visual = guideVisuals[currentStep.id];
   const [focusedCheck, setFocusedCheck] = useState(visual?.frames[0]?.check || currentStep.checks[0]);
 
@@ -1438,9 +1892,10 @@ function GuideStage({
         </div>
       </div>
       <div className="stage-actions">
-        <button className="ghost-button" onClick={onPrev}><ChevronLeft size={16} /> 上一步</button>
-        <button className="primary-button" onClick={onNext} disabled={!allChecksDone}>
-          完成并继续 <ChevronRight size={16} />
+        <button className="ghost-button" onClick={onPrev} disabled={transitionRunning}><ChevronLeft size={16} /> 上一步</button>
+        <button className="primary-button" onClick={onNext} disabled={!allChecksDone || transitionRunning}>
+          {transitionRunning ? <Loader2 size={16} className="spin" /> : null}
+          {transitionRunning ? "Agent 正在生成下一步" : "完成并继续"} <ChevronRight size={16} />
         </button>
         <button className="ghost-button reserved-action" title="演示按钮，后续接入专家电话会诊">
           <PhoneCall size={16} />
@@ -1452,7 +1907,7 @@ function GuideStage({
           语音播报
           <span>预留</span>
         </button>
-        <button className="ghost-button" onClick={onRecord}>生成检修记录</button>
+        <button className="ghost-button" onClick={onRecord} disabled={transitionRunning || !isLastGuideStep}>生成检修记录</button>
       </div>
     </div>
   );
@@ -1550,7 +2005,32 @@ function getVisiblePhaseLimit(stage) {
   return 3;
 }
 
-function RightStepPanel({
+function getVisibleIntakeItems(activePhase, stage, activeIntakeStep) {
+  if (activePhase > 0) return phaseSteps[0].items;
+  if (stage !== "input") return phaseSteps[0].items.slice(0, 1);
+  return phaseSteps[0].items.slice(0, activeIntakeStep + 1);
+}
+
+function getVisibleDiagnosisTasks(stage, activePhase, activeAgentIndex, analysisSubStep) {
+  if (activePhase > 1 || stage === "guide" || stage === "record" || stage === "expert") {
+    return diagnosisTasks;
+  }
+  if (stage === "diagnosis") {
+    return diagnosisTasks.slice(0, analysisSubStep + 1);
+  }
+  if (stage === "analysis") {
+    return diagnosisTasks.slice(0, activeAgentIndex >= 0 ? 2 : 1);
+  }
+  return diagnosisTasks.slice(0, 1);
+}
+
+function getVisibleGuideSteps(stage, steps, activeStep) {
+  if (stage === "record" || stage === "expert") return steps;
+  if (stage !== "guide") return [];
+  return steps.slice(0, activeStep + 1);
+}
+
+function FlowPanel({
   activePhase,
   steps,
   activeStep,
@@ -1558,8 +2038,7 @@ function RightStepPanel({
   stage,
   analysisSubStep,
   activeAgentIndex,
-  currentStep,
-  diagnosis,
+  activeTransition,
   onSelectPhase,
   onSelectIntake,
   onSelectAnalysis,
@@ -1567,24 +2046,33 @@ function RightStepPanel({
 }) {
   const visiblePhaseLimit = getVisiblePhaseLimit(stage);
   const visiblePhaseSteps = phaseSteps.slice(0, visiblePhaseLimit + 1);
+  const transitionRunning = activeTransition?.status === "running";
+  const visibleIntakeItems = getVisibleIntakeItems(activePhase, stage, activeIntakeStep);
+  const visibleDiagnosisTasks = getVisibleDiagnosisTasks(stage, activePhase, activeAgentIndex, analysisSubStep);
+  const visibleGuideSteps = getVisibleGuideSteps(stage, steps, activeStep);
+  const generatedStepCount =
+    visibleIntakeItems.length +
+    (visiblePhaseLimit >= 1 ? visibleDiagnosisTasks.length : 0) +
+    (visiblePhaseLimit >= 2 ? visibleGuideSteps.length : 0) +
+    (visiblePhaseLimit >= 3 ? 1 : 0);
 
   return (
-    <aside className="right-step-panel">
+    <aside className="flow-panel">
       <section className="flow-box">
         <div className="section-heading compact">
           <h2>诊断流程</h2>
-          <span>已生成 {visiblePhaseSteps.length}</span>
+          <span>已生成 {generatedStepCount} 步</span>
         </div>
         <div className="phase-list">
           {visiblePhaseSteps.map((phase, phaseIndex) => (
             <div className={classNames("phase-item", phaseIndex === activePhase && "active", phaseIndex < activePhase && "done")} key={phase.title}>
-              <button className="phase-title" onClick={() => onSelectPhase(phaseIndex)}>
+              <button className="phase-title" onClick={() => !transitionRunning && onSelectPhase(phaseIndex)}>
                 <span>{phaseIndex < activePhase ? <Check size={14} /> : phaseIndex + 1}</span>
                 <strong>{phase.title}</strong>
               </button>
               <div className="sub-step-list">
                 {phaseIndex === 0 ? (
-                  phase.items.map((item, index) => (
+                  visibleIntakeItems.map((item, index) => (
                     <button
                       className={classNames(
                         "sub-step",
@@ -1592,13 +2080,13 @@ function RightStepPanel({
                         getIntakeStepStatus(activePhase, stage, index, activeIntakeStep) === "已完成" && "done"
                       )}
                       key={`${item}-${index}`}
-                      onClick={() => onSelectIntake(index)}
+                      onClick={() => !transitionRunning && onSelectIntake(index)}
                     >
                       {getIntakeStepStatus(activePhase, stage, index, activeIntakeStep)} · {item}
                     </button>
                   ))
                 ) : phaseIndex === 1 ? (
-                  diagnosisTasks.map((task, index) => (
+                  visibleDiagnosisTasks.map((task, index) => (
                     <button
                       key={task.title}
                       className={classNames(
@@ -1606,23 +2094,23 @@ function RightStepPanel({
                         isAnalysisStepActive(stage, index, activeAgentIndex, analysisSubStep) && "active",
                         isAnalysisStepDone(stage, activePhase, index, activeAgentIndex, analysisSubStep) && "done"
                       )}
-                      onClick={() => onSelectAnalysis(index)}
+                      onClick={() => !transitionRunning && onSelectAnalysis(index)}
                     >
                       {getAnalysisStepStatus(stage, activePhase, index, activeAgentIndex, analysisSubStep)} · {task.title}
                     </button>
                   ))
-                ) : phaseIndex === 2 && steps.length > 0 ? (
-                  steps.map((step, index) => (
+                ) : phaseIndex === 2 && visibleGuideSteps.length > 0 ? (
+                  visibleGuideSteps.map((step, index) => (
                     <button
                       key={step.id}
                       className={classNames("sub-step", stage === "guide" && index === activeStep && "active", step.completed && "done")}
-                      onClick={() => onSelectStep(index)}
+                      onClick={() => !transitionRunning && onSelectStep(index)}
                     >
                       {step.completed ? "已完成" : stage === "guide" && index === activeStep ? "当前" : `步骤 ${index + 1}`} · {step.title}
                     </button>
                   ))
                 ) : (
-                  phase.items.map((item, index) => (
+                  (phaseIndex === 3 ? phase.items.slice(0, 1) : phase.items).map((item, index) => (
                     <span className={classNames("sub-step", phaseIndex < activePhase && "done")} key={`${item}-${index}`}>
                       {phaseIndex < activePhase ? "已完成" : "待处理"} · {item}
                     </span>
@@ -1633,13 +2121,6 @@ function RightStepPanel({
           ))}
         </div>
       </section>
-      <AssistantChat
-        stage={stage}
-        activeIntakeStep={activeIntakeStep}
-        analysisSubStep={analysisSubStep}
-        currentStep={currentStep}
-        diagnosis={diagnosis}
-      />
     </aside>
   );
 }
@@ -2204,13 +2685,27 @@ function getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep
     : "我会根据当前步骤给出辅助建议。当前版本是本地模拟回复，用于演示交互效果。";
 }
 
-function AssistantChat({ stage, activeIntakeStep, analysisSubStep, currentStep, diagnosis }) {
+function AssistantChat({
+  stage,
+  activeIntakeStep,
+  triageAgentStatus,
+  triageTraceCount,
+  triageCharCount,
+  activeTransition,
+  analysisSubStep,
+  currentStep,
+  diagnosis,
+}) {
   const context = getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentStep, diagnosis);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([]);
   const [thinking, setThinking] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState(null);
+  const [thinkingText, setThinkingText] = useState("");
+  const [retrievalVisibleCount, setRetrievalVisibleCount] = useState(0);
+  const [sourceVisibleCount, setSourceVisibleCount] = useState(0);
+  const [processStarted, setProcessStarted] = useState(false);
   const timersRef = useRef([]);
 
   function clearAssistantTimers() {
@@ -2231,45 +2726,104 @@ function AssistantChat({ stage, activeIntakeStep, analysisSubStep, currentStep, 
     setThinking(false);
     setStreaming(false);
     setStreamingMessageId(null);
+    setThinkingText("");
+    setRetrievalVisibleCount(0);
+    setSourceVisibleCount(0);
+    setProcessStarted(false);
     return clearAssistantTimers;
   }, [context.label, context.suggestion]);
 
   function sendMessage() {
     const text = draft.trim();
     if (!text || thinking || streaming) return;
+
     const userMessage = { id: `user-${Date.now()}`, role: "user", text };
-    setMessages((current) => [...current, userMessage]);
+    const reply = buildMaintenanceAnswer(text) || getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep, text);
+    const replyId = `assistant-${Date.now()}`;
+    const evidenceItems = [
+      "当前步骤上下文：" + context.label,
+      ...retrievalStatuses.map((item) => item.title),
+      ...assistantSources.map((source) => source.title),
+      "风险提示：断电、冷却、防静电后再进入拆检动作",
+    ];
+
+    setMessages((current) => [
+      ...current,
+      userMessage,
+      {
+        id: replyId,
+        role: "assistant",
+        text: "",
+        status: "running",
+        evidenceItems,
+        evidenceVisibleCount: 0,
+      },
+    ]);
     setDraft("");
     setThinking(true);
+    setStreaming(true);
+    setStreamingMessageId(replyId);
+    setProcessStarted(true);
+    setThinkingText("");
+    setRetrievalVisibleCount(0);
+    setSourceVisibleCount(0);
     clearAssistantTimers();
 
-    const reply = getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep, text);
-    const replyId = `assistant-${Date.now()}`;
-    const chunks = reply.match(/[^。！？；]+[。！？；]?/g) || [reply];
+    evidenceItems.forEach((_, index) => {
+      const timer = window.setTimeout(() => {
+        setMessages((current) => current.map((message) => (
+          message.id === replyId
+            ? { ...message, evidenceVisibleCount: index + 1 }
+            : message
+        )));
+      }, 900 + index * 520);
+      timersRef.current.push(timer);
+    });
 
-    const thinkingTimer = window.setTimeout(() => {
-      setThinking(false);
-      setStreaming(true);
-      setStreamingMessageId(replyId);
-      setMessages((current) => [...current, { id: replyId, role: "assistant", text: "" }]);
-
-      chunks.forEach((chunk, index) => {
-        const streamTimer = window.setTimeout(() => {
+    const chars = Array.from(reply);
+    chars.forEach((char, index) => {
+      const streamTimer = window.setTimeout(() => {
+        setMessages((current) => current.map((message) => (
+          message.id === replyId
+            ? { ...message, text: `${message.text}${char}` }
+            : message
+        )));
+        if (index === chars.length - 1) {
+          setThinking(false);
+          setStreaming(false);
+          setStreamingMessageId(null);
           setMessages((current) => current.map((message) => (
             message.id === replyId
-              ? { ...message, text: `${message.text}${chunk}` }
+              ? { ...message, status: "done", evidenceVisibleCount: evidenceItems.length }
               : message
           )));
-          if (index === chunks.length - 1) {
-            setStreaming(false);
-            setStreamingMessageId(null);
-          }
-        }, index * 520);
-        timersRef.current.push(streamTimer);
-      });
-    }, 1800);
-    timersRef.current.push(thinkingTimer);
+        }
+      }, 700 + index * 34);
+      timersRef.current.push(streamTimer);
+    });
   }
+
+  const transitionConfigMap = {
+    intake: intakeTransitionAgents,
+    diagnosis: diagnosisTransitionAgents,
+    guide: guideTransitionAgents,
+  };
+  const transitionConfig = activeTransition
+    ? transitionConfigMap[activeTransition.type]?.[activeTransition.fromIndex]
+    : null;
+  const showTriageAgent = Boolean(activeTransition && transitionConfig);
+  const triageStreamLines = transitionConfig?.lines || [];
+  const triageEvidenceItems = transitionConfig?.evidence || [];
+  const triageStatus = activeTransition?.status || "idle";
+  const triageFullText = triageStreamLines.join("\n");
+  const triageVisibleLines = triageFullText
+    .slice(0, triageStatus === "done" ? triageFullText.length : triageCharCount)
+    .split("\n")
+    .filter((line, index, lines) => line || index < lines.length - 1);
+  const triageEvidenceVisibleCount = triageStatus === "done"
+    ? triageEvidenceItems.length
+    : Math.max(0, Math.min(4, Math.floor((triageCharCount - 78) / 34) + 1));
+  const showTriageEvidence = triageEvidenceVisibleCount > 0 || triageTraceCount >= 3 || triageStatus === "done";
 
   return (
     <aside className="assistant-chat">
@@ -2281,20 +2835,101 @@ function AssistantChat({ stage, activeIntakeStep, analysisSubStep, currentStep, 
         </div>
       </div>
       <div className="assistant-body">
+        {showTriageAgent && (
+          <section className="agent-stream-panel">
+            <div className="agent-stream-head">
+              {triageStatus === "running" ? <Loader2 size={15} className="spin" /> : <Check size={15} />}
+              <div>
+                <strong>
+                  {triageStatus === "done" ? transitionConfig.doneTitle : transitionConfig.runningTitle}
+                  <ChevronRight size={13} />
+                </strong>
+                <span>{triageStatus === "done" ? transitionConfig.doneSubtitle : transitionConfig.runningSubtitle}</span>
+              </div>
+            </div>
+            <div className="agent-stream-lines">
+              {triageVisibleLines.length > 0 ? triageVisibleLines.map((line, index) => (
+                <p key={`${line}-${index}`}>
+                  {line}
+                  {triageStatus === "running" && index === triageVisibleLines.length - 1 && <i className="stream-cursor" />}
+                </p>
+              )) : (
+                <p>{triageStatus === "running" && <i className="stream-cursor" />}</p>
+              )}
+            </div>
+            {showTriageEvidence && (
+              <div className="agent-evidence-box">
+                <div className="agent-evidence-head">
+                  {triageStatus === "done" ? (
+                    <Check size={11} />
+                  ) : (
+                    <Loader2 size={11} className="spin" />
+                  )}
+                  {triageStatus === "done"
+                    ? `已参考 ${triageEvidenceItems.length} 条检修依据`
+                    : "正在搜索检修依据"}
+                  <ChevronRight size={12} />
+                </div>
+                <ul>
+                  {triageEvidenceItems
+                    .slice(0, triageEvidenceVisibleCount)
+                    .map((item) => (
+                      <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {triageStatus === "done" && (
+              <div className="agent-stream-result">
+                <p><strong>{transitionConfig.agentName} 输出：</strong>{transitionConfig.result}</p>
+              </div>
+            )}
+          </section>
+        )}
         <div className="assistant-api-note">当前为本地模拟回复，后续接入大模型 API 后替换此逻辑。</div>
+
         <div className="assistant-message-list">
           {messages.map((message) => (
             <div className={classNames("assistant-message", message.role)} key={message.id}>
               {message.role === "hint" && <span>当前步骤建议</span>}
-              <p>{message.text}{message.id === streamingMessageId && <i className="stream-cursor" />}</p>
+              {message.role === "assistant" ? (
+                <section className="agent-stream-panel assistant-agent-response">
+                  <div className="agent-stream-head">
+                    {message.status === "done" ? <Check size={15} /> : <Loader2 size={15} className="spin" />}
+                    <div>
+                      <strong>
+                        {message.status === "done" ? "辅助诊断 Agent 已完成" : "辅助诊断 Agent 正在思考中"}
+                        <ChevronRight size={13} />
+                      </strong>
+                      <span>{message.status === "done" ? "已生成当前步骤建议" : "正在结合当前步骤检索维修依据"}</span>
+                    </div>
+                  </div>
+                  {(message.evidenceVisibleCount > 0 || message.status === "done") && (
+                    <div className="agent-evidence-box">
+                      <div className="agent-evidence-head">
+                        {message.status === "done" ? <Check size={11} /> : <Loader2 size={11} className="spin" />}
+                        {message.status === "done"
+                          ? `已参考 ${message.evidenceItems.length} 条检修依据`
+                          : "正在搜索检修依据"}
+                        <ChevronRight size={12} />
+                      </div>
+                      <ul>
+                        {message.evidenceItems.slice(0, message.evidenceVisibleCount).map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div className="agent-stream-result agent-stream-answer">
+                    <StreamingMarkdown content={message.text} />
+                    {message.id === streamingMessageId && <i className="stream-cursor" />}
+                  </div>
+                </section>
+              ) : (
+                <p>{message.text}</p>
+              )}
             </div>
           ))}
-          {thinking && (
-            <div className="assistant-message assistant typing">
-              <Loader2 size={14} className="spin" />
-              <p>正在思考当前步骤和检修上下文...</p>
-            </div>
-          )}
         </div>
       </div>
       <div className="assistant-input">
@@ -2306,7 +2941,9 @@ function AssistantChat({ stage, activeIntakeStep, analysisSubStep, currentStep, 
           }}
           placeholder="追问当前步骤..."
         />
-        <button onClick={sendMessage} disabled={!draft.trim() || thinking || streaming}><Send size={14} /></button>
+        <button onClick={sendMessage} disabled={!draft.trim() || thinking || streaming}>
+          {thinking || streaming ? <Loader2 size={14} className="spin" /> : <Send size={14} />}
+        </button>
       </div>
     </aside>
   );
