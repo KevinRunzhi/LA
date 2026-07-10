@@ -854,6 +854,9 @@ export default function App() {
     setAutoRecognizing(false);
     setAutoRecognized(false);
     setEquipmentTraceCount(0);
+    window.setTimeout(() => {
+      runStageTransition("intake", 0, () => setActiveIntakeStep(1));
+    }, 180);
   }
 
   function jumpToPhase(phaseIndex) {
@@ -1008,6 +1011,7 @@ export default function App() {
                   selections={intakeSelections}
                   thresholdValues={thresholdValues}
                   triageAgentStatus={triageAgentStatus}
+                  activeTransition={activeTransition}
                   triageTraceCount={triageTraceCount}
                   autoRecognizing={autoRecognizing}
                   autoRecognized={autoRecognized}
@@ -1345,10 +1349,10 @@ function InputStage({
   selections,
   thresholdValues,
   triageAgentStatus,
+  activeTransition,
   autoRecognizing,
   autoRecognized,
   equipmentTraceCount,
-  onInput,
   onAutoFill,
   onSelectionChange,
   onThresholdChange,
@@ -1357,157 +1361,181 @@ function InputStage({
   onContinue,
   onStart,
 }) {
-  const isLastStep = activeStep === intakeTasks.length - 1;
-  const selectedValues = equipmentOptionGroups.map((group) => selections[group.label]).filter(Boolean);
-  const intakeContinueRunning = triageAgentStatus === "running";
+  const intakeContinueRunning = triageAgentStatus === "running" && activeTransition?.type === "intake";
+  const transitionFrom = intakeContinueRunning ? activeTransition.fromIndex : -1;
+  const deviceComplete = equipmentOptionGroups.every((group) => selections[group.label]);
+  const thresholdComplete = thresholdInputs.every(([label]) => thresholdValues[label]?.trim());
+  const deviceCompleted = activeStep > 1 || transitionFrom === 1;
+  const thresholdCompleted = activeStep > 2 || transitionFrom === 2;
+  const equipmentRecognitionSteps = [
+    "读取现场描述",
+    "匹配设备台账",
+    "检索维修知识库",
+    "核对设备型号",
+    "生成推荐字段",
+  ];
 
   return (
-    <div className="stage-content input-stage">
-      <div className="stage-copy">
-        <p className="eyebrow">异常接入 · 第 {activeStep + 1} / {intakeTasks.length} 步</p>
-        <h2>{intakeTasks[activeStep].title}</h2>
-        <p>{intakeTasks[activeStep].detail}</p>
+    <div className="stage-content input-stage dynamic-intake-stage">
+      <div className="dynamic-intake-head">
+        <div>
+          <p className="eyebrow">异常接入 · Agent 动态接诊</p>
+          <h2>现场接诊工作区</h2>
+          <p>Agent 会根据现场输入，在当前页面逐步生成需要工程师确认的任务。</p>
+        </div>
+        <span className={classNames("intake-generation-state", intakeContinueRunning && "running", activeStep === 3 && "ready")}>
+          {intakeContinueRunning ? <Loader2 size={14} className="spin" /> : activeStep === 3 ? <Check size={14} /> : <Radio size={14} />}
+          {intakeContinueRunning ? "正在生成下一项任务" : activeStep === 3 ? "接入信息已就绪" : "等待现场确认"}
+        </span>
       </div>
 
-      {activeStep === 0 && (
-        <div className="intake-step-screen">
-          <section className="symptom-input-card">
-            <textarea
-              value={input}
-              onChange={(event) => onInput(event.target.value)}
-              placeholder="例如：站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。"
-            />
-            <section className="intake-collection-card">
-              <strong>本步采集</strong>
-              <span>现场描述</span>
-              <span>告警状态</span>
-              <span>设备声音</span>
-              <span>现场材料</span>
-            </section>
-          </section>
-          <div className="intake-side-note primary-visual">
-            <section className="site-location-card">
-              <div className="section-heading compact">
-                <h3>位置提示</h3>
-                <span>系统识别</span>
-              </div>
-              <div className="site-map-preview">
-                <img src="/images/site-station-overview.png" alt="油气管道场站区域示意图" />
-                <div className="location-pulse" />
-                <div className="location-label">
-                  <strong>站控柜 A01</strong>
-                  <span>工控机区域</span>
-                </div>
-              </div>
-              <p>后续诊断将优先围绕该区域组织检修步骤。</p>
-            </section>
+      <div className="dynamic-intake-board" data-active-step={activeStep}>
+        <section className="dynamic-site-context">
+          <div className="dynamic-site-toolbar">
+            <div><MapPin size={15} /><span>故障位置</span><strong>某输气场站 · 站控柜 A01</strong></div>
+            <span className="dynamic-fault-status"><i /> 散热异常区域</span>
           </div>
-        </div>
-      )}
-
-      {activeStep === 1 && (
-        <div className="equipment-option-screen">
-          <EquipmentRecognitionAgent
-            autoRecognizing={autoRecognizing}
-            autoRecognized={autoRecognized}
-            visibleCount={equipmentTraceCount}
-            selectedValues={selectedValues}
-            onAutoFill={onAutoFill}
-          />
-          <section className="equipment-option-grid">
-            {equipmentOptionGroups.map((group) => (
-              <article className="option-group" key={group.label}>
-                <label>
-                  <span>{group.helper}</span>
-                  <strong>{group.label}</strong>
-                  <select
-                    value={selections[group.label] || ""}
-                    aria-label={group.label}
-                    onChange={(event) => onSelectionChange(group.label, event.target.value)}
-                  >
-                    <option value="" disabled>请选择{group.label}</option>
-                  {group.options.map((option, index) => (
-                    <option value={option} key={`${group.label}-${option}-${index}`}>
-                      {option}
-                    </option>
-                  ))}
-                  </select>
-                </label>
-              </article>
-            ))}
-          </section>
-        </div>
-      )}
-
-      {activeStep === 2 && (
-        <div className="threshold-edit-grid">
-          {thresholdInputs.map(([label, value, suggestion, detail]) => (
-            <article className="threshold-edit-card" key={label}>
-              <span>{label}</span>
-              <input
-                value={thresholdValues[label] || ""}
-                aria-label={label}
-                onChange={(event) => onThresholdChange(label, event.target.value)}
-              />
-              <div className="suggestion-line">
-                <small>系统建议：{suggestion}</small>
-                <button onClick={() => onApplyThresholdSuggestion(label, value)}>采用建议值</button>
-              </div>
-              <p>{detail}</p>
-            </article>
-          ))}
-        </div>
-      )}
-
-      {activeStep === 3 && (
-        <div className="intake-summary">
-          <section>
-            <span>异常描述</span>
-            <p>{input || defaultInput}</p>
-          </section>
-          <section>
-            <span>设备型号</span>
-            <p>{selections["设备型号"] || "待选择"}</p>
-          </section>
-          <section>
-            <span>关键阈值</span>
-            <p>{Object.entries(thresholdValues).map(([label, value]) => `${label} ${value}`).join(" · ")}</p>
-          </section>
-          <section>
-            <span>系统将生成的诊断任务</span>
-            <div className="generated-task-list">
-              {generatedDiagnosisPlan.map((task) => (
-                <p key={task}><Check size={14} /> {task}</p>
-              ))}
+          <div className="dynamic-site-map">
+            <img src="/images/site-station-overview.png" alt="油气管道场站区域示意图" />
+            <div className="location-pulse" />
+            <div className="location-label">
+              <strong>站控柜 A01</strong>
+              <span>工控机区域</span>
             </div>
-          </section>
-        </div>
-      )}
+          </div>
+          <div className="dynamic-symptom-strip">
+            <span>现场描述</span>
+            <p>{input || defaultInput}</p>
+          </div>
+        </section>
 
-      <div className="input-toolbar">
-        <button
-          className="ghost-button"
-          onClick={() => onSelectStep(Math.max(0, activeStep - 1))}
-          disabled={activeStep === 0}
-        >
-          <ChevronLeft size={16} />
-          上一步
-        </button>
-        {!isLastStep ? (
-          <button
-            className="primary-button"
-            onClick={onContinue}
-            disabled={intakeContinueRunning}
-          >
-            {intakeContinueRunning ? <Loader2 size={16} className="spin" /> : null}
-            {intakeContinueRunning ? "Agent 正在生成下一步" : "确认并继续"} <ChevronRight size={16} />
-          </button>
-        ) : (
-          <button className="primary-button" onClick={onStart} disabled={loading}>
-            <Send size={16} />
-            {loading ? "诊断中" : "触发诊断"}
-          </button>
-        )}
+        <div className="dynamic-intake-tasks" aria-live="polite">
+          {activeStep === 0 && (
+            <div className="intake-generating-card">
+              <Loader2 size={18} className="spin" />
+              <div><strong>接诊 Agent 正在分析</strong><span>解析现象并匹配设备台账</span></div>
+            </div>
+          )}
+
+          {activeStep >= 1 && (
+            <section className={classNames("intake-floating-card intake-device-card", deviceCompleted && "completed")}>
+              <div className="intake-floating-head">
+                <span>01</span>
+                <div><small>设备识别 Agent 生成</small><h3>补充设备信息</h3></div>
+                <em>{deviceCompleted ? "已完成" : "需要确认"}</em>
+              </div>
+              {!deviceCompleted ? (
+                <>
+                  <div className="intake-field-grid">
+                    {equipmentOptionGroups.map((group) => (
+                      <label key={group.label}>
+                        <span>{group.label}</span>
+                        <select
+                          value={selections[group.label] || ""}
+                          aria-label={group.label}
+                          onChange={(event) => onSelectionChange(group.label, event.target.value)}
+                          disabled={autoRecognizing}
+                        >
+                          <option value="" disabled>请选择</option>
+                          {group.options.map((option, index) => (
+                            <option value={option} key={`${group.label}-${option}-${index}`}>{option}</option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="intake-recognition-row">
+                    <div>
+                      <strong>{autoRecognizing ? "设备识别 Agent 正在读取" : autoRecognized ? "系统建议已生成" : "可自动读取现场与台账信息"}</strong>
+                      <div className="intake-recognition-trace">
+                        {equipmentRecognitionSteps.slice(0, equipmentTraceCount).map((item) => <span key={item}><Check size={11} /> {item}</span>)}
+                      </div>
+                    </div>
+                    <button className="ghost-button" onClick={onAutoFill} disabled={autoRecognizing}>
+                      {autoRecognizing ? <Loader2 size={14} className="spin" /> : <Zap size={14} />}
+                      {autoRecognizing ? "识别中" : "自动识别"}
+                    </button>
+                  </div>
+                  <button className="primary-button intake-card-action" onClick={onContinue} disabled={!deviceComplete || intakeContinueRunning || autoRecognizing}>
+                    确认设备信息 <ChevronRight size={15} />
+                  </button>
+                </>
+              ) : (
+                <div className="intake-retained-result">
+                  <div className="intake-result-grid">
+                    {equipmentOptionGroups.map((group) => (
+                      <p key={group.label}><span>{group.label}</span><strong>{selections[group.label]}</strong></p>
+                    ))}
+                  </div>
+                  <div className="intake-result-foot">
+                    <span><Cpu size={13} /> 台账与现场特征匹配完成</span>
+                    <button onClick={() => onSelectStep(1)}>修改信息</button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeStep >= 2 && (
+            <section className={classNames("intake-floating-card intake-threshold-card", thresholdCompleted && "completed")}>
+              <div className="intake-floating-head">
+                <span>02</span>
+                <div><small>告警解析 Agent 生成</small><h3>确认告警与运行状态</h3></div>
+                <em>{thresholdCompleted ? "已完成" : "需要确认"}</em>
+              </div>
+              {!thresholdCompleted ? (
+                <>
+                  <div className="intake-field-grid threshold-fields">
+                    {thresholdInputs.map(([label, value, suggestion]) => (
+                      <label key={label}>
+                        <span>{label}</span>
+                        <input value={thresholdValues[label] || ""} aria-label={label} onChange={(event) => onThresholdChange(label, event.target.value)} />
+                        <button type="button" onClick={() => onApplyThresholdSuggestion(label, value)}>采用建议：{suggestion}</button>
+                      </label>
+                    ))}
+                  </div>
+                  <button className="primary-button intake-card-action" onClick={onContinue} disabled={!thresholdComplete || intakeContinueRunning}>
+                    确认告警状态 <ChevronRight size={15} />
+                  </button>
+                </>
+              ) : (
+                <div className="intake-retained-result">
+                  <div className="intake-result-grid threshold-result-grid">
+                    {thresholdInputs.map(([label]) => (
+                      <p key={label}><span>{label}</span><strong>{thresholdValues[label]}</strong></p>
+                    ))}
+                  </div>
+                  <div className="intake-result-foot warning">
+                    <span><AlertTriangle size={13} /> 已确认散热告警与运行状态</span>
+                    <button onClick={() => onSelectStep(2)}>修改信息</button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {activeStep >= 3 && (
+            <section className="intake-floating-card intake-summary-card">
+              <div className="intake-floating-head">
+                <span>03</span>
+                <div><small>接诊 Agent 汇总生成</small><h3>接入信息已就绪</h3></div>
+                <em>可诊断</em>
+              </div>
+              <div className="intake-summary-facts">
+                <p><span>设备</span><strong>{selections["设备型号"]}</strong></p>
+                <p><span>位置</span><strong>{selections["设备位置"]}</strong></p>
+                <p><span>告警</span><strong>{thresholdValues["TEMP/FAN LED"]} · {thresholdValues["风扇转速"]}</strong></p>
+              </div>
+              <div className="intake-diagnosis-tasks">
+                {generatedDiagnosisPlan.map((task) => <span key={task}><Check size={11} /> {task}</span>)}
+              </div>
+              <button className="primary-button intake-card-action" onClick={onStart} disabled={loading}>
+                {loading ? <Loader2 size={15} className="spin" /> : <Send size={15} />}
+                {loading ? "正在进入分析诊断" : "触发诊断"}
+              </button>
+            </section>
+          )}
+        </div>
       </div>
     </div>
   );
