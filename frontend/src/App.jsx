@@ -3,8 +3,10 @@ import {
   AlertTriangle,
   CalendarClock,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   ClipboardList,
   Cpu,
   Download,
@@ -24,11 +26,13 @@ import {
   PhoneCall,
   Play,
   Plug,
+  Plus,
   Radio,
   Search,
   Send,
   Settings,
   ShieldCheck,
+  Trash2,
   UserRound,
   Video,
   Volume2,
@@ -511,13 +515,13 @@ const diagnosisTransitionAgents = [
     agentName: "检修编排 Agent",
     runningTitle: "检修编排 Agent 正在生成下一步",
     doneTitle: "检修编排 Agent 已生成下一步",
-    runningSubtitle: "正在把诊断结论转成步骤式检修向导",
-    doneSubtitle: "已生成“确认告警与定位设备”页面",
+    runningSubtitle: "正在把诊断结论整理为可编辑检修预方案",
+    doneSubtitle: "已生成“检修预方案确认”页面",
     lines: [
-      "诊断结论已确认，系统正在把散热异常结论转成工程师可执行的检修步骤。",
+      "诊断结论已确认，系统正在把散热异常结论转成可编辑的两级检修大纲。",
       "正在匹配安全作业顺序：先确认告警与设备位置，再进入断电隔离和风道检查。",
-      "正在生成检查项、图片提示、阈值提醒和安全说明。",
-      "生成下一步页面：确认告警与定位设备。",
+      "正在生成大步骤标题、所属小维修步骤、依据角标和安全说明。",
+      "生成下一步页面：检修预方案确认。",
     ],
     evidence: [
       "诊断结论：一次工控机散热相关异常",
@@ -526,7 +530,7 @@ const diagnosisTransitionAgents = [
       "维修指导：ACP-4000 / IPC-610 散热系统检修步骤",
       "MVP 检修向导结构：告警定位、安全隔离、风道检查、部件检查、恢复验证",
     ],
-    result: "已生成检修向导第一页。下一步请确认 TEMP/FAN、蜂鸣器、风扇状态和设备位置。",
+    result: "已生成可编辑检修预方案。下一步请调整大步骤和小维修步骤，确认后再进入检修向导。",
   },
 ];
 
@@ -862,6 +866,7 @@ export default function App() {
   const [autoRecognized, setAutoRecognized] = useState(false);
   const [equipmentTraceCount, setEquipmentTraceCount] = useState(0);
   const [equipmentFieldSources, setEquipmentFieldSources] = useState({});
+  const [planRevisionEvents, setPlanRevisionEvents] = useState([]);
 
   useEffect(() => {
     Promise.all([
@@ -914,7 +919,7 @@ export default function App() {
     if (stage === "home") return 0;
     if (stage === "input") return 0;
     if (stage === "analysis" || stage === "diagnosis") return 1;
-    if (stage === "guide") return 2;
+    if (stage === "plan" || stage === "guide") return 2;
     return 3;
   }, [stage]);
 
@@ -964,24 +969,41 @@ export default function App() {
 
   async function enterGuide() {
     if (triageAgentStatus === "running") return;
-    runStageTransition("diagnosis", 1, async () => {
-      setSteps(await api.steps());
-      setStage("guide");
-      setActiveStep(0);
+    setPlanRevisionEvents([]);
+    runStageTransition("diagnosis", 1, () => {
+      setStage("plan");
     });
+  }
+
+  function confirmMaintenancePlan(confirmedSteps) {
+    setSteps(confirmedSteps);
+    setCheckedGuideItems({});
+    setActiveTransition(null);
+    setTriageAgentStatus("idle");
+    setActiveStep(0);
+    setStage("guide");
+  }
+
+  function recordPlanRevision(message) {
+    setPlanRevisionEvents((current) => [...current, message].slice(-8));
   }
 
   async function completeCurrentStep() {
     if (!currentStep || triageAgentStatus === "running") return;
     runStageTransition("guide", activeStep, async () => {
       await api.completeStep(currentStep.id);
-      const latestSteps = await api.steps();
-      setSteps(latestSteps);
-      if (activeStep < latestSteps.length - 1) {
+      setSteps((current) => current.map((step, index) => (
+        index === activeStep ? { ...step, completed: true } : step
+      )));
+      if (activeStep < steps.length - 1) {
         setActiveStep(activeStep + 1);
       } else {
         const result = await api.generateRecord();
-        setRecord(result);
+        setRecord({
+          ...result,
+          completed_steps: steps.map((step) => ({ ...step, completed: true })),
+          safety_confirmed: steps.some((step) => step.id === "step-02-safety" || step.checks.some((check) => lockedSafetyChecks.has(check))),
+        });
         setStage("record");
       }
     });
@@ -1151,7 +1173,11 @@ export default function App() {
     if (triageAgentStatus === "running") return;
     runStageTransition("guide", guideTransitionAgents.length - 1, async () => {
       const result = await api.generateRecord();
-      setRecord(result);
+      setRecord({
+        ...result,
+        completed_steps: steps.filter((step) => step.completed),
+        safety_confirmed: steps.some((step) => step.id === "step-02-safety" || step.checks.some((check) => lockedSafetyChecks.has(check))),
+      });
       setStage("record");
     });
   }
@@ -1196,7 +1222,7 @@ export default function App() {
     setActivePage("workbench");
     if (phaseIndex === 0) setStage(stage === "home" ? "home" : "input");
     if (phaseIndex === 1 && diagnosis) setStage(stage === "analysis" ? "analysis" : "diagnosis");
-    if (phaseIndex === 2 && diagnosis) setStage("guide");
+    if (phaseIndex === 2 && diagnosis) setStage(stage === "plan" ? "plan" : "guide");
     if (phaseIndex === 3 && record) setStage("record");
   }
 
@@ -1401,6 +1427,14 @@ export default function App() {
                   onEnterGuide={enterGuide}
                 />
               )}
+              {stage === "plan" && (
+                <MaintenancePlanStage
+                  initialSteps={steps}
+                  onBack={() => setStage("diagnosis")}
+                  onConfirm={confirmMaintenancePlan}
+                  onRevision={recordPlanRevision}
+                />
+              )}
               {stage === "guide" && currentStep && (
                 <GuideStage
                   currentStep={currentStep}
@@ -1440,6 +1474,7 @@ export default function App() {
               currentStep={currentStep}
               diagnosis={diagnosis}
               intakeBranch={intakeBranch}
+              planRevisionEvents={planRevisionEvents}
             />
           </section>
         )}
@@ -2484,10 +2519,297 @@ function DiagnosisStage({ diagnosis, evidence, activeTask, transitionRunning, on
         ) : (
           <button className="primary-button" onClick={onEnterGuide} disabled={transitionRunning}>
             {transitionRunning ? <Loader2 size={16} className="spin" /> : null}
-            {transitionRunning ? "Agent 正在生成下一步" : "进入步骤式检修向导"} <ChevronRight size={16} />
+            {transitionRunning ? "正在生成检修预方案" : "生成检修预方案"} <ChevronRight size={16} />
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+const lockedSafetyChecks = new Set(["正常关机", "拔除所有电源", "等待冷却", "防静电"]);
+
+function buildEditablePlan(steps) {
+  return steps.map((step, stepIndex) => ({
+    ...step,
+    order: stepIndex + 1,
+    origin: step.origin || "system",
+    checks: step.checks.map((check, checkIndex) => ({
+      id: `${step.id}-check-${checkIndex + 1}`,
+      text: typeof check === "string" ? check : check.text,
+      origin: typeof check === "string" ? "system" : check.origin || "system",
+      source: typeof check === "string" ? step.source : check.source || step.source,
+      locked: typeof check === "string" ? lockedSafetyChecks.has(check) : Boolean(check.locked),
+    })),
+  }));
+}
+
+function MaintenancePlanStage({ initialSteps, onBack, onConfirm, onRevision }) {
+  const [systemPlan] = useState(() => buildEditablePlan(initialSteps));
+  const [workingPlan, setWorkingPlan] = useState(() => buildEditablePlan(initialSteps));
+  const [revisionCount, setRevisionCount] = useState(0);
+  const [notice, setNotice] = useState("");
+  const [visibleStepCount, setVisibleStepCount] = useState(1);
+  const revisedTextFields = useRef(new Set());
+  const idCounter = useRef(0);
+
+  useEffect(() => {
+    if (visibleStepCount >= workingPlan.length) return undefined;
+    const timer = window.setTimeout(() => setVisibleStepCount((count) => count + 1), 420);
+    return () => window.clearTimeout(timer);
+  }, [visibleStepCount, workingPlan.length]);
+
+  const checkCount = workingPlan.reduce((total, step) => total + step.checks.length, 0);
+  const outlineGenerating = visibleStepCount < workingPlan.length;
+  const canConfirm = !outlineGenerating && workingPlan.length > 0 && workingPlan.every((step) => (
+    step.title.trim() && step.checks.length > 0 && step.checks.every((check) => check.text.trim())
+  ));
+
+  function markRevision(message) {
+    setRevisionCount((count) => count + 1);
+    setNotice(message);
+    onRevision(message.trim());
+  }
+
+  function updateStep(stepId, field, value) {
+    setWorkingPlan((current) => current.map((step) => (
+      step.id === stepId ? { ...step, [field]: value, origin: "engineer" } : step
+    )));
+  }
+
+  function markTextRevision(fieldKey, message, changed) {
+    if (!changed) return;
+    if (revisedTextFields.current.has(fieldKey)) return;
+    revisedTextFields.current.add(fieldKey);
+    markRevision(message);
+  }
+
+  function systemStepValue(stepId, field) {
+    return systemPlan.find((step) => step.id === stepId)?.[field];
+  }
+
+  function systemCheckValue(stepId, checkId) {
+    return systemPlan.find((step) => step.id === stepId)?.checks.find((check) => check.id === checkId)?.text;
+  }
+
+  function nextPlanId(prefix) {
+    idCounter.current += 1;
+    return `${prefix}-${Date.now()}-${idCounter.current}`;
+  }
+
+  function addStep() {
+    const id = nextPlanId("plan-step");
+    setWorkingPlan((current) => [
+      ...current,
+      {
+        id,
+        order: current.length + 1,
+        title: "新增检修阶段",
+        description: "请补充本阶段的检修目标。",
+        placeholder: id,
+        checks: [{ id: `${id}-check-1`, text: "请输入小维修步骤", origin: "engineer", source: "工程师现场补充", locked: false }],
+        safety: "执行前确认现场安全条件。",
+        thresholds: [],
+        source: "工程师现场补充",
+        origin: "engineer",
+      },
+    ]);
+    markRevision("工程师新增了一个检修阶段。请修改阶段标题和小维修步骤。 ");
+  }
+
+  function removeStep(stepId) {
+    const target = workingPlan.find((step) => step.id === stepId);
+    if (target?.checks.some((check) => check.locked)) {
+      setNotice("该阶段包含强制安全约束，不能删除。可以修改普通检查项。 ");
+      return;
+    }
+    if (workingPlan.length === 1) {
+      setNotice("检修方案至少需要保留一个大步骤。 ");
+      return;
+    }
+    setWorkingPlan((current) => current.filter((step) => step.id !== stepId));
+    markRevision(`工程师删除了“${target?.title || "检修阶段"}”。`);
+  }
+
+  function moveStep(stepId, direction) {
+    setWorkingPlan((current) => {
+      const index = current.findIndex((step) => step.id === stepId);
+      const targetIndex = index + direction;
+      if (index < 0 || targetIndex < 0 || targetIndex >= current.length) return current;
+      const next = [...current];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next.map((step, stepIndex) => ({ ...step, order: stepIndex + 1 }));
+    });
+    markRevision("工程师调整了检修阶段顺序。 ");
+  }
+
+  function addCheck(stepId) {
+    const id = nextPlanId("plan-check");
+    setWorkingPlan((current) => current.map((step) => (
+      step.id === stepId
+        ? { ...step, checks: [...step.checks, { id, text: "新增小维修步骤", origin: "engineer", source: "工程师现场补充", locked: false }] }
+        : step
+    )));
+    markRevision("工程师新增了一条小维修步骤。 ");
+  }
+
+  function updateCheck(stepId, checkId, value) {
+    setWorkingPlan((current) => current.map((step) => (
+      step.id === stepId
+        ? { ...step, checks: step.checks.map((check) => check.id === checkId ? { ...check, text: value, origin: "engineer" } : check) }
+        : step
+    )));
+  }
+
+  function removeCheck(stepId, checkId) {
+    const step = workingPlan.find((item) => item.id === stepId);
+    const check = step?.checks.find((item) => item.id === checkId);
+    if (check?.locked) {
+      setNotice(`“${check.text}”属于强制安全约束，不能删除。`);
+      return;
+    }
+    if (step?.checks.length === 1) {
+      setNotice("每个大步骤至少需要保留一条小维修步骤。 ");
+      return;
+    }
+    setWorkingPlan((current) => current.map((item) => (
+      item.id === stepId ? { ...item, checks: item.checks.filter((candidate) => candidate.id !== checkId) } : item
+    )));
+    markRevision(`工程师删除了“${check?.text || "小维修步骤"}”。`);
+  }
+
+  function moveCheck(stepId, checkId, direction) {
+    setWorkingPlan((current) => current.map((step) => {
+      if (step.id !== stepId) return step;
+      const index = step.checks.findIndex((check) => check.id === checkId);
+      const targetIndex = index + direction;
+      if (index < 0 || targetIndex < 0 || targetIndex >= step.checks.length) return step;
+      const checks = [...step.checks];
+      [checks[index], checks[targetIndex]] = [checks[targetIndex], checks[index]];
+      return { ...step, checks };
+    }));
+    markRevision("工程师调整了小维修步骤顺序。 ");
+  }
+
+  function restoreSystemPlan() {
+    setWorkingPlan(systemPlan.map((step) => ({ ...step, checks: step.checks.map((check) => ({ ...check })) })));
+    revisedTextFields.current.clear();
+    setRevisionCount(0);
+    setNotice("已恢复检修编排 Agent 生成的系统初稿。 ");
+    onRevision("工程师恢复了检修编排 Agent 的系统初稿。");
+  }
+
+  function confirmPlan() {
+    if (!canConfirm) {
+      setNotice("请确保每个大步骤都有标题，并至少保留一条有效的小维修步骤。 ");
+      return;
+    }
+    const confirmedSteps = workingPlan.map((step, index) => ({
+      ...step,
+      order: index + 1,
+      checks: step.checks.map((check) => check.text.trim()),
+      planChecks: step.checks.map((check) => ({ ...check, text: check.text.trim() })),
+      completed: false,
+    }));
+    onConfirm(confirmedSteps);
+  }
+
+  return (
+    <div className="stage-content maintenance-plan-stage">
+      <header className="plan-stage-head">
+        <div>
+          <p className="eyebrow">检修编排 · 工程师确认</p>
+          <h2>检修预方案</h2>
+          <p>系统已根据诊断结论生成两级检修大纲。可直接采用，也可以原位修改。</p>
+        </div>
+        <span>{outlineGenerating ? <Loader2 size={15} className="spin" /> : <Wrench size={15} />} {outlineGenerating ? "正在生成步骤提纲" : "等待工程师确认"}</span>
+      </header>
+
+      <div className="plan-metrics">
+        <p><span>检修阶段</span><strong>{workingPlan.length}</strong></p>
+        <p><span>小维修步骤</span><strong>{checkCount}</strong></p>
+        <p><span>工程师修改</span><strong>{revisionCount}</strong></p>
+        <p><span>强制安全项</span><strong>{workingPlan.flatMap((step) => step.checks).filter((check) => check.locked).length}</strong></p>
+      </div>
+
+      {notice && <div className="plan-notice" role="status">{notice}</div>}
+
+      <section className="plan-outline" aria-label="检修预方案大纲">
+        {workingPlan.slice(0, visibleStepCount).map((step, stepIndex) => (
+          <article className="plan-outline-step" key={step.id}>
+            <div className="plan-step-index">{String(stepIndex + 1).padStart(2, "0")}</div>
+            <div className="plan-step-content">
+              <header>
+                <div className="plan-step-title-fields">
+                  <input
+                    value={step.title}
+                    aria-label={`第 ${stepIndex + 1} 步标题`}
+                    onChange={(event) => updateStep(step.id, "title", event.target.value)}
+                    onBlur={() => markTextRevision(
+                      `${step.id}:title`,
+                      `工程师修改了第 ${stepIndex + 1} 个检修阶段标题。`,
+                      systemStepValue(step.id, "title") !== step.title
+                    )}
+                  />
+                  <input
+                    value={step.description}
+                    aria-label={`第 ${stepIndex + 1} 步描述`}
+                    onChange={(event) => updateStep(step.id, "description", event.target.value)}
+                    onBlur={() => markTextRevision(
+                      `${step.id}:description`,
+                      `工程师补充了“${step.title}”的检修目标。`,
+                      systemStepValue(step.id, "description") !== step.description
+                    )}
+                  />
+                </div>
+                <div className="plan-step-actions">
+                  <button onClick={() => moveStep(step.id, -1)} disabled={stepIndex === 0} title="上移阶段"><ChevronUp size={14} /></button>
+                  <button onClick={() => moveStep(step.id, 1)} disabled={stepIndex === workingPlan.length - 1} title="下移阶段"><ChevronDown size={14} /></button>
+                  <button className="danger" onClick={() => removeStep(step.id)} title="删除阶段"><Trash2 size={13} /></button>
+                </div>
+              </header>
+
+              <div className="plan-source-row">
+                <span>{step.origin === "engineer" ? "工程师修改" : "系统生成"}</span>
+                <small>依据 · {step.source}</small>
+              </div>
+
+              <div className="plan-check-list">
+                {step.checks.map((check, checkIndex) => (
+                  <div className={classNames("plan-check-row", check.locked && "locked")} key={check.id}>
+                    <i>{checkIndex + 1}</i>
+                    <input
+                      value={check.text}
+                      aria-label={`${step.title}的小维修步骤 ${checkIndex + 1}`}
+                      onChange={(event) => updateCheck(step.id, check.id, event.target.value)}
+                      onBlur={() => markTextRevision(
+                        `${step.id}:${check.id}`,
+                        `工程师修改了“${step.title}”中的第 ${checkIndex + 1} 条小维修步骤。`,
+                        systemCheckValue(step.id, check.id) !== check.text
+                      )}
+                    />
+                    <span>{check.locked ? <><ShieldCheck size={11} /> 强制安全</> : check.origin === "engineer" ? "工程师修改" : "系统生成"}</span>
+                    <div>
+                      <button onClick={() => moveCheck(step.id, check.id, -1)} disabled={checkIndex === 0} title="上移小步骤"><ChevronUp size={12} /></button>
+                      <button onClick={() => moveCheck(step.id, check.id, 1)} disabled={checkIndex === step.checks.length - 1} title="下移小步骤"><ChevronDown size={12} /></button>
+                      <button className="danger" onClick={() => removeCheck(step.id, check.id)} disabled={check.locked} title={check.locked ? "强制安全项不可删除" : "删除小步骤"}><Trash2 size={12} /></button>
+                    </div>
+                  </div>
+                ))}
+                <button className="plan-add-check" onClick={() => addCheck(step.id)}><Plus size={13} /> 添加小维修步骤</button>
+              </div>
+            </div>
+          </article>
+        ))}
+        <button className="plan-add-step" onClick={addStep}><Plus size={15} /> 新增检修阶段</button>
+      </section>
+
+      <footer className="plan-stage-actions">
+        <button className="ghost-button" onClick={onBack}><ChevronLeft size={15} /> 返回诊断结论</button>
+        <button className="ghost-button" onClick={restoreSystemPlan}>恢复系统初稿</button>
+        <div><span>当前方案</span><strong>{workingPlan.length} 个阶段 · {checkCount} 条小维修步骤 · 已修改 {revisionCount} 项</strong></div>
+        <button className="primary-button" onClick={confirmPlan} disabled={!canConfirm}>确认方案并进入检修向导 <ChevronRight size={15} /></button>
+      </footer>
     </div>
   );
 }
@@ -2701,7 +3023,7 @@ function getIntakeStepStatus(activePhase, stage, index, activeIntakeStep) {
 function getVisiblePhaseLimit(stage) {
   if (stage === "input") return 0;
   if (stage === "analysis") return 1;
-  if (stage === "diagnosis" || stage === "guide") return 2;
+  if (stage === "diagnosis" || stage === "plan" || stage === "guide") return 2;
   return 3;
 }
 
@@ -2726,6 +3048,7 @@ function getVisibleDiagnosisTasks(stage, activePhase, activeAgentIndex, analysis
 
 function getVisibleGuideSteps(stage, steps, activeStep) {
   if (stage === "record" || stage === "expert") return steps;
+  if (stage === "plan") return [{ id: "plan-confirm", title: "确认检修预方案", planNode: true, completed: false }];
   if (stage !== "guide") return [];
   return steps.slice(0, activeStep + 1);
 }
@@ -2810,7 +3133,11 @@ function FlowPanel({
                     </button>
                   ))
                 ) : phaseIndex === 2 && visibleGuideSteps.length > 0 ? (
-                  visibleGuideSteps.map((step, index) => (
+                  visibleGuideSteps.map((step, index) => step.planNode ? (
+                    <span className="sub-step active" key={step.id}>
+                      当前 · {step.title}
+                    </span>
+                  ) : (
                     <button
                       key={step.id}
                       className={classNames("sub-step", stage === "guide" && index === activeStep && "active", step.completed && "done")}
@@ -3346,6 +3673,13 @@ function getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentSt
     };
   }
 
+  if (stage === "plan") {
+    return {
+      label: "检修向导 · 预方案确认",
+      suggestion: "系统已生成两级检修大纲。可以修改大步骤和小维修步骤，强制安全项不能删除；确认后向导将使用当前版本。",
+    };
+  }
+
   if (stage === "guide" && currentStep) {
     return {
       label: `检修向导 · ${currentStep.title}`,
@@ -3386,6 +3720,10 @@ function getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep
     return "当前结论优先指向风道堵塞、滤网积尘或风扇低速。建议进入检修向导，按步骤完成确认和恢复验证。";
   }
 
+  if (stage === "plan") {
+    return "当前是检修预方案确认阶段。系统初稿可以直接采用，也可以由工程师增删改普通步骤；断电和防静电等强制安全项会保持锁定。";
+  }
+
   if (stage === "guide" && currentStep) {
     if (currentStep.id === "step-02-safety") return "本步不要跳过：先通知负责人、正常关机、拔除电源、等待冷却，并佩戴防静电手环。";
     if (currentStep.id === "step-03-airflow") return "建议先看环境温度是否超过 40°C，再检查进风口、出风口和机箱开孔是否被遮挡。";
@@ -3412,6 +3750,7 @@ function AssistantChat({
   currentStep,
   diagnosis,
   intakeBranch,
+  planRevisionEvents,
 }) {
   const context = getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentStep, diagnosis, intakeBranch);
   const [draft, setDraft] = useState("");
@@ -3604,6 +3943,12 @@ function AssistantChat({
                 <p><strong>{transitionConfig.agentName} 输出：</strong>{transitionConfig.result}</p>
               </div>
             )}
+          </section>
+        )}
+        {stage === "plan" && planRevisionEvents.length > 0 && (
+          <section className="assistant-plan-revisions">
+            <div><Wrench size={12} /><strong>工程师修改记录</strong><span>{planRevisionEvents.length}</span></div>
+            {planRevisionEvents.map((event, index) => <p key={`${event}-${index}`}>{event}</p>)}
           </section>
         )}
         <div className="assistant-api-note">当前为本地模拟回复，后续接入大模型 API 后替换此逻辑。</div>

@@ -12,10 +12,12 @@
 2. [`meeting-analysis-and-dev-plan.md`](./meeting-analysis-and-dev-plan.md)：2026-07-10 最新会议需求总纲；这是当前产品需求和优先级的最高版本。
 3. [`runtime-and-loongarch-policy.md`](./runtime-and-loongarch-policy.md)：Node、WSL、龙芯运行与逐模块验证的强制决策。
 4. [`r0-dynamic-intake-workbench-spec.md`](./r0-dynamic-intake-workbench-spec.md)：当前正在实施的 R0/P0 详细规格与完成定义。
-5. [`formal-mvp-development-plan.md`](./formal-mvp-development-plan.md)：最新 MVP 分阶段计划。
-6. [`teacher-review-prd-summary-and-demo-flow.md`](./teacher-review-prd-summary-and-demo-flow.md)：最新 PRD 摘要与演示流程。
-7. [`agent-streaming-output-pattern.md`](./agent-streaming-output-pattern.md)：当前 Agent 流式呈现的有效实现规范。
-8. [`software-cup-a1-competition-requirements.md`](./software-cup-a1-competition-requirements.md)：赛事原始要求；用于验收覆盖，不直接代替当前开发计划。
+5. [`r2-editable-maintenance-plan-design.md`](./r2-editable-maintenance-plan-design.md)：R2 千问式两级检修大纲的用户确认设计。
+6. [`r2-editable-maintenance-plan-spec.md`](./r2-editable-maintenance-plan-spec.md)：R2 状态机、数据结构、组件职责和验收规格。
+7. [`formal-mvp-development-plan.md`](./formal-mvp-development-plan.md)：最新 MVP 分阶段计划。
+8. [`teacher-review-prd-summary-and-demo-flow.md`](./teacher-review-prd-summary-and-demo-flow.md)：最新 PRD 摘要与演示流程。
+9. [`agent-streaming-output-pattern.md`](./agent-streaming-output-pattern.md)：当前 Agent 流式呈现的有效实现规范。
+10. [`software-cup-a1-competition-requirements.md`](./software-cup-a1-competition-requirements.md)：赛事原始要求；用于验收覆盖，不直接代替当前开发计划。
 
 ## 2. 当前阶段
 

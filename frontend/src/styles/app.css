@@ -7085,3 +7085,274 @@ body {
   .intake-summary-launch { align-items: stretch; flex-direction: column; }
   .intake-summary-launch .primary-button { justify-content: center; }
 }
+
+/* R2 · 千问式两级检修预方案 */
+.maintenance-plan-stage {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 9px;
+  padding: 14px;
+  overflow: hidden;
+}
+
+.plan-stage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid #2A4052;
+  padding: 0 2px 10px;
+}
+
+.plan-stage-head h2 { margin: 0; color: #E6F0F3; font-size: 24px; }
+.plan-stage-head > div > p:last-child { margin: 4px 0 0; color: #8EA2AF; font-size: 10px; }
+.plan-stage-head > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(214, 160, 74, 0.44);
+  border-radius: 999px;
+  background: rgba(214, 160, 74, 0.1);
+  color: #E4B968;
+  padding: 7px 10px;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.plan-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.plan-metrics p {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  border: 1px solid #2D4355;
+  border-radius: 5px;
+  background: #0D1928;
+  padding: 6px 8px;
+}
+
+.plan-metrics span { color: #728998; font-size: 8px; }
+.plan-metrics strong { color: #D8E6EB; font-size: 12px; }
+
+.plan-notice {
+  border: 1px solid rgba(85, 184, 194, 0.34);
+  border-left: 3px solid #55B8C2;
+  border-radius: 4px;
+  background: rgba(85, 184, 194, 0.07);
+  color: #A9C9D0;
+  padding: 6px 8px;
+  font-size: 9px;
+}
+
+.plan-outline {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  overflow-y: auto;
+  padding: 2px 5px 12px 0;
+}
+
+.plan-outline-step {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  position: relative;
+}
+
+.plan-outline-step:not(:last-of-type)::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 32px;
+  bottom: -10px;
+  width: 1px;
+  background: #31546A;
+}
+
+.plan-step-index {
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #39718A;
+  border-radius: 5px;
+  background: #10263A;
+  color: #72D0D7;
+  font-family: "JetBrains Mono", "Cascadia Mono", monospace;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.plan-step-content {
+  min-width: 0;
+  border: 1px solid #30485A;
+  border-left: 2px solid #55B8C2;
+  border-radius: 6px;
+  background: #0D1928;
+  overflow: hidden;
+}
+
+.plan-step-content > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  border-bottom: 1px solid #293F50;
+  background: #101E2D;
+  padding: 7px 8px;
+}
+
+.plan-step-title-fields { min-width: 0; display: grid; gap: 4px; }
+.plan-step-title-fields input,
+.plan-check-row input {
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  outline: 0;
+  background: transparent;
+  color: #DFEBEF;
+  padding: 3px 5px;
+}
+
+.plan-step-title-fields input:first-child { font-size: 12px; font-weight: 800; }
+.plan-step-title-fields input:last-child { color: #869AA7; font-size: 8px; }
+.plan-step-title-fields input:focus,
+.plan-check-row input:focus { border-color: #47778C; background: #081522; }
+
+.plan-step-actions,
+.plan-check-row > div { display: flex; align-items: center; gap: 3px; }
+.plan-step-actions button,
+.plan-check-row > div button {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #354D5E;
+  border-radius: 4px;
+  background: #142432;
+  color: #93A8B4;
+}
+
+.plan-step-actions button:disabled,
+.plan-check-row > div button:disabled { opacity: 0.3; }
+.plan-step-actions button.danger:not(:disabled):hover,
+.plan-check-row > div button.danger:not(:disabled):hover { border-color: #A85555; color: #F0A0A0; }
+
+.plan-source-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px 0;
+}
+
+.plan-source-row span {
+  border-radius: 3px;
+  background: rgba(85, 184, 194, 0.1);
+  color: #78CDD2;
+  padding: 2px 5px;
+  font-size: 7px;
+}
+
+.plan-source-row small { color: #718796; font-size: 7px; }
+
+.plan-check-list { display: grid; gap: 4px; padding: 6px 8px 8px; }
+.plan-check-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #263D4E;
+  border-radius: 4px;
+  background: #091522;
+  padding: 4px 5px;
+}
+
+.plan-check-row > i {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: #142A3B;
+  color: #6FBAC5;
+  font-size: 8px;
+  font-style: normal;
+}
+
+.plan-check-row input { font-size: 9px; }
+.plan-check-row > span { display: inline-flex; align-items: center; gap: 3px; color: #728A98; font-size: 7px; white-space: nowrap; }
+.plan-check-row.locked { border-color: rgba(214, 160, 74, 0.34); background: rgba(214, 160, 74, 0.055); }
+.plan-check-row.locked > span { color: #D8AA58; }
+
+.plan-add-check,
+.plan-add-step {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px dashed #3A5668;
+  border-radius: 4px;
+  background: transparent;
+  color: #79AAB7;
+  font-size: 8px;
+}
+
+.plan-add-step { margin-left: 34px; min-height: 36px; }
+.plan-add-check:hover,
+.plan-add-step:hover { border-color: #55B8C2; color: #9FE2E5; background: rgba(85, 184, 194, 0.06); }
+
+.plan-stage-actions {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  border-top: 1px solid #2A4052;
+  padding-top: 9px;
+}
+
+.plan-stage-actions > div { min-width: 0; display: grid; justify-items: end; gap: 1px; }
+.plan-stage-actions > div span { color: #708794; font-size: 7px; }
+.plan-stage-actions > div strong { overflow: hidden; color: #B9CBD3; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+
+.assistant-plan-revisions {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(85, 184, 194, 0.32);
+  border-radius: 5px;
+  background: rgba(85, 184, 194, 0.06);
+  padding: 8px;
+}
+
+.assistant-plan-revisions > div { display: flex; align-items: center; gap: 5px; color: #83D1D6; }
+.assistant-plan-revisions > div strong { font-size: 9px; }
+.assistant-plan-revisions > div span { margin-left: auto; color: #6F8998; font-size: 8px; }
+.assistant-plan-revisions p {
+  margin: 0;
+  border-left: 2px solid #395B6D;
+  color: #9EB0BA;
+  padding-left: 6px;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .maintenance-plan-stage { height: auto; overflow: visible; }
+  .plan-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan-stage-actions { grid-template-columns: 1fr 1fr; }
+  .plan-stage-actions > div { grid-column: 1 / -1; justify-items: start; }
+  .plan-check-row { grid-template-columns: 20px minmax(0, 1fr); }
+  .plan-check-row > span,
+  .plan-check-row > div { grid-column: 2; }
+}
