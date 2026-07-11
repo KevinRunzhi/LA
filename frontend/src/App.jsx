@@ -56,27 +56,32 @@ const navItems = [
 
 const intakeTasks = [
   {
-    title: "描述现场现象",
-    value: "温度告警、风扇声音异常",
-    detail: "请描述现场看到的异常现象，系统将整理为诊断输入。",
+    title: "确认发生时间",
+    value: "2026-07-10 10:25 · 持续约 10 分钟",
+    detail: "确认异常首次发现时间、持续时长和是否重复发生。",
   },
   {
-    title: "设备位置识别",
+    title: "确认发生地点",
     value: "某输气场站 · 站控柜 A01",
     detail: "根据现场描述与设备台账匹配场站、区域和机柜位置，并由工程师确认。",
   },
   {
-    title: "补充设备型号",
+    title: "确认发生事件",
     value: "研华 ACP-4000 / IPC-610",
     detail: "确认主演示设备为站控柜内工控机整机，不进入 PLC 控制柜完整诊断。",
   },
   {
-    title: "确认灯值和阈值",
+    title: "补充其他现象",
     value: "TEMP/FAN 告警，风扇转速偏低",
     detail: "重点确认风扇 <500 rpm、系统温度 >55°C、CPU 温度 >70°C 等判断条件。",
   },
   {
-    title: "接入信息确认",
+    title: "核对依据与手册",
+    value: "告警标准、设备台账、操作手册",
+    detail: "查看系统本次判断使用的标准、台账、案例和设备操作手册。",
+  },
+  {
+    title: "异常事件确认",
     value: "准备触发诊断",
     detail: "确认现场现象、设备型号和阈值信息后，启动多 Agent 分析诊断。",
   },
@@ -403,37 +408,37 @@ const generatedDiagnosisPlan = [
 
 const intakeTransitionAgents = [
   {
-    agentName: "接诊 Agent",
-    runningTitle: "接诊 Agent 正在生成下一步",
-    doneTitle: "接诊 Agent 已生成下一步",
-    runningSubtitle: "正在根据现场描述生成设备位置识别任务",
-    doneSubtitle: "已生成“设备位置识别”任务",
+    agentName: "时间解析 Agent",
+    runningTitle: "时间解析 Agent 正在生成下一步",
+    doneTitle: "时间解析 Agent 已生成下一步",
+    runningSubtitle: "正在根据已确认时间生成发生地点任务",
+    doneSubtitle: "已生成“确认发生地点”任务",
     lines: [
-      "现场描述已接入，系统正在整理异常关键词和场站位置线索。",
-      "识别到散热相关信号：温度告警、风扇声音异常、风扇转速偏低。",
+      "异常发生时间已由工程师确认，系统正在整理事件时间线。",
+      "已记录持续时长和重复发生情况，正在关联现场描述。",
       "匹配场站设备台账：当前异常可能位于控制中心 / 站控柜 A01。",
-      "生成下一步任务：设备位置识别。",
+      "生成下一步任务：确认发生地点。",
     ],
     evidence: [
       "现场异常描述：温度告警、风扇声音异常、风扇转速偏低",
       "场站位置提示：控制中心 / 站控柜 A01 / 工控机区域",
-      "异常接入规则：先确认设备位置，再补充设备对象",
+      "异常接入规则：先确认时间，再确认发生地点",
       "知识图谱节点：站控柜、工控机、散热异常、TEMP/FAN 告警",
-      "MVP 演示流程：描述现象后先生成位置识别任务",
+      "MVP 演示流程：时间确认后生成地点识别任务",
     ],
-    result: "已生成设备位置识别任务。下一步请确认场站、控制中心和站控柜位置。",
+    result: "已生成发生地点确认任务。下一步请确认场站、控制中心和站控柜位置。",
   },
   {
     agentName: "位置识别 Agent",
     runningTitle: "位置识别 Agent 正在生成下一步",
     doneTitle: "位置识别 Agent 已生成下一步",
-    runningSubtitle: "正在根据已确认位置生成设备信息补充任务",
-    doneSubtitle: "已生成“补充设备信息”任务",
+    runningSubtitle: "正在根据已确认地点生成发生事件任务",
+    doneSubtitle: "已生成“确认发生事件”任务",
     lines: [
       "设备位置已由工程师确认，系统正在读取站控柜 A01 设备台账。",
       "匹配到工控机、PLC 控制柜、通信模块等已登记设备对象。",
       "当前异常描述与工控机散热告警特征相关，需要进一步确认具体型号和角色。",
-      "生成下一步任务：补充设备信息。",
+      "生成下一步任务：确认发生事件。",
     ],
     evidence: [
       "位置确认：某输气场站 / 控制中心 / 站控柜 A01",
@@ -442,19 +447,19 @@ const intakeTransitionAgents = [
       "异常关键词：温度告警、风扇声音异常、风扇转速偏低",
       "接入规则：位置确认后补充设备型号、角色与关联告警",
     ],
-    result: "已生成设备信息补充任务。下一步请确认设备型号、设备角色和关联告警。",
+    result: "已生成发生事件确认任务。下一步请确认设备型号、设备角色和关联告警。",
   },
   {
     agentName: "设备识别 Agent",
     runningTitle: "设备识别 Agent 正在生成下一步",
     doneTitle: "设备识别 Agent 已生成下一步",
-    runningSubtitle: "正在根据设备对象生成灯态与阈值确认页面",
-    doneSubtitle: "已生成“确认灯值和阈值”页面",
+    runningSubtitle: "正在根据发生事件生成其他现象补充任务",
+    doneSubtitle: "已生成“补充其他现象”任务",
     lines: [
       "设备对象已补充，系统正在核对站控柜 A01 内工控机信息。",
       "识别到主演示设备：研华 ACP-4000 / IPC-610 工控机。",
       "匹配散热异常判据：TEMP/FAN 灯、蜂鸣器、风扇转速、系统温度、CPU 温度。",
-      "生成下一步页面：确认灯值和阈值。",
+      "生成下一步任务：补充其他现象。",
     ],
     evidence: [
       "设备型号：研华 ACP-4000 / IPC-610",
@@ -463,28 +468,49 @@ const intakeTransitionAgents = [
       "维修指导：ACP-4000 / IPC-610 散热与风扇模块检查项",
       "告警知识：TEMP/FAN、蜂鸣器、风扇 rpm、系统温度、CPU 温度",
     ],
-    result: "已生成告警与阈值确认页面。下一步请核对灯态、蜂鸣器、风扇转速和温度阈值。",
+    result: "已生成其他现象补充任务。下一步请核对灯态、蜂鸣器、风扇转速、温度阈值和现场材料。",
   },
   {
-    agentName: "告警解析 Agent",
-    runningTitle: "告警解析 Agent 正在生成下一步",
-    doneTitle: "告警解析 Agent 已生成下一步",
-    runningSubtitle: "正在把灯态和阈值整理为接入确认项",
-    doneSubtitle: "已生成“接入信息确认”页面",
+    agentName: "依据检索 Agent",
+    runningTitle: "依据检索 Agent 正在生成下一步",
+    doneTitle: "依据检索 Agent 已生成下一步",
+    runningSubtitle: "正在根据事件与现象检索依据标准和操作手册",
+    doneSubtitle: "已生成“依据标准与操作手册”任务",
     lines: [
       "灯态与阈值信息已接入，系统正在判断异常信号是否指向散热链路。",
       "TEMP/FAN 告警、风扇低速和温度升高共同指向风道或风扇模块异常。",
-      "整理诊断输入：现场描述、设备对象、灯态阈值和关联告警。",
-      "生成下一步页面：接入信息确认。",
+      "正在命中设备台账、告警阈值、历史案例和操作手册章节。",
+      "生成下一步任务：核对依据标准与操作手册。",
     ],
     evidence: [
       "TEMP/FAN 灯态：红灯为异常，绿灯为正常",
       "风扇状态：转速偏低或停转会触发散热异常方向",
       "阈值规则：风扇 rpm、系统温度、CPU 温度共同参与判断",
       "知识图谱节点：灯态、蜂鸣器、风扇模块、温度阈值",
-      "安全提示：进入拆检前必须完成接入信息确认",
+      "安全提示：进入拆检前必须完成异常事件确认",
     ],
-    result: "已生成接入信息确认页面。下一步请复核系统整理出的诊断输入，再触发分析诊断。",
+    result: "已生成依据标准与操作手册任务。下一步请核对系统本次判断使用的资料。",
+  },
+  {
+    agentName: "事件归集 Agent",
+    runningTitle: "事件归集 Agent 正在形成最终页面",
+    doneTitle: "事件归集 Agent 已完成",
+    runningSubtitle: "正在归集时间、地点、事件、现象与依据",
+    doneSubtitle: "已生成“现场异常事件全景”页面",
+    lines: [
+      "发生时间、发生地点、发生事件和其他现象均已确认。",
+      "依据标准与操作手册已完成核对。",
+      "正在整理本次诊断方向和可用现场材料。",
+      "生成下一步页面：现场异常事件全景。",
+    ],
+    evidence: [
+      "已确认发生时间与持续时长",
+      "已确认场站、控制中心和站控柜位置",
+      "已确认设备对象与关联告警",
+      "已确认运行状态与现场材料",
+      "已核对告警标准与设备操作手册",
+    ],
+    result: "已生成现场异常事件全景。下一步请复核系统归集的事件信息，再启动智能诊断。",
   },
 ];
 
@@ -557,16 +583,16 @@ function getBranchTransitionConfig(intakeBranch, fromIndex, fallback) {
     };
   }
 
-  if (intakeBranch?.id === "equipment-mismatch" && fromIndex === 3) {
+  if (intakeBranch?.id === "equipment-mismatch" && fromIndex === 4) {
     return {
       ...fallback,
-      runningSubtitle: "正在把控制器与通信状态整理为接入摘要",
-      doneSubtitle: "已生成“控制器 / 通信链路接入摘要”",
+      runningSubtitle: "正在归集控制器与通信异常事件",
+      doneSubtitle: "已生成“控制器 / 通信链路事件全景”",
       lines: [
         "控制器与通信状态已接入，系统正在核对 RUN、LINK、数据上送和电源状态。",
         "当前输入指向控制器 / 通信链路，不再沿用工控机散热异常方向。",
         "整理诊断输入：PLC 设备对象、通信告警、控制器状态和数据上送状态。",
-        "生成下一步页面：接入摘要确认。",
+        "生成下一步页面：现场异常事件全景。",
       ],
       evidence: [
         "控制器 RUN 状态",
@@ -575,18 +601,18 @@ function getBranchTransitionConfig(intakeBranch, fromIndex, fallback) {
         "电源状态",
         "工程师对设备与告警的修正记录",
       ],
-      result: "已生成控制器 / 通信链路接入摘要，下一步请复核后启动诊断。",
+      result: "已生成控制器 / 通信链路事件全景，下一步请复核后启动诊断。",
     };
   }
 
-  if (intakeBranch?.id === "thermal-without-alarm" && fromIndex === 3) {
+  if (intakeBranch?.id === "thermal-without-alarm" && fromIndex === 4) {
     return {
       ...fallback,
       lines: [
         "TEMP/FAN 未显示告警，但系统温度与 CPU 温度仍偏高。",
         "强告警证据减少，系统降低风扇故障优先级。",
         "重新排序诊断方向：环境温度、风道积尘、温度传感器优先。",
-        "生成下一步页面：接入摘要确认。",
+        "生成下一步页面：现场异常事件全景。",
       ],
       result: "已按无灯态高温分支生成摘要，下一步优先复核环境散热与温度传感器。",
     };
@@ -842,6 +868,11 @@ export default function App() {
   const [previewMaterialId, setPreviewMaterialId] = useState(null);
   const materialUrlsRef = useRef(new Set());
   const [input, setInput] = useState(defaultInput);
+  const [incidentTime, setIncidentTime] = useState({
+    detectedAt: "2026-07-10T10:25",
+    duration: "约 10 分钟",
+    recurrence: "首次发现",
+  });
   const [diagnosis, setDiagnosis] = useState(null);
   const [steps, setSteps] = useState([]);
   const [activeStep, setActiveStep] = useState(0);
@@ -1210,9 +1241,11 @@ export default function App() {
     setAutoRecognizing(false);
     setAutoRecognized(false);
     setEquipmentTraceCount(0);
-    window.setTimeout(() => {
-      runStageTransition("intake", 0, () => setActiveIntakeStep(1));
-    }, 180);
+    setIncidentTime({
+      detectedAt: "2026-07-10T10:25",
+      duration: "约 10 分钟",
+      recurrence: "首次发现",
+    });
   }
 
   function jumpToPhase(phaseIndex) {
@@ -1366,9 +1399,10 @@ export default function App() {
               }}
             />
             <div className="stage-card">
-              {stage === "input" && activeIntakeStep < 4 && (
+              {stage === "input" && activeIntakeStep < 5 && (
                 <InputStage
                   input={input}
+                  incidentTime={incidentTime}
                   materials={intakeMaterials}
                   activeMaterialId={activeMaterialId}
                   loading={loading}
@@ -1384,6 +1418,7 @@ export default function App() {
                   autoRecognized={autoRecognized}
                   equipmentTraceCount={equipmentTraceCount}
                   onInput={setInput}
+                  onIncidentTimeChange={(field, value) => setIncidentTime((current) => ({ ...current, [field]: value }))}
                   onAddMaterials={addIntakeMaterials}
                   onSelectMaterial={setActiveMaterialId}
                   onRemoveMaterial={removeIntakeMaterial}
@@ -1397,9 +1432,10 @@ export default function App() {
                   onStart={startDiagnosis}
                 />
               )}
-              {stage === "input" && activeIntakeStep === 4 && (
+              {stage === "input" && activeIntakeStep === 5 && (
                 <IntakeSummaryStage
                   input={input}
+                  incidentTime={incidentTime}
                   materials={intakeMaterials}
                   selections={intakeSelections}
                   thresholdValues={thresholdValues}
@@ -1820,6 +1856,7 @@ function HomeStage({
 
 function IntakeSummaryStage({
   input,
+  incidentTime,
   materials,
   selections,
   thresholdValues,
@@ -1841,21 +1878,22 @@ function IntakeSummaryStage({
     <div className="stage-content intake-summary-stage">
       <header className="intake-summary-hero">
         <div>
-          <p className="eyebrow">异常接入 · 摘要确认</p>
-          <h2>接入摘要</h2>
-          <p>现场信息已完成汇总。请在启动诊断前核对故障对象、现场材料和运行状态。</p>
+          <p className="eyebrow">异常事件确认 · 最终核对</p>
+          <h2>现场异常事件全景</h2>
+          <p>事件信息已归集。请在启动诊断前核对发生地点、事件对象、现场材料和运行状态。</p>
         </div>
         <span className={branchBlocked ? "warning" : undefined}>
           {branchBlocked ? <AlertTriangle size={15} /> : <Check size={15} />}
-          {branchBlocked ? "分支信息待补充" : "接入信息已就绪"}
+          {branchBlocked ? "分支信息待补充" : "事件信息已归集"}
         </span>
       </header>
 
       <div className="intake-summary-dashboard">
         <section className="summary-overview-card">
-          <header><div><small>01 / 现场事件</small><h3>异常事件概览</h3></div><button onClick={() => onEdit(2)}>修改设备信息</button></header>
+          <header><div><small>01 / 时间与事件</small><h3>异常事件概览</h3></div><div className="summary-edit-actions"><button onClick={() => onEdit(0)}>修改时间</button><button onClick={() => onEdit(2)}>修改设备</button></div></header>
           <p className="summary-incident-text">{input || defaultInput}</p>
           <div className="summary-fact-grid">
+            <p><span>发生时间</span><strong>{incidentTime.detectedAt.replace("T", " ")} · {incidentTime.duration}</strong></p>
             <p><span>设备型号</span><strong>{selections["设备型号"]}</strong></p>
             <p><span>设备角色</span><strong>{selections["设备角色"]}</strong></p>
             <p><span>关联告警</span><strong>{selections["关联告警"]}</strong></p>
@@ -1893,6 +1931,14 @@ function IntakeSummaryStage({
             <p>{intakeBranch.detail}</p>
           </div>
         </section>
+
+        <section className="summary-evidence-card">
+          <header><div><small>05 / 判断依据</small><h3>为什么形成当前判断</h3></div><button onClick={() => onEdit(4)}>重新核对</button></header>
+          <div className="summary-evidence-grid">
+            <article><ShieldCheck size={16} /><div><span>依据标准</span><strong>TEMP/FAN 告警与风扇低速判据</strong><p>运行阈值、设备台账与历史案例共同支持当前诊断方向。</p></div></article>
+            <article><FileText size={16} /><div><span>操作手册</span><strong>ACP-4000 / IPC-610 散热检查</strong><p>命中风道、滤网、风扇拆检和恢复验证章节。</p></div></article>
+          </div>
+        </section>
       </div>
 
       <footer className="intake-summary-launch">
@@ -1902,14 +1948,14 @@ function IntakeSummaryStage({
         </div>
         <button className="primary-button" onClick={onStart} disabled={loading || branchBlocked}>
           {loading ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
-          {loading ? "正在启动诊断" : branchBlocked ? "需补充通信诊断案例" : "启动智能诊断"}
+          {loading ? "正在启动诊断" : branchBlocked ? "需补充通信诊断案例" : "确认并启动智能诊断"}
         </button>
       </footer>
     </div>
   );
 }
 
-function InputStage({
+function InputStageLegacy({
   input,
   materials,
   activeMaterialId,
@@ -1955,25 +2001,48 @@ function InputStage({
     "核对设备型号",
     "生成推荐字段",
   ];
+  const businessStepTitles = [
+    "重新确认初始报障",
+    "确认异常发生地点",
+    "确认发生事件与设备对象",
+    "补充其他现象与运行状态",
+  ];
+  const confirmedTrail = [
+    activeStep > 1 && { label: "发生地点", value: "控制中心 · 站控柜 A01", step: 1 },
+    activeStep > 2 && { label: "发生事件", value: selections["关联告警"] || "设备与告警已确认", step: 2 },
+  ].filter(Boolean);
 
   return (
     <div className="stage-content input-stage dynamic-intake-stage">
       <div className="dynamic-intake-head">
         <div>
-          <p className="eyebrow">异常接入 · Agent 动态接诊</p>
-          <h2>现场接诊工作区</h2>
-          <p>Agent 会根据现场输入，在当前页面逐步生成需要工程师确认的任务。</p>
+          <p className="eyebrow">异常接入 · 当前业务 {String(activeStep + 1).padStart(2, "0")}</p>
+          <h2>{businessStepTitles[activeStep] || "现场接诊工作区"}</h2>
+          <p className="business-starting-fact"><span>初始报障</span>{input || defaultInput}</p>
         </div>
         <span className={classNames("intake-generation-state", intakeContinueRunning && "running", activeStep === 4 && "ready")}>
           {intakeContinueRunning ? <Loader2 size={14} className="spin" /> : activeStep === 4 ? <Check size={14} /> : <Radio size={14} />}
-          {intakeContinueRunning ? "正在生成下一项任务" : activeStep === 4 ? "接入信息已就绪" : "等待现场确认"}
+          {intakeContinueRunning ? "正在生成下一项任务" : activeStep === 4 ? "事件信息已归集" : "等待现场确认"}
         </span>
       </div>
 
       <div className="dynamic-intake-board" data-active-step={activeStep}>
+        <section className="spatial-time-card">
+          <div><CalendarClock size={15} /><span>发生时间</span></div>
+          <strong>2026-07-10 · 10:25</strong>
+          <small>系统建议 · 持续约 10 分钟</small>
+        </section>
+
+        {activeStep === 0 && (
+          <section className="spatial-location-placeholder" aria-label="空间位置上下文准备中">
+            <img src="/images/site-station-overview.png" alt="某输气场站布局" />
+            <div><Loader2 size={16} className={intakeContinueRunning ? "spin" : undefined} /><strong>正在建立空间位置上下文</strong><span>确认初始报障后定位故障点</span></div>
+          </section>
+        )}
+
         <section className="dynamic-site-context">
           <div className="dynamic-site-toolbar">
-            <div><Paperclip size={15} /><span>现场材料</span><strong>{materials.length > 0 ? `已接入 ${materials.length} 项` : "等待材料接入"}</strong></div>
+            <div><Paperclip size={15} /><span>其他现象</span><strong>{materials.length > 0 ? `现场材料 ${materials.length} 项` : "等待现场材料"}</strong></div>
             <span className="dynamic-fault-status"><i /> {materials.length > 0 ? "现场证据已就绪" : "可使用预置案例"}</span>
           </div>
           <div className="dynamic-context-layout">
@@ -2036,10 +2105,6 @@ function InputStage({
               event.target.value = "";
             }}
           />
-          <div className="dynamic-symptom-strip">
-            <span>现场描述</span>
-            <p>{input || defaultInput}</p>
-          </div>
         </section>
 
         <div className="dynamic-intake-tasks" aria-live="polite">
@@ -2065,7 +2130,7 @@ function InputStage({
                   onChange={(event) => onInput(event.target.value)}
                   rows={4}
                 />
-                <small>修改后将重新运行接诊 Agent，并重新确认位置、设备、告警和接入摘要。</small>
+                <small>修改后将重新运行接诊 Agent，并重新确认位置、设备、告警和最终事件信息。</small>
               </label>
               <button className="primary-button intake-card-action" onClick={onContinue} disabled={!input.trim()}>
                 <Radio size={15} /> 重新分析并更新接入信息
@@ -2221,11 +2286,26 @@ function InputStage({
             </section>
           )}
 
+          {activeStep >= 3 && (
+            <section className="spatial-evidence-dock">
+              <article>
+                <span><ShieldCheck size={13} /> 依据标准</span>
+                <strong>TEMP/FAN 告警与风扇低速判据</strong>
+                <small>阈值规则 · 设备台账 · 历史案例</small>
+              </article>
+              <article>
+                <span><FileText size={13} /> 操作手册</span>
+                <strong>ACP-4000 / IPC-610 散热检查</strong>
+                <small>已命中风道、滤网与风扇章节</small>
+              </article>
+            </section>
+          )}
+
           {activeStep >= 4 && (
             <section className="intake-floating-card intake-summary-card">
               <div className="intake-floating-head">
                 <span>04</span>
-                <div><small>接诊 Agent 汇总生成</small><h3>接入信息已就绪</h3></div>
+                <div><small>接诊 Agent 归集生成</small><h3>事件信息已归集</h3></div>
                 <em>可诊断</em>
               </div>
               <div className="intake-summary-facts">
@@ -2243,7 +2323,223 @@ function InputStage({
             </section>
           )}
         </div>
+
+        {confirmedTrail.length > 0 && (
+          <div className="spatial-confirmed-rail" aria-label="已确认步骤">
+            <span><Check size={12} /> 已确认步骤</span>
+            {confirmedTrail.map((item) => (
+              <button type="button" key={item.label} onClick={() => onSelectStep(item.step)}>
+                <small>{item.label}</small><strong>{item.value}</strong>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function InputStage({
+  input,
+  incidentTime,
+  materials,
+  loading,
+  activeStep,
+  selections,
+  thresholdValues,
+  intakeBranch,
+  equipmentFieldSources,
+  triageAgentStatus,
+  activeTransition,
+  autoRecognizing,
+  autoRecognized,
+  equipmentTraceCount,
+  onInput,
+  onIncidentTimeChange,
+  onAddMaterials,
+  onRemoveMaterial,
+  onPreviewMaterial,
+  onAutoFill,
+  onSelectionChange,
+  onThresholdChange,
+  onApplyThresholdSuggestion,
+  onSelectStep,
+  onContinue,
+}) {
+  const imageInputRef = useRef(null);
+  const videoInputRef = useRef(null);
+  const audioInputRef = useRef(null);
+  const [expandedEvidence, setExpandedEvidence] = useState(null);
+  const transitioning = triageAgentStatus === "running" && activeTransition?.type === "intake";
+  const transitionFrom = transitioning ? activeTransition.fromIndex : -1;
+  const deviceComplete = equipmentOptionGroups.every((group) => selections[group.label]);
+  const activeThresholdInputs = getBranchThresholdInputs(intakeBranch);
+  const thresholdComplete = activeThresholdInputs.every(([label]) => thresholdValues[label]?.trim());
+  const recognitionSteps = ["读取现场描述", "匹配设备台账", "检索维修知识库", "核对设备型号", "生成推荐字段"];
+  const taskTitles = ["确认异常发生时间", "确认异常发生地点", "确认发生事件与设备对象", "补充其他现象与运行状态", "核对判断依据与操作手册"];
+  const knownItems = [
+    { label: "初始报障", value: input || defaultInput, step: 0, visible: true },
+    { label: "发生时间", value: `${incidentTime.detectedAt?.replace("T", " ")} · ${incidentTime.duration}`, step: 0, visible: activeStep > 0 },
+    { label: "发生地点", value: "控制中心 · 站控柜 A01", step: 1, visible: activeStep > 1 },
+    { label: "发生事件", value: selections["设备型号"] || "设备对象已确认", step: 2, visible: activeStep > 2 },
+    { label: "其他现象", value: `${thresholdValues["TEMP/FAN LED"] || "告警"} · ${materials.length} 项材料`, step: 3, visible: activeStep > 3 },
+  ].filter((item) => item.visible);
+  const cardClass = (kind, step) => classNames("intake-current-task", `task-${kind}`, transitionFrom === step && "archiving");
+
+  const uploadInput = (ref, accept, type) => (
+    <input
+      ref={ref}
+      className="visually-hidden-input"
+      type="file"
+      accept={accept}
+      multiple
+      onChange={(event) => {
+        onAddMaterials(event.target.files, type);
+        event.target.value = "";
+      }}
+    />
+  );
+
+  return (
+    <div className="stage-content input-stage spatial-intake-v12">
+      <header className="spatial-v12-head">
+        <div>
+          <p className="eyebrow">异常接入 · 第 {activeStep + 1} / 5 项</p>
+          <h2>{taskTitles[activeStep]}</h2>
+        </div>
+        <span className={classNames("intake-generation-state", transitioning && "running")}>
+          {transitioning ? <Loader2 size={14} className="spin" /> : <Radio size={14} />}
+          {transitioning ? "Agent 正在生成下一项" : "等待工程师确认"}
+        </span>
+      </header>
+
+      <section className="known-context-dock" aria-label="已知信息">
+        <div className="known-context-title"><Check size={14} /><span>已知信息</span></div>
+        <div className="known-context-items">
+          {knownItems.map((item, index) => (
+            <button
+              type="button"
+              className={classNames("known-context-chip", index === knownItems.length - 1 && activeStep > 0 && "latest")}
+              key={item.label}
+              onClick={() => onSelectStep(item.step)}
+            >
+              <small>{item.label}</small><strong>{item.value}</strong>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <div className="spatial-v12-board" data-step={activeStep}>
+        <section className={classNames("spatial-v12-map", activeStep >= 1 && "located")}>
+          <img src="/images/site-station-overview.png" alt="某输气场站控制中心布局及故障点" />
+          <div className="map-scan-line" />
+          {activeStep >= 1 && <><div className="location-pulse" /><MapPin className="location-map-pin" size={22} /></>}
+          <div className="map-focus-caption">
+            <span>{activeStep === 0 ? "空间上下文" : "已识别故障点"}</span>
+            <strong>{activeStep === 0 ? "等待时间确认后定位" : "某输气场站 · 控制中心 · 站控柜 A01"}</strong>
+          </div>
+          {activeStep === 1 && !transitioning && (
+            <button className="primary-button map-confirm-action staged-confirm" onClick={onContinue}>
+              <MapPin size={15} /> 确认发生地点
+            </button>
+          )}
+          {activeStep > 1 && <button className="map-edit-action" type="button" onClick={() => onSelectStep(1)}>修改地点</button>}
+        </section>
+
+        <div className="spatial-v12-task-slot" aria-live="polite">
+          {transitioning && (
+            <div className="next-task-generating">
+              <Loader2 size={18} className="spin" />
+              <div><strong>正在归档本项信息</strong><span>接诊 Agent 将生成下一项确认任务</span></div>
+            </div>
+          )}
+
+          {activeStep === 0 && (
+            <section className={cardClass("time", 0)}>
+              <TaskCardHead number="01" kicker="发生时间" title="确认异常何时发生" />
+              <label className="staged-field" style={{ "--field-index": 0 }}><span>首次发现时间</span><input type="datetime-local" value={incidentTime.detectedAt} onChange={(event) => onIncidentTimeChange("detectedAt", event.target.value)} /></label>
+              <div className="task-two-columns staged-field" style={{ "--field-index": 1 }}>
+                <label><span>持续时长</span><select value={incidentTime.duration} onChange={(event) => onIncidentTimeChange("duration", event.target.value)}><option>刚刚发现</option><option>约 10 分钟</option><option>约 30 分钟</option><option>超过 1 小时</option></select></label>
+                <label><span>发生频次</span><select value={incidentTime.recurrence} onChange={(event) => onIncidentTimeChange("recurrence", event.target.value)}><option>首次发现</option><option>间歇出现</option><option>重复发生</option></select></label>
+              </div>
+              <label className="staged-field task-description" style={{ "--field-index": 2 }}><span>初始报障描述</span><textarea rows={3} value={input} onChange={(event) => onInput(event.target.value)} /></label>
+              <button className="primary-button task-confirm-action staged-confirm" onClick={onContinue} disabled={!incidentTime.detectedAt || !input.trim()}>确认发生时间 <ChevronRight size={15} /></button>
+            </section>
+          )}
+
+          {activeStep === 2 && (
+            <section className={cardClass("event", 2)}>
+              <TaskCardHead number="03" kicker="发生事件" title="确认设备与告警对象" />
+              <div className="event-recognition-reason staged-field" style={{ "--field-index": 0 }}>
+                <div><Cpu size={17} /><strong>为什么识别为该设备</strong></div>
+                <p>报障描述中的“站控柜、TEMP/FAN、风扇转速低”同时命中站控柜 A01 台账和 ACP-4000 / IPC-610 散热知识条目。</p>
+                <span>现场描述 + 场站台账 + 维修知识库</span>
+              </div>
+              <div className="intake-field-grid">
+                {equipmentOptionGroups.map((group, index) => (
+                  <label className="staged-field" style={{ "--field-index": index + 1 }} key={group.label}>
+                    <span>{group.label}</span>
+                    <select value={selections[group.label] || ""} onChange={(event) => onSelectionChange(group.label, event.target.value)} disabled={autoRecognizing}>
+                      <option value="" disabled>请选择</option>
+                      {group.options.map((option) => <option value={option} key={option}>{option}</option>)}
+                    </select>
+                    {equipmentFieldSources[group.label] && <small className="field-source-badge">来源 · {equipmentFieldSources[group.label]}</small>}
+                  </label>
+                ))}
+              </div>
+              <div className="intake-recognition-row staged-field" style={{ "--field-index": 5 }}>
+                <div><strong>{autoRecognizing ? "设备识别 Agent 正在读取" : autoRecognized ? "系统建议已生成" : "可读取现场与台账信息"}</strong><div className="intake-recognition-trace">{recognitionSteps.slice(0, equipmentTraceCount).map((item) => <span key={item}><Check size={11} /> {item}</span>)}</div></div>
+                <button className="ghost-button" onClick={onAutoFill} disabled={autoRecognizing}>{autoRecognizing ? <Loader2 size={14} className="spin" /> : <Zap size={14} />}{autoRecognizing ? "识别中" : "自动识别"}</button>
+              </div>
+              <button className="primary-button task-confirm-action staged-confirm" onClick={onContinue} disabled={!deviceComplete || transitioning || autoRecognizing}>确认发生事件 <ChevronRight size={15} /></button>
+            </section>
+          )}
+
+          {activeStep === 3 && (
+            <section className={cardClass("phenomena", 3)}>
+              <TaskCardHead number="04" kicker="其他现象" title="补充运行状态与现场材料" />
+              <div className="phenomena-category-strip staged-field" style={{ "--field-index": 0 }}>
+                <span><Radio size={12} /> 灯态</span><span><Volume2 size={12} /> 声音</span><span><CalendarClock size={12} /> 温度</span><span><Zap size={12} /> 转速</span>
+              </div>
+              <div className="intake-field-grid threshold-fields">
+                {activeThresholdInputs.map(([label, value, suggestion], index) => (
+                  <label className="staged-field" style={{ "--field-index": index + 1 }} key={label}><span>{label}</span><input value={thresholdValues[label] || ""} onChange={(event) => onThresholdChange(label, event.target.value)} /><button type="button" onClick={() => onApplyThresholdSuggestion(label, value)}>采用建议：{suggestion}</button></label>
+                ))}
+              </div>
+              <div className="task-materials staged-field" style={{ "--field-index": 5 }}>
+                <div className="task-materials-head"><div><span>现场材料</span><strong>{materials.length} 项图片 / 视频 / 音频</strong></div><small>点击缩略图预览</small></div>
+                <MaterialMosaic materials={materials} onPreview={onPreviewMaterial} onRemove={onRemoveMaterial} />
+                <div className="evidence-material-actions"><button type="button" onClick={() => imageInputRef.current?.click()}><ImagePlus size={13} /> 图片</button><button type="button" onClick={() => videoInputRef.current?.click()}><Video size={13} /> 视频</button><button type="button" onClick={() => audioInputRef.current?.click()}><Mic size={13} /> 音频</button></div>
+              </div>
+              <button className="primary-button task-confirm-action staged-confirm" onClick={onContinue} disabled={!thresholdComplete || transitioning}>确认其他现象 <ChevronRight size={15} /></button>
+            </section>
+          )}
+
+          {activeStep === 4 && (
+            <section className={cardClass("evidence", 4)}>
+              <TaskCardHead number="05" kicker="判断依据" title="核对标准与操作手册" />
+              <button type="button" className={classNames("evidence-reference staged-field", expandedEvidence === "standard" && "expanded")} style={{ "--field-index": 0 }} onClick={() => setExpandedEvidence((value) => value === "standard" ? null : "standard")}><ShieldCheck size={18} /><div><span>依据标准 · 点击{expandedEvidence === "standard" ? "收起" : "展开"}</span><strong>TEMP/FAN 告警与风扇低速判据</strong><p>{expandedEvidence === "standard" ? "当前风扇转速低于 500 rpm，同时系统温度与 CPU 温度超过建议阈值，三项条件共同支持散热异常方向。" : "设备阈值、台账记录和历史检修案例共同形成当前判断。"}</p></div></button>
+              <button type="button" className={classNames("evidence-reference staged-field", expandedEvidence === "manual" && "expanded")} style={{ "--field-index": 1 }} onClick={() => setExpandedEvidence((value) => value === "manual" ? null : "manual")}><FileText size={18} /><div><span>操作手册 · 点击{expandedEvidence === "manual" ? "收起" : "展开"}</span><strong>ACP-4000 / IPC-610 散热检查</strong><p>{expandedEvidence === "manual" ? "手册中的风道、滤网和风扇维护章节与当前告警对象一致，因此进入诊断后优先生成断电确认、风道检查和风扇验证任务。" : "已命中风道、滤网、风扇拆检及恢复验证章节。"}</p></div></button>
+              <div className={classNames("intake-branch-note staged-field", intakeBranch.tone)} style={{ "--field-index": 2 }}><span>{intakeBranch.label}</span><strong>{intakeBranch.title}</strong><p>{intakeBranch.detail}</p></div>
+              <button className="primary-button task-confirm-action staged-confirm" onClick={onContinue} disabled={transitioning}>形成现场异常事件全景 <ChevronRight size={15} /></button>
+            </section>
+          )}
+        </div>
+      </div>
+
+      {uploadInput(imageInputRef, "image/*", "image")}
+      {uploadInput(videoInputRef, "video/*", "video")}
+      {uploadInput(audioInputRef, "audio/*", "audio")}
+    </div>
+  );
+}
+
+function TaskCardHead({ number, kicker, title }) {
+  return (
+    <div className="intake-current-head">
+      <span>{number}</span>
+      <div><small>{kicker}</small><h3>{title}</h3></div>
+      <em>当前任务</em>
     </div>
   );
 }
@@ -3641,13 +3937,14 @@ function PlaceholderPage({ title, text }) {
 function getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentStep, diagnosis, intakeBranch) {
   if (stage === "input") {
     const suggestions = [
-      "请补充温度告警、风扇声音、前面板灯态，以及是否有现场图片或视频材料。",
+      "请先确认异常首次发现时间、持续时长和发生频次。已知报障描述会保留在顶部，不占用中央业务空间。",
       "请先核对系统匹配出的场站、控制中心和站控柜位置，确认后再生成设备信息任务。",
       `建议确认设备型号、设备角色和关联告警。当前重新评估结果：${intakeBranch?.detail || "等待字段确认"}`,
       intakeBranch?.id === "equipment-mismatch"
         ? "设备对象已修正为 PLC 控制柜，请核对控制器 RUN、通信 LINK、数据上送和电源状态。"
         : `重点核对 TEMP/FAN、风扇转速、系统温度和 CPU 温度。当前分支：${intakeBranch?.diagnosis || "等待运行值确认"}`,
-      `接入信息确认后，将按“${intakeBranch?.diagnosis || "当前诊断方向"}”启动多 Agent 会诊。`,
+      "请核对当前判断使用的告警标准、设备台账和操作手册；确认后系统会形成现场异常事件全景。",
+      `异常事件确认后，将按“${intakeBranch?.diagnosis || "当前诊断方向"}”启动多 Agent 会诊。`,
     ];
     return {
       label: activeIntakeStep === 3 && intakeBranch?.id === "equipment-mismatch"
@@ -3703,10 +4000,11 @@ function getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentSt
 function getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep, message) {
   const text = message.trim();
   if (stage === "input") {
-    if (activeIntakeStep === 0) return "建议把现象拆成三类记录：告警灯态、声音/转速、温度变化。当前演示会优先识别为工控机散热异常。";
+    if (activeIntakeStep === 0) return "请先确认异常首次发现时间、持续时长和发生频次。确认后系统会结合报障描述识别故障地点。";
     if (activeIntakeStep === 1) return "当前先确认位置匹配结果：某输气场站、控制中心、站控柜 A01。位置确认后系统再读取该机柜的设备台账。";
     if (activeIntakeStep === 2) return "本步建议确认设备型号为 ACP-4000 / IPC-610，再补充工控机角色和 TEMP/FAN 关联告警。";
     if (activeIntakeStep === 3) return "阈值可以先按演示值填写：风扇 <500 rpm、系统温度 >55°C、CPU 温度 >70°C。后续接 API 后可由设备数据自动带入。";
+    if (activeIntakeStep === 4) return "请核对依据标准和操作手册。它们用于解释系统为什么形成当前判断，确认后会生成异常事件全景。";
     return "接入信息已经足够触发诊断。建议点击触发诊断，让系统进入多 Agent 会诊并生成诊断结论。";
   }
 
