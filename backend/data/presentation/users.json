@@ -1,0 +1,7 @@
+{"items":[
+  {"id":"ENG-001","name":"李师傅","role":"engineer","team":"站控运维一班","site":"某输气场站","status":"active"},
+  {"id":"ENG-002","name":"王工","role":"engineer","team":"设备保障二班","site":"北区输气场站","status":"active"},
+  {"id":"ENG-003","name":"赵师傅","role":"engineer","team":"自动化维护组","site":"南区分输站","status":"active"},
+  {"id":"EXP-001","name":"专家账号","role":"expert","scope":"all_cases","status":"active"},
+  {"id":"ADM-001","name":"系统管理员","role":"admin","canEditProfessionalContent":false,"status":"active"}
+]}

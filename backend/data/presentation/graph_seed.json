@@ -1,0 +1,1 @@
+{"relations":[{"source":"工控机","relation":"发生","target":"TEMP/FAN 告警"},{"source":"TEMP/FAN 告警","relation":"判断依据","target":"风扇转速低于 500 rpm"},{"source":"散热异常","relation":"检查","target":"风道与滤网"},{"source":"散热异常","relation":"检查","target":"风扇模块"}]}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "activeRole": "engineer",
+  "caseStatus": "awaiting_engineer_confirmation",
+  "engineerResult": null,
+  "engineerSubmitted": false,
+  "expertDraft": null,
+  "expertConclusion": null,
+  "expertAnnotations": [],
+  "expertApproved": false,
+  "graphDecision": "pending",
+  "knowledgePublished": false,
+  "knowledgeVersion": "1.0",
+  "publishedKnowledge": null,
+  "publishedRelations": [],
+  "publishedAt": null,
+  "feedbackVerified": false,
+  "updatedAt": null
+}

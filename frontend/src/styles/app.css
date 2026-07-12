@@ -6967,6 +6967,14 @@ body {
 .summary-location-card { grid-column: 2; grid-row: 1; }
 .summary-material-card { grid-column: 1; grid-row: 2; }
 .summary-status-card { grid-column: 2; grid-row: 2; }
+.summary-status-card {
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  align-content: start;
+}
+
+.summary-status-card .summary-status-grid {
+  align-content: center;
+}
 
 .summary-overview-card {
   grid-template-rows: auto auto minmax(0, 1fr) !important;
@@ -7311,6 +7319,95 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .spatial-intake-v12 *, .spatial-intake-v12 *::before, .spatial-intake-v12 *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; }
+}
+
+/* Right-side multi-Agent consultation stream */
+.consultation-central-stage { display: grid; place-items: center; min-height: 100%; }
+.consultation-central-status { display: grid; justify-items: center; gap: 14px; width: min(680px, 92%); padding: 34px; text-align: center; border: 1px solid rgba(91,158,215,.28); border-radius: 22px; background: radial-gradient(circle at 50% 0, rgba(37,106,158,.2), transparent 55%), rgba(7,20,34,.68); }
+.consultation-central-status h2 { margin: 0; }
+.consultation-central-status > p:not(.eyebrow) { max-width: 520px; margin: 0; color: #8da4ba; }
+.consultation-orbit { position: relative; display: grid; place-items: center; width: 100px; height: 100px; border: 1px solid rgba(78,176,232,.25); border-radius: 50%; color: #69cfff; }
+.consultation-orbit::before { content: ""; position: absolute; inset: 14px; border: 1px dashed rgba(87,216,171,.36); border-radius: 50%; animation: consultationRotate 5s linear infinite; }
+.consultation-orbit > span { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: #57d8ab; box-shadow: 0 0 14px rgba(87,216,171,.8); animation: consultationNodePulse 1.5s ease-in-out infinite; }
+.consultation-orbit > span:nth-child(1) { top: 5px; left: 45px; }
+.consultation-orbit > span:nth-child(2) { right: 7px; bottom: 23px; animation-delay: .3s; }
+.consultation-orbit > span:nth-child(3) { left: 7px; bottom: 23px; animation-delay: .6s; }
+.consultation-event-summary { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid rgba(104,157,205,.22); border-radius: 11px; background: rgba(6,17,29,.55); }
+.consultation-event-summary span { color: #7891a8; font-size: 10px; }
+.consultation-event-summary strong { font-size: 12px; }
+.consultation-event-summary em { color: #74dcb6; font-size: 10px; font-style: normal; }
+.consultation-central-progress { display: grid; grid-template-columns: minmax(260px,420px) 42px; align-items: center; gap: 10px; width: 100%; }
+.consultation-central-progress > div { height: 5px; overflow: hidden; border-radius: 999px; background: rgba(102,151,194,.16); }
+.consultation-central-progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#31a9ee,#57d8ab); transition: width 420ms ease; }
+.consultation-central-progress > span { color: #79cfff; font-size: 11px; }
+.consultation-status-dots { display: flex; justify-content: center; gap: 18px; }
+.consultation-status-dots > span { display: grid; justify-items: center; gap: 5px; color: #6f879e; font-size: 10px; }
+.consultation-status-dots > span::first-line { color: #9ab0c4; }
+.consultation-status-dots > span.running { color: #70d3ff; animation: consultationNodePulse 1.2s ease-in-out infinite; }
+.consultation-status-dots > span.done { color: #63d4aa; }
+.consultation-status-dots small { max-width: 110px; font-size: 9px; }
+
+.assistant-chat:has(.consultation-stream) .assistant-body { scroll-behavior: smooth; }
+.consultation-stream { display: grid; gap: 10px; padding-bottom: 8px; }
+.consultation-stream-overview { display: grid; grid-template-columns: 1fr auto; gap: 7px; padding: 11px; border: 1px solid rgba(72,168,229,.3); border-radius: 12px; background: linear-gradient(135deg,rgba(24,77,112,.38),rgba(10,31,50,.6)); animation: consultationMessageIn 360ms ease-out both; }
+.consultation-stream-overview > div:first-child { display: grid; gap: 2px; }
+.consultation-stream-overview span { color: #819bb3; font-size: 9px; }
+.consultation-stream-overview strong { font-size: 12px; }
+.consultation-stream-overview em { color: #74d7ff; font-size: 12px; font-style: normal; font-weight: 700; }
+.consultation-mini-track { grid-column: 1 / -1; height: 3px; overflow: hidden; border-radius: 999px; background: rgba(101,151,192,.18); }
+.consultation-mini-track i { display: block; height: 100%; background: linear-gradient(90deg,#2aa8ef,#57d8ab); transition: width 360ms ease; }
+.consultation-input-message { display: grid; grid-template-columns: 22px 1fr; gap: 7px; padding: 10px; border-left: 2px solid #3faeea; background: rgba(12,36,57,.48); color: #6ecdfb; animation: consultationMessageIn 420ms ease-out both; }
+.consultation-input-message div { display: grid; gap: 2px; }
+.consultation-input-message span { color: #7993aa; font-size: 9px; }
+.consultation-input-message strong { color: #e5f2ff; font-size: 11px; }
+.consultation-input-message p { margin: 0; color: #93a9bc; font-size: 10px; line-height: 1.45; }
+.consultation-agent-thread { display: grid; gap: 8px; }
+.consultation-agent-message { overflow: hidden; border: 1px solid rgba(100,151,194,.2); border-radius: 12px; background: rgba(7,20,34,.62); transition: border-color 240ms ease, background 240ms ease, opacity 240ms ease; animation: consultationMessageIn 380ms ease-out both; }
+.consultation-agent-message.running { border-color: rgba(65,178,239,.5); background: rgba(11,40,62,.78); box-shadow: inset 2px 0 0 #3db4ef; }
+.consultation-agent-message.done { border-color: rgba(83,205,158,.3); }
+.consultation-agent-message.waiting { opacity: .58; }
+.consultation-agent-message > header { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 7px; padding: 9px; }
+.consultation-agent-icon { display: grid; place-items: center; width: 29px; height: 29px; border-radius: 9px; background: rgba(45,113,164,.32); color: #74d1ff; font-size: 11px; }
+.consultation-agent-message.done .consultation-agent-icon { background: rgba(58,164,127,.18); color: #63d4aa; }
+.consultation-agent-message header > div { display: grid; gap: 1px; }
+.consultation-agent-message header strong { font-size: 11px; }
+.consultation-agent-message header small { color: #718ba3; font-size: 9px; }
+.consultation-agent-message header em { color: #7690a7; font-size: 9px; font-style: normal; }
+.consultation-agent-message.running header em { color: #70d1ff; }
+.consultation-agent-message.done header em { color: #65d2a9; }
+.consultation-agent-content { display: grid; gap: 8px; padding: 0 10px 10px 46px; }
+.consultation-agent-input { display: grid; gap: 2px; margin: 0; color: #9bb0c3; font-size: 9px; line-height: 1.45; }
+.consultation-agent-input span { color: #62c7f5; }
+.consultation-thinking-lines { display: grid; gap: 5px; }
+.consultation-thinking-lines p { display: flex; align-items: flex-start; gap: 7px; margin: 0; color: #b4c5d5; font-size: 10px; line-height: 1.45; animation: consultationLineIn 320ms ease-out both; }
+.consultation-thinking-lines p > i { flex: 0 0 auto; width: 5px; height: 5px; margin-top: 5px; border-radius: 50%; background: #42b9ef; box-shadow: 0 0 7px rgba(66,185,239,.7); }
+.consultation-sources { display: grid; gap: 4px; padding: 7px; border: 1px solid rgba(103,155,199,.18); border-radius: 8px; background: rgba(4,15,26,.48); }
+.consultation-sources > span { display: flex; align-items: center; gap: 5px; color: #72cfae; font-size: 9px; }
+.consultation-sources small { color: #8299ae; font-size: 9px; animation: consultationLineIn 280ms ease-out both; }
+.consultation-searching { animation: consultationSearch 900ms ease-in-out infinite; }
+.consultation-agent-result { display: grid; gap: 3px; padding: 8px; border-left: 2px solid #57d8ab; background: rgba(31,89,72,.22); animation: consultationResultIn 360ms ease-out both; }
+.consultation-agent-result span { color: #66d5ac; font-size: 9px; }
+.consultation-agent-result p { margin: 0; color: #d6e8df; font-size: 10px; line-height: 1.5; }
+.consultation-handoff { display: flex; align-items: center; gap: 5px; color: #6f93ad; font-size: 9px; animation: consultationHandoff 650ms ease-out both; }
+.consultation-convergence { display: grid; justify-items: center; gap: 5px; padding: 14px; border: 1px solid rgba(87,216,171,.36); border-radius: 12px; background: radial-gradient(circle at 50% 0,rgba(65,172,133,.18),transparent 68%),rgba(7,29,35,.7); text-align: center; animation: consultationResultIn 500ms ease-out both; }
+.consultation-convergence > div { position: relative; display: grid; place-items: center; width: 48px; height: 32px; color: #65d5aa; }
+.consultation-convergence > div span { position: absolute; left: 0; width: 17px; height: 1px; background: #4dc99e; transform-origin: right; }
+.consultation-convergence > div span:nth-child(1) { top: 7px; transform: rotate(24deg); }
+.consultation-convergence > div span:nth-child(2) { top: 16px; }
+.consultation-convergence > div span:nth-child(3) { bottom: 7px; transform: rotate(-24deg); }
+.consultation-convergence strong { font-size: 11px; }
+.consultation-convergence p { margin: 0; color: #7f9b9f; font-size: 9px; }
+
+@keyframes consultationRotate { to { transform: rotate(360deg); } }
+@keyframes consultationNodePulse { 50% { opacity: .55; transform: scale(.82); } }
+@keyframes consultationMessageIn { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes consultationLineIn { from { opacity: 0; transform: translateX(7px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes consultationResultIn { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes consultationHandoff { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes consultationSearch { 50% { opacity: .35; transform: scale(.82); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .consultation-central-stage *, .consultation-stream * { animation-duration: 1ms !important; transition-duration: 1ms !important; }
 }
 
 /* R2 · 千问式两级检修预方案 */

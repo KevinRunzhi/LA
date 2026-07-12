@@ -12,8 +12,15 @@
 2. [`teacher-feedback-2026-07-10-dynamic-intake-workspace.md`](./teacher-feedback-2026-07-10-dynamic-intake-workspace.md)：2026-07-10 老师对动态接诊工作区的最新修改意见；下一轮页面规划以此为最新输入。
 3. [`r0-spatial-intake-workspace-redesign.md`](./r0-spatial-intake-workspace-redesign.md)：R0.1 V1.2 页面信息架构、顶部已知信息区、中央生成舞台和完整动画编排方案。
 4. [`r0-spatial-intake-workspace-spec.md`](./r0-spatial-intake-workspace-spec.md)：R0.1 V1.3 状态模型、地点之后的动态链路、组件拆分、动画规范和验收标准。
-5. [`meeting-analysis-and-dev-plan.md`](./meeting-analysis-and-dev-plan.md)：2026-07-10 会议需求总纲；与老师最新修改意见冲突时以后者为准。
-6. [`runtime-and-loongarch-policy.md`](./runtime-and-loongarch-policy.md)：Node、WSL、龙芯运行与逐模块验证的强制决策。
+5. [`r0-right-agent-consultation-stream-spec.md`](./r0-right-agent-consultation-stream-spec.md)：多 Agent 会诊迁移到右侧辅助对话区的消息流、动画、自动滚动和验收规范。
+6. [`backend-case-feedback-business-plan.md`](./backend-case-feedback-business-plan.md)：面向 PPT 与几分钟视频的后台案例回流、专家审核和知识沉淀 V1.2 演示基线。
+7. [`case-feedback-video-script-and-data.md`](./case-feedback-video-script-and-data.md)：案例回流七分钟视频分镜、唯一完整案例、动态知识、图谱变更和演示状态冻结数据。
+8. [`backend-case-feedback-development-spec.md`](./backend-case-feedback-development-spec.md)：从视频脚本反推的后台信息架构、页面组件、JSON 状态、Flask 接口、状态机和开发验收规格。
+9. [`expert-knowledge-graph-display-spec.md`](./expert-knowledge-graph-display-spec.md)：专家知识图谱的入口、当前/本次更新视图、节点详情、发布状态联动和录制验收规格。
+10. [`sqlite-knowledge-feedback-and-sync-spec.md`](./sqlite-knowledge-feedback-and-sync-spec.md)：案例回流、知识版本、图谱关系与工程师本地同步的 SQLite 数据结构和事务规范。
+11. [`case-02-rockwell-6300-power-structured-summary.md`](./case-02-rockwell-6300-power-structured-summary.md)：第二案例的设备判据、演示事实、检修流程、结构化知识、图谱关系与待补现场证据。
+12. [`meeting-analysis-and-dev-plan.md`](./meeting-analysis-and-dev-plan.md)：2026-07-10 会议需求总纲；与老师最新修改意见冲突时以后者为准。
+13. [`runtime-and-loongarch-policy.md`](./runtime-and-loongarch-policy.md)：Node、WSL、龙芯运行与逐模块验证的强制决策。
 7. [`r0-dynamic-intake-workbench-spec.md`](./r0-dynamic-intake-workbench-spec.md)：现有 R0/P0 动态接诊实现规格；R0.1 以新方案和新 Spec 为增量基线。
 8. [`r2-editable-maintenance-plan-design.md`](./r2-editable-maintenance-plan-design.md)：R2 千问式两级检修大纲的用户确认设计。
 9. [`r2-editable-maintenance-plan-spec.md`](./r2-editable-maintenance-plan-spec.md)：R2 状态机、数据结构、组件职责和验收规格。

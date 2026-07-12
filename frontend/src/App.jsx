@@ -41,6 +41,7 @@ import {
   Zap,
 } from "lucide-react";
 import { api } from "./api/client";
+import AdminShell from "./admin/AdminShell";
 import { SourceCard } from "./components/chat/SourceCard";
 import { StreamingMarkdown } from "./components/chat/StreamingMarkdown";
 import { ThinkingProcess } from "./components/chat/ThinkingProcess";
@@ -49,6 +50,7 @@ import { assistantSources, buildMaintenanceAnswer, retrievalStatuses } from "./d
 
 const navItems = [
   { id: "workbench", label: "工作台", icon: LayoutDashboard },
+  { id: "case-feedback", label: "案例回流", icon: Layers },
   { id: "graph", label: "知识图谱", icon: GitBranch },
   { id: "records", label: "检修记录", icon: ClipboardList },
   { id: "settings", label: "设置", icon: Settings },
@@ -102,6 +104,30 @@ const diagnosisTasks = [
     title: "弹出并生成诊断结论",
     value: "生成整版报告",
     detail: "所有 Agent 完成后，统一输出结构化诊断结论和进入检修向导入口。",
+  },
+];
+
+const consultationAgentDetails = [
+  {
+    role: "故障机理分析",
+    input: "异常描述、ACP-4000 / IPC-610、TEMP/FAN 告警与运行值",
+    lines: ["拆分灯态、声音、转速和温度现象", "关联风道、滤网与风扇模块", "比较风扇低速和温升发生关系", "形成散热异常候选原因"],
+    sources: ["现场异常事件全景", "设备台账 · 站控柜 A01", "TEMP/FAN 告警规则"],
+    result: "风道受阻或风扇低速的可能性较高，进入散热异常诊断方向。",
+  },
+  {
+    role: "维修知识检索",
+    input: "设备对象、候选原因和告警阈值",
+    lines: ["检索 ACP-4000 / IPC-610 散热结构", "命中风扇低于 500 rpm 判据", "比对系统温度与 CPU 温度阈值", "关联历史积尘与风扇故障案例"],
+    sources: ["KB-001 · 散热系统结构", "KB-003 · 风扇转速阈值", "KB-004 · 温度判断条件"],
+    result: "证据共同指向风道、滤网和风扇模块，应优先检查散热链路。",
+  },
+  {
+    role: "操作安全与合规",
+    input: "诊断方向、拟检查部件和现场作业边界",
+    lines: ["校验断电与挂牌前置条件", "检查防静电和冷却等待要求", "核对风道、滤网、风扇拆检顺序", "补充恢复上电与持续观察要求"],
+    sources: ["设备操作手册 · 安全章节", "现场检修作业规范", "历史检修记录 · 恢复验证"],
+    result: "完成断电、挂牌和防静电确认后，可进入步骤式检修预方案。",
   },
 ];
 
@@ -743,10 +769,21 @@ const modalityActions = [
 ];
 
 const defaultUser = {
+  account: "lishifu",
+  userType: "engineer",
   name: "李师傅",
   role: "一线检修人员",
   site: "某输气场站",
   team: "站控运维一班",
+};
+
+const expertUser = {
+  account: "expert",
+  userType: "expert",
+  name: "专家账号",
+  role: "设备检修专家",
+  site: "全场站",
+  team: "专家审核中心",
 };
 
 function classNames(...items) {
@@ -859,6 +896,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(defaultUser);
   const [navOpen, setNavOpen] = useState(false);
   const [activePage, setActivePage] = useState("workbench");
+  const [caseFeedbackEntry, setCaseFeedbackEntry] = useState("workbench");
   const [stage, setStage] = useState("home");
   const [health, setHealth] = useState("连接中");
   const [scenario, setScenario] = useState(null);
@@ -1278,6 +1316,14 @@ export default function App() {
     return <LoginPage onLogin={handleLogin} />;
   }
 
+  if (currentUser.userType === "expert") {
+    return (
+      <div className="expert-portal-shell">
+        <AdminShell portalRole="expert" onLogout={handleLogout} />
+      </div>
+    );
+  }
+
   return (
     <div className={classNames("app-shell", navOpen && "nav-expanded")}>
       <aside className="sidebar">
@@ -1313,6 +1359,8 @@ export default function App() {
             <h1>
               {activePage === "graph"
                 ? "知识图谱"
+                : activePage === "case-feedback"
+                  ? "案例回流"
                 : activePage === "records"
                   ? "检修记录"
                 : activePage === "settings"
@@ -1341,7 +1389,9 @@ export default function App() {
           </div>
         </header>
 
-        {activePage === "graph" ? (
+        {activePage === "case-feedback" ? (
+          <AdminShell portalRole="engineer" initialPage={caseFeedbackEntry} onLogout={handleLogout} onExitToWorkbench={() => setActivePage("workbench")} />
+        ) : activePage === "graph" ? (
           <KnowledgeGraphPage graph={graph} evidence={evidence} />
         ) : activePage === "records" ? (
           <RecordPage record={record} onBuildRecord={buildRecord} />
@@ -1487,8 +1537,11 @@ export default function App() {
               {stage === "record" && (
                 <RecordStage
                   record={record}
-                  onApprove={approveExpertReview}
                   onBackGuide={() => setStage("guide")}
+                  onCreateCase={() => {
+                    setCaseFeedbackEntry("engineer-confirm");
+                    setActivePage("case-feedback");
+                  }}
                 />
               )}
               {stage === "expert" && (
@@ -1509,6 +1562,7 @@ export default function App() {
               analysisSubStep={activeDiagnosisTask}
               currentStep={currentStep}
               diagnosis={diagnosis}
+              activeAgentIndex={activeAgentIndex}
               intakeBranch={intakeBranch}
               planRevisionEvents={planRevisionEvents}
             />
@@ -1526,7 +1580,8 @@ function LoginPage({ onLogin }) {
 
   function submitLogin(event) {
     event.preventDefault();
-    onLogin(defaultUser);
+    const normalizedAccount = account.trim().toLowerCase();
+    onLogin(normalizedAccount === "expert" || normalizedAccount === "zhuanjia" ? expertUser : defaultUser);
   }
 
   return (
@@ -1567,6 +1622,11 @@ function LoginPage({ onLogin }) {
             登录
             <ChevronRight size={18} />
           </button>
+          <div className="login-demo-accounts">
+            <span>演示账号</span>
+            <button type="button" onClick={() => setAccount("lishifu")}>工程师 · lishifu</button>
+            <button type="button" onClick={() => setAccount("expert")}>专家 · expert</button>
+          </div>
         </form>
       </section>
     </main>
@@ -1924,11 +1984,6 @@ function IntakeSummaryStage({
             {activeThresholdInputs.map(([label]) => (
               <p key={label}><span>{label}</span><strong>{thresholdValues[label]}</strong></p>
             ))}
-          </div>
-          <div className={classNames("intake-branch-note", intakeBranch.tone)}>
-            <span>{intakeBranch.label}</span>
-            <strong>{intakeBranch.title}</strong>
-            <p>{intakeBranch.detail}</p>
           </div>
         </section>
 
@@ -2633,82 +2688,23 @@ function EquipmentRecognitionAgent({ autoRecognizing, autoRecognized, visibleCou
 }
 
 function AgentRunStage({ agents, activeAgentIndex }) {
-  const messages = [
-    "正在解析现场描述、设备型号和故障现象...",
-    "正在检索维修指导、阈值和历史知识条目...",
-    "正在进行操作合规与安全要求校验...",
-  ];
-  const streamedItems = [
-    ["读取现场描述：温度告警、风扇声音异常、前面板风扇转速偏低。", "识别设备上下文：ACP-4000 / IPC-610 工控机。", "初步判断进入散热异常诊断路径。"],
-    ["检索 KB-001：ACP-4000 / IPC-610 散热系统结构。", "命中 KB-003：风扇 <500 rpm 告警阈值。", "命中 KB-004：系统温度与 CPU 温度判断条件。"],
-    ["校验操作前置条件：断电、挂牌、防静电。", "确认拆检顺序：风道、滤网、风扇、恢复验证。", "形成可进入检修向导的安全边界。"],
-  ];
   const progress = Math.min(100, Math.round((Math.max(0, activeAgentIndex) / agents.length) * 100));
 
   return (
-    <div className="stage-content agent-run-stage">
-      <div className="stage-copy">
+    <div className="stage-content consultation-central-stage">
+      <section className="consultation-central-status">
+        <div className="consultation-orbit"><span /><span /><span /><Cpu size={30} /></div>
         <p className="eyebrow">分析诊断</p>
-        <h2>多 Agent 会诊进行中</h2>
-        <p>系统正在按预设演示流程逐项分析。每个 Agent 完成后再进入下一项，全部完成后统一生成诊断结论。</p>
-      </div>
-
-      <div className="agent-run-workspace">
-        <div className="run-progress-panel">
-          <div className="progress-head">
-            <strong>诊断执行进度</strong>
-            <span>{progress}%</span>
-          </div>
-          <div className="progress-track">
-            <div style={{ width: `${progress}%` }} />
-          </div>
-          <div className="execution-rail">
-            {agents.map((agent, index) => {
-              const done = index < activeAgentIndex;
-              const running = index === activeAgentIndex;
-              return (
-                <div className={classNames("rail-step", done && "done", running && "running")} key={agent.name}>
-                  <span>{done ? <Check size={14} /> : running ? <Loader2 size={14} className="spin" /> : index + 1}</span>
-                  <p>{agent.name}</p>
-                </div>
-              );
-            })}
-          </div>
+        <h2>{activeAgentIndex >= agents.length ? "会诊完成，正在生成诊断结论" : "多 Agent 会诊进行中"}</h2>
+        <p>详细思考、检索依据和阶段结论正在右侧“多 Agent 会诊”区域持续生成。</p>
+        <div className="consultation-event-summary">
+          <span>事件对象</span><strong>站控柜 A01 · ACP-4000 / IPC-610</strong><em>散热异常方向</em>
         </div>
-
-        <div className="agent-run-list">
-          {agents.map((agent, index) => {
-            const done = index < activeAgentIndex;
-            const running = index === activeAgentIndex;
-            return (
-              <article className={classNames("agent-run-card", done && "done", running && "running")} key={agent.name}>
-                <div className="agent-run-status">
-                  {done && <Check size={18} />}
-                  {running && <Loader2 size={18} className="spin" />}
-                  {!done && !running && <span>{index + 1}</span>}
-                </div>
-                <div>
-                  <strong>{agent.name}</strong>
-                  <p>{done ? agent.content : running ? messages[index] || "正在分析..." : "等待上一个 Agent 完成"}</p>
-                  {running && (
-                    <div className="stream-lines">
-                      {(streamedItems[index] || []).map((item, lineIndex) => (
-                        <span style={{ animationDelay: `${lineIndex * 520}ms` }} key={item}>{item}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <span>{done ? "已完成" : running ? "运行中" : "等待中"}</span>
-              </article>
-            );
-          })}
+        <div className="consultation-central-progress"><div><i style={{ width: `${progress}%` }} /></div><span>{progress}%</span></div>
+        <div className="consultation-status-dots">
+          {agents.map((agent, index) => <span className={classNames(index < activeAgentIndex && "done", index === activeAgentIndex && "running")} key={agent.name}>{index < activeAgentIndex ? <Check size={12} /> : index + 1}<small>{agent.name}</small></span>)}
         </div>
-      </div>
-
-      <div className="analysis-waiting">
-        <span className="pulse-dot" />
-        <p>{activeAgentIndex >= agents.length ? "会诊完成，正在生成整版诊断结论..." : "请稍候，系统正在组织诊断依据。"}</p>
-      </div>
+      </section>
     </div>
   );
 }
@@ -3231,7 +3227,7 @@ function GuideStage({
   );
 }
 
-function RecordStage({ record, onApprove, onBackGuide }) {
+function RecordStage({ record, onBackGuide, onCreateCase }) {
   if (!record) {
     return (
       <div className="stage-content">
@@ -3256,7 +3252,7 @@ function RecordStage({ record, onApprove, onBackGuide }) {
       </div>
       <div className="stage-actions">
         <button className="ghost-button" onClick={() => window.print()}>打印作业卡</button>
-        <button className="primary-button" onClick={onApprove}>提交专家审核</button>
+        <button className="primary-button" onClick={onCreateCase}><FileText size={15} /> 生成案例草稿并确认</button>
       </div>
     </div>
   );
@@ -4037,6 +4033,65 @@ function getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep
     : "我会根据当前步骤给出辅助建议。当前版本是本地模拟回复，用于演示交互效果。";
 }
 
+function AgentConsultationStream({ agents, activeAgentIndex, tick }) {
+  const complete = activeAgentIndex >= agents.length;
+  const progress = complete ? 100 : Math.round((Math.max(0, activeAgentIndex) / agents.length) * 100);
+
+  return (
+    <section className="consultation-stream" aria-live="polite">
+      <header className="consultation-stream-overview">
+        <div><span>会诊进度</span><strong>{complete ? "三路证据已汇合" : `${activeAgentIndex + 1} / ${agents.length} Agent 运行中`}</strong></div>
+        <em>{progress}%</em>
+        <div className="consultation-mini-track"><i style={{ width: `${progress}%` }} /></div>
+      </header>
+      <article className="consultation-input-message">
+        <MapPin size={14} /><div><span>会诊输入</span><strong>站控柜 A01 · 工控机散热异常事件</strong><p>TEMP/FAN 告警、风扇低速、系统与 CPU 温度升高</p></div>
+      </article>
+
+      <div className="consultation-agent-thread">
+        {agents.map((agent, index) => {
+          const detail = consultationAgentDetails[index];
+          const done = index < activeAgentIndex || complete;
+          const running = index === activeAgentIndex && !complete;
+          const visibleLineCount = done ? detail.lines.length : running ? Math.min(detail.lines.length, Math.max(1, Math.floor(tick / 2) + 1)) : 0;
+          const visibleSourceCount = done ? detail.sources.length : running ? Math.min(detail.sources.length, Math.max(0, Math.floor((tick - 3) / 2))) : 0;
+          const showResult = done || (running && tick >= 10);
+          return (
+            <article className={classNames("consultation-agent-message", done && "done", running && "running", !done && !running && "waiting")} key={agent.name}>
+              <header>
+                <span className="consultation-agent-icon">{done ? <Check size={14} /> : running ? <Loader2 size={14} className="spin" /> : index + 1}</span>
+                <div><strong>{agent.name}</strong><small>{detail.role}</small></div>
+                <em>{done ? "已完成" : running ? "会诊中" : "等待"}</em>
+              </header>
+              {(done || running) && (
+                <div className="consultation-agent-content">
+                  <p className="consultation-agent-input"><span>读取输入</span>{detail.input}</p>
+                  <div className="consultation-thinking-lines">
+                    {detail.lines.slice(0, visibleLineCount).map((line, lineIndex) => <p style={{ "--line-index": lineIndex }} key={line}><i />{line}{running && lineIndex === visibleLineCount - 1 && tick < 10 && <b className="stream-cursor" />}</p>)}
+                  </div>
+                  {(visibleSourceCount > 0 || done) && (
+                    <div className="consultation-sources"><span>{done ? <Check size={11} /> : <Search size={11} className="consultation-searching" />}{done ? "已命中依据" : "正在检索依据"}</span>{detail.sources.slice(0, visibleSourceCount).map((source) => <small key={source}>{source}</small>)}</div>
+                  )}
+                  {showResult && <div className="consultation-agent-result"><span>阶段结论</span><p>{detail.result}</p></div>}
+                  {done && index < agents.length - 1 && <div className="consultation-handoff"><GitBranch size={12} /> 已将阶段结果交给下一 Agent</div>}
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+
+      {complete && (
+        <div className="consultation-convergence">
+          <div><span /><span /><span /><Check size={18} /></div>
+          <strong>分析、知识与合规证据已汇合</strong>
+          <p>正在生成结构化诊断结论与检修建议…</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function AssistantChat({
   stage,
   activeIntakeStep,
@@ -4047,6 +4102,7 @@ function AssistantChat({
   analysisSubStep,
   currentStep,
   diagnosis,
+  activeAgentIndex,
   intakeBranch,
   planRevisionEvents,
 }) {
@@ -4060,7 +4116,9 @@ function AssistantChat({
   const [retrievalVisibleCount, setRetrievalVisibleCount] = useState(0);
   const [sourceVisibleCount, setSourceVisibleCount] = useState(0);
   const [processStarted, setProcessStarted] = useState(false);
+  const [consultationTick, setConsultationTick] = useState(0);
   const timersRef = useRef([]);
+  const assistantBodyRef = useRef(null);
 
   function clearAssistantTimers() {
     timersRef.current.forEach((timer) => window.clearTimeout(timer));
@@ -4086,6 +4144,25 @@ function AssistantChat({
     setProcessStarted(false);
     return clearAssistantTimers;
   }, [context.label, context.suggestion]);
+
+  useEffect(() => {
+    if (stage !== "analysis") {
+      setConsultationTick(0);
+      return undefined;
+    }
+    setConsultationTick(0);
+    const timer = window.setInterval(() => setConsultationTick((value) => value + 1), 420);
+    return () => window.clearInterval(timer);
+  }, [activeAgentIndex, stage]);
+
+  useEffect(() => {
+    const container = assistantBodyRef.current;
+    if (!container) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeAgentIndex, consultationTick, messages, streamingMessageId, triageCharCount, triageTraceCount]);
 
   function sendMessage() {
     const text = draft.trim();
@@ -4187,11 +4264,14 @@ function AssistantChat({
       <div className="assistant-head">
         <MessageCircle size={16} />
         <div>
-          <strong>辅助对话</strong>
+          <strong>{stage === "analysis" ? "多 Agent 会诊" : "辅助对话"}</strong>
           <span>{context.label}</span>
         </div>
       </div>
-      <div className="assistant-body">
+      <div className="assistant-body" ref={assistantBodyRef}>
+        {stage === "analysis" && diagnosis && (
+          <AgentConsultationStream agents={diagnosis.agents} activeAgentIndex={activeAgentIndex} tick={consultationTick} />
+        )}
         {showTriageAgent && (
           <section className="agent-stream-panel">
             <div className="agent-stream-head">
