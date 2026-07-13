@@ -160,6 +160,11 @@ const knowledgeFieldLabels = {
 function ExpertReviewFlow({ data, state, busy, onBack, onSave, onPublish }) {
   const saved = state.expertDraft;
   const result = state.engineerResult || data.engineerResultTemplate;
+  const feedbackPackage = state.feedbackPackage;
+  const uploadedSteps = feedbackPackage?.completedSteps?.map((item) => item.title || item).join(" → ") || data.execution.steps.join(" → ");
+  const uploadedMaterials = feedbackPackage?.materials?.length
+    ? feedbackPackage.materials.map((item) => item.name).join("、")
+    : "本次未附加现场材料";
   const initialDraft = saved || {
     caseResult: { finalCause: result.finalCause, actualResolution: result.actualResolution, recoveryResult: result.recoveryResult, knowledgeValue: "形成风扇老化判断与更换条件，供同型号设备复用" },
     knowledge: {
@@ -204,7 +209,7 @@ function ExpertReviewFlow({ data, state, busy, onBack, onSave, onPublish }) {
         {step === 0 && <div className="expert-stage expert-case-stage">
           <header><span>步骤 1 / 3</span><h1>审核并修正案例</h1><p>先核对不可修改的现场证据，再修正需要进入正式案例的结论。</p></header>
           <div className="expert-case-review-grid">
-            <section className="expert-locked-evidence"><h3><ShieldCheck size={15}/>现场证据 · 只读</h3><Fact label="异常描述" value={data.incident.description}/><Fact label="告警与参数" value={data.diagnosis.evidence.join(" · ")}/><Fact label="Agent 诊断" value={data.diagnosis.conclusion}/><Fact label="执行与恢复" value={`${data.execution.steps.join(" → ")}；${result.recoveryResult}`}/></section>
+            <section className="expert-locked-evidence"><h3><ShieldCheck size={15}/>工程师上传证据 · 只读</h3><Fact label="来源记录" value={feedbackPackage?.recordId || data.recordId}/><Fact label="异常描述" value={feedbackPackage?.incident?.description || data.incident.description}/><Fact label="告警与参数" value={feedbackPackage?.diagnosis?.evidence?.join(" · ") || data.diagnosis.evidence.join(" · ")}/><Fact label="Agent 诊断" value={feedbackPackage?.diagnosis?.conclusion || data.diagnosis.conclusion}/><Fact label="已完成步骤" value={uploadedSteps}/><Fact label="恢复验证" value={`风扇 ${result.fanSpeedRpm} rpm · 系统 ${result.systemTemperatureC}℃ · CPU ${result.cpuTemperatureC}℃ · 观察 ${result.observationMinutes} 分钟`}/><Fact label="现场材料" value={uploadedMaterials}/></section>
             <section className="expert-case-form"><div className="expert-decision-row"><span>审核决定</span>{["修正后通过","退回补充","仅归档案例"].map(item=><button className={draft.reviewDecision===item?"active":""} onClick={()=>setDraft({...draft,reviewDecision:item})} key={item}>{item}</button>)}</div><label>最终故障原因<textarea value={draft.caseResult.finalCause} onChange={e=>setCase("finalCause",e.target.value)}/></label><label>实际处理<textarea value={draft.caseResult.actualResolution} onChange={e=>setCase("actualResolution",e.target.value)}/></label><label>恢复结果<input value={draft.caseResult.recoveryResult} onChange={e=>setCase("recoveryResult",e.target.value)}/></label><label>知识沉淀价值<textarea value={draft.caseResult.knowledgeValue} onChange={e=>setCase("knowledgeValue",e.target.value)}/></label></section>
           </div>
         </div>}

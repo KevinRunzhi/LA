@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
+from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
@@ -118,7 +119,7 @@ def create_app() -> Flask:
                 "thresholds": scenario["thresholds"],
                 "safety_confirmed": "step-02-safety" in completed_steps,
                 "conclusion": "疑似风道堵塞、滤网积尘或风扇低速导致散热异常，建议完成清理、接线核对和恢复观察。",
-                "expert_status": "已审核" if expert_approved else "待审核",
+                "expert_status": "已审核" if expert_approved else "尚未上传",
             }
         )
 
@@ -212,16 +213,39 @@ def create_app() -> Flask:
         state = load_presentation_state()
         if state["activeRole"] != "engineer":
             return api_error("role_forbidden", "只有工程师可以提交案例", 403)
-        if state["caseStatus"] != "awaiting_engineer_confirmation":
-            return api_error("invalid_case_state", "当前案例不能重复提交")
         payload = request.get_json(silent=True) or {}
-        result = payload.get("engineerResult") or {}
+        feedback_package = payload.get("feedbackPackage") or {}
+        result = payload.get("engineerResult") or feedback_package.get("maintenanceResult") or {}
+        record_id = feedback_package.get("recordId") or presentation_case["recordId"]
+        if state["caseStatus"] != "awaiting_engineer_confirmation":
+            submitted = state.get("feedbackPackage") or {}
+            if state.get("engineerSubmitted") and submitted.get("recordId") == record_id:
+                return api_ok(state, f'案例 {case_id} 已在专家待审核库中')
+            return api_error("invalid_case_state", "当前案例不能重复提交")
         required = ["finalCause", "actualResolution", "recoveryResult", "fanSpeedRpm", "systemTemperatureC", "cpuTemperatureC", "observationMinutes"]
         if any(result.get(field) in (None, "") for field in required):
             return api_error("incomplete_engineer_result", "请完成必要的实际检修结果")
-        state.update({"engineerResult": result, "engineerSubmitted": True, "caseStatus": "pending_expert_review"})
+        if not feedback_package:
+            feedback_package = {
+                "caseId": case_id,
+                "recordId": record_id,
+                "engineerId": "lishifu",
+                "maintenanceResult": result,
+                "completedSteps": presentation_case["execution"]["steps"],
+                "materials": [],
+                "targetKnowledgeIds": [presentation_case["knowledgeProposal"]["knowledgeId"]],
+            }
+        submitted_at = datetime.now(timezone.utc).isoformat()
+        feedback_package = {**feedback_package, "caseId": case_id, "recordId": record_id, "submittedAt": submitted_at}
+        state.update({
+            "engineerResult": result,
+            "feedbackPackage": feedback_package,
+            "submittedAt": submitted_at,
+            "engineerSubmitted": True,
+            "caseStatus": "pending_expert_review",
+        })
         store.save_engineer_result(case_id, state["caseStatus"], result)
-        return api_ok(store.save_state(state), f'案例 {case_id} 已提交专家审核')
+        return api_ok(store.save_state(state), f'案例 {case_id} 已进入专家待审核库')
 
     @app.route("/api/admin/cases/<case_id>/adopt-expert-conclusion", methods=["POST"])
     def adopt_expert_conclusion(case_id: str):

@@ -1,6 +1,6 @@
 {
   "id": "oil-gas-station-acp4000-cooling",
-  "site": "某输气场站",
+  "site": "山东德州分输站",
   "cabinet": "站控柜 A01",
   "equipment": "研华 ACP-4000 / IPC-610 工控机",
   "fault": "高温告警 / 风道堵塞 / 散热异常",

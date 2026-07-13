@@ -32,6 +32,7 @@ import {
   Send,
   Settings,
   ShieldCheck,
+  Sparkles,
   Trash2,
   UserRound,
   Video,
@@ -42,6 +43,7 @@ import {
 } from "lucide-react";
 import { api } from "./api/client";
 import AdminShell from "./admin/AdminShell";
+import { presentationApi } from "./admin/presentationApi";
 import { SourceCard } from "./components/chat/SourceCard";
 import { StreamingMarkdown } from "./components/chat/StreamingMarkdown";
 import { ThinkingProcess } from "./components/chat/ThinkingProcess";
@@ -50,11 +52,38 @@ import { assistantSources, buildMaintenanceAnswer, retrievalStatuses } from "./d
 
 const navItems = [
   { id: "workbench", label: "工作台", icon: LayoutDashboard },
-  { id: "case-feedback", label: "案例回流", icon: Layers },
   { id: "graph", label: "知识图谱", icon: GitBranch },
   { id: "records", label: "检修记录", icon: ClipboardList },
   { id: "settings", label: "设置", icon: Settings },
 ];
+
+const PRESENTATION_CASE_ID = "CASE-ACP4000-001";
+const maintenanceResultTemplate = {
+  finalCause: "滤网积尘导致风道阻力升高，风扇老化导致转速持续偏低",
+  actualResolution: "清理滤网并更换老化风扇，核对 FAN1/FAN2 接线",
+  recoveryResult: "TEMP/FAN 告警解除，设备恢复正常",
+  fanSpeedRpm: 1280,
+  systemTemperatureC: 42,
+  cpuTemperatureC: 58,
+  observationMinutes: 15,
+  residualRisk: "无明显遗留风险",
+};
+
+function recordFromFeedbackPackage(feedbackPackage, caseStatus) {
+  if (!feedbackPackage) return null;
+  const result = feedbackPackage.maintenanceResult || {};
+  return {
+    record_id: feedbackPackage.recordId || "REC-ACP4000-001",
+    equipment: feedbackPackage.incident?.equipment || "研华 ACP-4000 / IPC-610 工控机",
+    fault: feedbackPackage.incident?.fault || "高温告警 / 风道堵塞 / 散热异常",
+    conclusion: feedbackPackage.diagnosis?.conclusion || result.recoveryResult || "检修已完成",
+    expert_status: caseStatus === "archived_with_knowledge" ? "已审核" : "待审核",
+    completed_steps: (feedbackPackage.completedSteps || []).map((step, index) => (
+      typeof step === "string" ? { id: `submitted-step-${index}`, title: step, completed: true, checks: [] } : step
+    )),
+    safety_confirmed: true,
+  };
+}
 
 const intakeTasks = [
   {
@@ -64,7 +93,7 @@ const intakeTasks = [
   },
   {
     title: "确认发生地点",
-    value: "某输气场站 · 站控柜 A01",
+    value: "山东德州分输站 · 站控柜 A01",
     detail: "根据现场描述与设备台账匹配场站、区域和机柜位置，并由工程师确认。",
   },
   {
@@ -467,7 +496,7 @@ const intakeTransitionAgents = [
       "生成下一步任务：确认发生事件。",
     ],
     evidence: [
-      "位置确认：某输气场站 / 控制中心 / 站控柜 A01",
+      "位置确认：山东德州分输站 / 控制中心 / 站控柜 A01",
       "设备台账：站控柜 A01 已登记工控机与控制模块",
       "现场材料：图片、视频和音频证据集合",
       "异常关键词：温度告警、风扇声音异常、风扇转速偏低",
@@ -773,7 +802,7 @@ const defaultUser = {
   userType: "engineer",
   name: "李师傅",
   role: "一线检修人员",
-  site: "某输气场站",
+  site: "山东德州分输站",
   team: "站控运维一班",
 };
 
@@ -896,7 +925,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(defaultUser);
   const [navOpen, setNavOpen] = useState(false);
   const [activePage, setActivePage] = useState("workbench");
-  const [caseFeedbackEntry, setCaseFeedbackEntry] = useState("workbench");
+  const [recordsView, setRecordsView] = useState("list");
   const [stage, setStage] = useState("home");
   const [health, setHealth] = useState("连接中");
   const [scenario, setScenario] = useState(null);
@@ -920,6 +949,9 @@ export default function App() {
   const [graph, setGraph] = useState([]);
   const [record, setRecord] = useState(null);
   const [expertReview, setExpertReview] = useState(null);
+  const [feedbackState, setFeedbackState] = useState(null);
+  const [feedbackUploadStatus, setFeedbackUploadStatus] = useState("idle");
+  const [feedbackUploadError, setFeedbackUploadError] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeAgentIndex, setActiveAgentIndex] = useState(-1);
   const [checkedGuideItems, setCheckedGuideItems] = useState({});
@@ -961,6 +993,20 @@ export default function App() {
       })
       .catch(() => setHealth("后端未连接"));
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || currentUser.userType === "expert") return undefined;
+    let active = true;
+    presentationApi.switchRole("engineer")
+      .then(() => presentationApi.state())
+      .then((nextState) => {
+        if (active) setFeedbackState(nextState);
+      })
+      .catch(() => {
+        if (active) setFeedbackState(null);
+      });
+    return () => { active = false; };
+  }, [isAuthenticated, currentUser.userType]);
 
   useEffect(() => () => {
     materialUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
@@ -1235,7 +1281,7 @@ export default function App() {
   async function buildRecord() {
     const result = await api.generateRecord();
     setRecord(result);
-    setStage("record");
+    setRecordsView("detail");
   }
 
   function buildRecordFromGuide() {
@@ -1260,6 +1306,7 @@ export default function App() {
 
   function openNavPage(pageId) {
     setActivePage(pageId);
+    if (pageId === "records") setRecordsView("list");
     if (pageId === "workbench" && !diagnosis && !record && stage !== "input") {
       setStage("home");
     }
@@ -1269,6 +1316,7 @@ export default function App() {
     const nextInput = value.trim() || defaultInput;
     setInput(nextInput);
     setActivePage("workbench");
+    setRecordsView("list");
     setStage("input");
     setActiveIntakeStep(0);
     setIntakeSelections({});
@@ -1291,6 +1339,7 @@ export default function App() {
     setActiveTransition(null);
     setTriageAgentStatus("idle");
     setActivePage("workbench");
+    setRecordsView("list");
     if (phaseIndex === 0) setStage(stage === "home" ? "home" : "input");
     if (phaseIndex === 1 && diagnosis) setStage(stage === "analysis" ? "analysis" : "diagnosis");
     if (phaseIndex === 2 && diagnosis) setStage(stage === "plan" ? "plan" : "guide");
@@ -1309,7 +1358,28 @@ export default function App() {
     setActivePage("workbench");
     setStage("home");
     setHomeDraft("");
+    setFeedbackUploadStatus("idle");
+    setFeedbackUploadError("");
     clearIntakeMaterials();
+  }
+
+  async function uploadMaintenanceRecord(feedbackPackage) {
+    setFeedbackUploadStatus("uploading");
+    setFeedbackUploadError("");
+    try {
+      const nextState = await presentationApi.submitCase(
+        PRESENTATION_CASE_ID,
+        feedbackPackage.maintenanceResult,
+        feedbackPackage
+      );
+      setFeedbackState(nextState);
+      setFeedbackUploadStatus("success");
+      return nextState;
+    } catch (error) {
+      setFeedbackUploadStatus("error");
+      setFeedbackUploadError(error.message || "上传失败，请稍后重试");
+      throw error;
+    }
   }
 
   if (!isAuthenticated) {
@@ -1359,8 +1429,6 @@ export default function App() {
             <h1>
               {activePage === "graph"
                 ? "知识图谱"
-                : activePage === "case-feedback"
-                  ? "案例回流"
                 : activePage === "records"
                   ? "检修记录"
                 : activePage === "settings"
@@ -1371,7 +1439,7 @@ export default function App() {
             </h1>
           </div>
           <div className="topbar-meta">
-            <span><MapPin size={16} /> {currentUser.site || scenario?.site || "某输气场站"} · {currentUser.team}</span>
+            <span><MapPin size={16} /> {currentUser.site || scenario?.site || "山东德州分输站"} · {currentUser.team}</span>
             <span><UserRound size={16} /> {currentUser.name} · {currentUser.role}</span>
             <span
               className={classNames(
@@ -1389,12 +1457,33 @@ export default function App() {
           </div>
         </header>
 
-        {activePage === "case-feedback" ? (
-          <AdminShell portalRole="engineer" initialPage={caseFeedbackEntry} onLogout={handleLogout} onExitToWorkbench={() => setActivePage("workbench")} />
-        ) : activePage === "graph" ? (
+        {activePage === "graph" ? (
           <KnowledgeGraphPage graph={graph} evidence={evidence} />
         ) : activePage === "records" ? (
-          <RecordPage record={record} onBuildRecord={buildRecord} />
+          recordsView === "detail" && (record || feedbackState?.feedbackPackage) ? (
+            <MaintenanceRecordPage
+              record={record || recordFromFeedbackPackage(feedbackState?.feedbackPackage, feedbackState?.caseStatus)}
+              scenario={scenario}
+              diagnosis={diagnosis}
+              incidentTime={incidentTime}
+              input={input}
+              materials={intakeMaterials}
+              currentUser={currentUser}
+              feedbackState={feedbackState}
+              uploadStatus={feedbackUploadStatus}
+              uploadError={feedbackUploadError}
+              onUpload={uploadMaintenanceRecord}
+              onPreviewMaterial={setPreviewMaterialId}
+              onBackGuide={() => { setActivePage("workbench"); setStage("guide"); }}
+              onBackList={() => setRecordsView("list")}
+            />
+          ) : (
+            <RecordPage
+              record={record || recordFromFeedbackPackage(feedbackState?.feedbackPackage, feedbackState?.caseStatus)}
+              onBuildRecord={buildRecord}
+              onOpenCurrent={() => setRecordsView("detail")}
+            />
+          )
         ) : activePage === "settings" ? (
           <SettingsPage currentUser={currentUser} onSave={setCurrentUser} />
         ) : stage === "home" ? (
@@ -1535,13 +1624,20 @@ export default function App() {
                 />
               )}
               {stage === "record" && (
-                <RecordStage
+                <MaintenanceRecordPage
                   record={record}
+                  scenario={scenario}
+                  diagnosis={diagnosis}
+                  incidentTime={incidentTime}
+                  input={input}
+                  materials={intakeMaterials}
+                  currentUser={currentUser}
+                  feedbackState={feedbackState}
+                  uploadStatus={feedbackUploadStatus}
+                  uploadError={feedbackUploadError}
+                  onUpload={uploadMaintenanceRecord}
+                  onPreviewMaterial={setPreviewMaterialId}
                   onBackGuide={() => setStage("guide")}
-                  onCreateCase={() => {
-                    setCaseFeedbackEntry("engineer-confirm");
-                    setActivePage("case-feedback");
-                  }}
                 />
               )}
               {stage === "expert" && (
@@ -1688,7 +1784,7 @@ function HomeStage({
         </div>
         <div>
           <span>当前场站</span>
-          <strong>某输气场站 · 站控区域</strong>
+          <strong>山东德州分输站 · 站控区域</strong>
         </div>
         <div>
           <span>接入对象</span>
@@ -1962,9 +2058,9 @@ function IntakeSummaryStage({
         </section>
 
         <section className="summary-location-card">
-          <header><div><small>02 / 故障位置</small><h3>某输气场站 · 控制中心 · 站控柜 A01</h3></div><button onClick={() => onEdit(1)}>修改</button></header>
+          <header><div><small>02 / 故障位置</small><h3>山东德州分输站 · 控制中心 · 站控柜 A01</h3></div><button onClick={() => onEdit(1)}>修改</button></header>
           <div className="summary-location-map">
-            <img src="/images/site-station-overview.png" alt="某输气场站控制中心站控柜 A01 故障点" />
+            <img src="/images/site-station-overview.png" alt="山东德州分输站控制中心站控柜 A01 故障点" />
             <div className="location-pulse" />
             <MapPin size={21} />
           </div>
@@ -2090,7 +2186,7 @@ function InputStageLegacy({
 
         {activeStep === 0 && (
           <section className="spatial-location-placeholder" aria-label="空间位置上下文准备中">
-            <img src="/images/site-station-overview.png" alt="某输气场站布局" />
+            <img src="/images/site-station-overview.png" alt="山东德州分输站布局" />
             <div><Loader2 size={16} className={intakeContinueRunning ? "spin" : undefined} /><strong>正在建立空间位置上下文</strong><span>确认初始报障后定位故障点</span></div>
           </section>
         )}
@@ -2199,7 +2295,7 @@ function InputStageLegacy({
                 <span>01</span>
                 <div>
                   <small>{locationCompleted ? "已确认故障点" : "接诊 Agent 生成"}</small>
-                  <h3>{locationCompleted ? "某输气场站 · 控制中心 · 站控柜 A01" : "设备位置识别"}</h3>
+                  <h3>{locationCompleted ? "山东德州分输站 · 控制中心 · 站控柜 A01" : "设备位置识别"}</h3>
                 </div>
                 <em>{locationCompleted ? "已确认" : "需要确认"}</em>
               </div>
@@ -2219,7 +2315,7 @@ function InputStageLegacy({
                 </>
               ) : (
                 <div className="location-confirmed-visual">
-                  <img src="/images/site-station-overview.png" alt="某输气场站控制中心站控柜 A01 故障点" />
+                  <img src="/images/site-station-overview.png" alt="山东德州分输站控制中心站控柜 A01 故障点" />
                   <div className="location-pulse" />
                   <MapPin className="location-map-pin" size={19} />
                   <button type="button" onClick={() => onSelectStep(1)}>修改位置</button>
@@ -2486,12 +2582,12 @@ function InputStage({
 
       <div className="spatial-v12-board" data-step={activeStep}>
         <section className={classNames("spatial-v12-map", activeStep >= 1 && "located")}>
-          <img src="/images/site-station-overview.png" alt="某输气场站控制中心布局及故障点" />
+          <img src="/images/site-station-overview.png" alt="山东德州分输站控制中心布局及故障点" />
           <div className="map-scan-line" />
           {activeStep >= 1 && <><div className="location-pulse" /><MapPin className="location-map-pin" size={22} /></>}
           <div className="map-focus-caption">
             <span>{activeStep === 0 ? "空间上下文" : "已识别故障点"}</span>
-            <strong>{activeStep === 0 ? "等待时间确认后定位" : "某输气场站 · 控制中心 · 站控柜 A01"}</strong>
+            <strong>{activeStep === 0 ? "等待时间确认后定位" : "山东德州分输站 · 控制中心 · 站控柜 A01"}</strong>
           </div>
           {activeStep === 1 && !transitioning && (
             <button className="primary-button map-confirm-action staged-confirm" onClick={onContinue}>
@@ -2628,7 +2724,7 @@ function EquipmentRecognitionAgent({ autoRecognizing, autoRecognized, visibleCou
   const traceItems = [
     "正在思考：优先确认当前异常是否属于已接入设备对象。",
     "读取现场描述：温度告警、风扇声音异常、风扇转速偏低。",
-    "匹配设备台账：某输气场站 · 站控柜 A01。",
+    "匹配设备台账：山东德州分输站 · 站控柜 A01。",
     "检索维修知识库：ACP-4000 / IPC-610 散热与告警面板。",
     "生成推荐字段：型号、位置、角色、关联告警。",
   ];
@@ -3227,33 +3323,199 @@ function GuideStage({
   );
 }
 
-function RecordStage({ record, onBackGuide, onCreateCase }) {
+function MaintenanceRecordPage({
+  record,
+  scenario,
+  diagnosis,
+  incidentTime,
+  input,
+  materials,
+  currentUser,
+  feedbackState,
+  uploadStatus,
+  uploadError,
+  onUpload,
+  onPreviewMaterial,
+  onBackGuide,
+  onBackList,
+}) {
+  const [form, setForm] = useState(feedbackState?.engineerResult || maintenanceResultTemplate);
+
+  useEffect(() => {
+    if (feedbackState?.engineerResult) setForm(feedbackState.engineerResult);
+  }, [feedbackState?.engineerResult]);
+
   if (!record) {
     return (
-      <div className="stage-content">
+      <div className="maintenance-record-empty">
+        <ClipboardList size={30} />
         <h2>检修记录尚未生成</h2>
         <button className="ghost-button" onClick={onBackGuide}>返回检修向导</button>
       </div>
     );
   }
 
+  const caseStatus = feedbackState?.caseStatus || "awaiting_engineer_confirmation";
+  const submitted = caseStatus !== "awaiting_engineer_confirmation";
+  const uploading = uploadStatus === "uploading";
+  const locked = submitted || uploading;
+  const statusLabel = caseStatus === "archived_with_knowledge"
+    ? "已审核并发布知识"
+    : submitted
+      ? "待专家审核"
+      : "尚未上传";
+  const completedSteps = record.completed_steps?.length
+    ? record.completed_steps
+    : [
+        { id: "fallback-1", title: "断电、挂牌和防静电确认", completed: true },
+        { id: "fallback-2", title: "清理滤网与风道", completed: true },
+        { id: "fallback-3", title: "检查 FAN1/FAN2 接线", completed: true },
+        { id: "fallback-4", title: "检查并更换老化风扇", completed: true },
+        { id: "fallback-5", title: "恢复上电并观察 15 分钟", completed: true },
+      ];
+  const persistedMaterials = feedbackState?.feedbackPackage?.materials || [];
+  const displayMaterials = materials?.length ? materials : persistedMaterials;
+  const ready = ["finalCause", "actualResolution", "recoveryResult", "fanSpeedRpm", "systemTemperatureC", "cpuTemperatureC", "observationMinutes"]
+    .every((key) => form[key] !== "" && form[key] != null);
+  const occurredAt = incidentTime?.detectedAt
+    ? new Date(incidentTime.detectedAt).toLocaleString("zh-CN", { hour12: false })
+    : "2026-07-10 10:25";
+
+  async function submitRecord() {
+    if (!ready || locked) return;
+    const feedbackPackage = {
+      caseId: PRESENTATION_CASE_ID,
+      recordId: record.record_id,
+      engineerId: "lishifu",
+      incident: {
+        time: occurredAt,
+        duration: incidentTime?.duration || "约 10 分钟",
+        site: scenario?.site || "山东德州分输站",
+        location: scenario?.cabinet || "站控柜 A01",
+        equipment: record.equipment,
+        fault: record.fault,
+        description: input || scenario?.default_input || defaultInput,
+      },
+      diagnosis: {
+        conclusion: diagnosis?.summary || "风道受阻、滤网积尘或风扇低速共同导致散热能力下降。",
+        evidence: ["TEMP/FAN 告警", "风扇转速 420 rpm", "系统温度 58°C", "CPU 温度 74°C"],
+      },
+      maintenanceResult: form,
+      completedSteps: completedSteps.map((step) => ({
+        id: step.id,
+        title: step.title,
+        completed: step.completed !== false,
+        safety: step.safety || "",
+      })),
+      recoveryMetrics: {
+        before: { fanSpeedRpm: 420, systemTemperatureC: 58, cpuTemperatureC: 74, alarm: "TEMP/FAN 告警" },
+        after: { fanSpeedRpm: form.fanSpeedRpm, systemTemperatureC: form.systemTemperatureC, cpuTemperatureC: form.cpuTemperatureC, alarm: form.recoveryResult },
+        observationMinutes: form.observationMinutes,
+      },
+      materials: (materials || []).map(({ id, type, name, size }) => ({ id, type, name, size, persistence: "session_metadata" })),
+      targetKnowledgeIds: ["KB-008"],
+    };
+    try {
+      await onUpload(feedbackPackage);
+    } catch {
+      // 上传错误由页面级状态展示，保留当前表单供工程师重试。
+    }
+  }
+
   return (
-    <div className="stage-content record-stage">
-      <div className="stage-copy">
-        <p className="eyebrow">检修完成记录</p>
-        <h2>{record.record_id}</h2>
-        <p>{record.conclusion}</p>
+    <div className="maintenance-record-page">
+      {onBackList && (
+        <button className="maintenance-record-back" type="button" onClick={onBackList}>
+          <ChevronLeft size={16} />
+          返回检修记录
+        </button>
+      )}
+      <header className="maintenance-record-hero">
+        <div className="maintenance-record-title">
+          <span><Check size={14} /> 检修闭环已完成</span>
+          <h2>{record.record_id}</h2>
+          <p>{record.conclusion}</p>
+        </div>
+        <div className={classNames("maintenance-record-status", submitted && "submitted", caseStatus === "archived_with_knowledge" && "published")}>
+          <small>案例回流状态</small>
+          <strong>{statusLabel}</strong>
+          <em>{submitted ? `案例 ${PRESENTATION_CASE_ID}` : "确认后上传给专家"}</em>
+        </div>
+      </header>
+
+      <section className="maintenance-record-meta">
+        <article><MapPin size={16} /><div><span>设备与位置</span><strong>{record.equipment}</strong><small>{scenario?.site || "山东德州分输站"} · {scenario?.cabinet || "站控柜 A01"}</small></div></article>
+        <article><AlertTriangle size={16} /><div><span>故障与告警</span><strong>{record.fault}</strong><small>TEMP/FAN · 风扇低速</small></div></article>
+        <article><ClipboardList size={16} /><div><span>执行结果</span><strong>{completedSteps.length} 项全部完成</strong><small>安全项已确认 · 恢复验证通过</small></div></article>
+        <article><CalendarClock size={16} /><div><span>记录信息</span><strong>{occurredAt}</strong><small>{currentUser?.name || "李师傅"} · 现场检修</small></div></article>
+      </section>
+
+      <div className="maintenance-record-body">
+        <div className="maintenance-record-primary">
+          <section className="record-report-section incident-chain">
+            <header><div><span>01 / 事实与判断</span><h3>现场事实如何形成诊断</h3></div><ShieldCheck size={18} /></header>
+            <div className="incident-chain-grid">
+              <article><small>发生时间</small><strong>{occurredAt}</strong><p>{incidentTime?.duration || "约 10 分钟"} · {incidentTime?.recurrence || "首次发现"}</p></article>
+              <article><small>发生地点</small><strong>{scenario?.site || "山东德州分输站"}</strong><p>{scenario?.cabinet || "站控柜 A01"}</p></article>
+              <article className="wide"><small>现场现象</small><strong>{input || scenario?.default_input || defaultInput}</strong><p>来源：工程师描述 + 现场告警参数</p></article>
+            </div>
+            <div className="diagnosis-reason-line"><i>Agent 诊断</i><strong>{diagnosis?.summary || "风道受阻、滤网积尘或风扇低速共同导致散热能力下降。"}</strong><span>TEMP/FAN 告警 · 420 rpm · 系统 58℃ · CPU 74℃</span></div>
+          </section>
+
+          <section className="record-report-section maintenance-result-section">
+            <header><div><span>02 / 工程师确认</span><h3>实际检修结果</h3></div>{!locked && <button onClick={() => setForm(maintenanceResultTemplate)}><Sparkles size={14} />一键采用现场结果</button>}</header>
+            <div className="maintenance-result-fields">
+              <label>最终故障原因<textarea readOnly={locked} value={form.finalCause} onChange={(event) => setForm({ ...form, finalCause: event.target.value })} /></label>
+              <label>实际处理<textarea readOnly={locked} value={form.actualResolution} onChange={(event) => setForm({ ...form, actualResolution: event.target.value })} /></label>
+              <label className="wide">恢复结果<input readOnly={locked} value={form.recoveryResult} onChange={(event) => setForm({ ...form, recoveryResult: event.target.value })} /></label>
+              <label className="wide">遗留风险<input readOnly={locked} value={form.residualRisk} onChange={(event) => setForm({ ...form, residualRisk: event.target.value })} /></label>
+            </div>
+          </section>
+
+          <section className="record-report-section recovery-comparison-section">
+            <header><div><span>03 / 恢复验证</span><h3>处理前后参数对比</h3></div><Check size={18} /></header>
+            <div className="recovery-comparison-table">
+              <div className="table-head"><span>验证项</span><span>处理前</span><span>处理后</span><span>结论</span></div>
+              <div><strong>风扇转速</strong><span>420 rpm</span><label><input readOnly={locked} type="number" value={form.fanSpeedRpm} onChange={(event) => setForm({ ...form, fanSpeedRpm: Number(event.target.value) })} /> rpm</label><em>恢复</em></div>
+              <div><strong>系统温度</strong><span>58℃</span><label><input readOnly={locked} type="number" value={form.systemTemperatureC} onChange={(event) => setForm({ ...form, systemTemperatureC: Number(event.target.value) })} /> ℃</label><em>下降</em></div>
+              <div><strong>CPU 温度</strong><span>74℃</span><label><input readOnly={locked} type="number" value={form.cpuTemperatureC} onChange={(event) => setForm({ ...form, cpuTemperatureC: Number(event.target.value) })} /> ℃</label><em>下降</em></div>
+              <div><strong>TEMP/FAN</strong><span>告警</span><span>已解除</span><em>通过</em></div>
+              <div><strong>连续观察</strong><span>—</span><label><input readOnly={locked} type="number" value={form.observationMinutes} onChange={(event) => setForm({ ...form, observationMinutes: Number(event.target.value) })} /> 分钟</label><em>稳定</em></div>
+            </div>
+          </section>
+        </div>
+
+        <aside className="maintenance-record-secondary">
+          <section className="record-report-section completed-step-section">
+            <header><div><span>执行轨迹</span><h3>已完成检修步骤</h3></div><strong>{completedSteps.length}/{completedSteps.length}</strong></header>
+            <ol>{completedSteps.map((step, index) => <li key={step.id || index}><i><Check size={12} /></i><div><strong>{step.title || `检修步骤 ${index + 1}`}</strong><small>{step.safety || (index === 1 ? "强制安全项已锁定" : "现场确认完成")}</small></div></li>)}</ol>
+          </section>
+
+          <section className="record-report-section record-material-section">
+            <header><div><span>现场证据</span><h3>图片、视频与音频</h3></div><strong>{displayMaterials.length} 项</strong></header>
+            {displayMaterials.length ? <div className="record-material-grid">{displayMaterials.map((material) => (
+              <button key={material.id} disabled={!material.url} onClick={() => material.url && onPreviewMaterial(material.id)}>
+                {material.type === "image" && material.url ? <img src={material.url} alt={material.name} /> : material.type === "video" ? <Video size={20} /> : material.type === "audio" ? <Music2 size={20} /> : <Paperclip size={20} />}
+                <span>{material.name}</span><small>{material.persistence === "session_metadata" ? "已保存元数据" : "本地会话材料"}</small>
+              </button>
+            ))}</div> : <div className="record-material-empty"><Paperclip size={22} /><strong>本次未附加现场材料</strong><p>案例仍可上传；专家将依据现场事实、步骤和恢复参数审核。</p></div>}
+          </section>
+
+          <section className="record-report-section traceability-section">
+            <header><div><span>来源追溯</span><h3>案例与知识目标</h3></div><GitBranch size={18} /></header>
+            <dl><div><dt>来源记录</dt><dd>{record.record_id}</dd></div><div><dt>目标案例</dt><dd>{PRESENTATION_CASE_ID}</dd></div><div><dt>目标知识</dt><dd>KB-008 · 风扇检查与更换</dd></div><div><dt>检修人员</dt><dd>{currentUser?.name || "李师傅"}</dd></div></dl>
+          </section>
+        </aside>
       </div>
-      <div className="record-grid">
-        <article><span>设备</span><strong>{record.equipment}</strong></article>
-        <article><span>故障</span><strong>{record.fault}</strong></article>
-        <article><span>步骤完成</span><strong>{record.completed_steps.length} 项</strong></article>
-        <article><span>专家状态</span><strong>{record.expert_status}</strong></article>
-      </div>
-      <div className="stage-actions">
-        <button className="ghost-button" onClick={() => window.print()}>打印作业卡</button>
-        <button className="primary-button" onClick={onCreateCase}><FileText size={15} /> 生成案例草稿并确认</button>
-      </div>
+
+      <footer className={classNames("maintenance-record-actions", submitted && "submitted")}>
+        <div className="record-feedback-message">
+          {submitted ? <Check size={20} /> : <Send size={20} />}
+          <div><span>{submitted ? "上传成功" : "案例回流"}</span><strong>{submitted ? `案例 ${PRESENTATION_CASE_ID} 已进入专家待审核库` : "确认本次结果并上传给专家审核"}</strong><p>{submitted ? "工程师侧流程已完成。专家将在独立账号中修订案例、知识和图谱。" : "上传只生成待审核案例，不会直接修改正式知识库。"}</p></div>
+        </div>
+        {uploadError && <p className="record-upload-error"><AlertTriangle size={14} />{uploadError}</p>}
+        <div className="record-action-buttons"><button className="ghost-button" onClick={() => window.print()}>打印作业卡</button><button className="primary-button" disabled={!ready || locked} onClick={submitRecord}>{uploading ? <Loader2 className="spin" size={16} /> : submitted ? <Check size={16} /> : <FileText size={16} />}{uploading ? "正在上传…" : submitted ? "已上传至专家知识库" : "上传至专家知识库"}</button></div>
+      </footer>
     </div>
   );
 }
@@ -3553,7 +3815,7 @@ function KnowledgeGraphPage({ graph, evidence }) {
   );
 }
 
-function RecordPage({ record, onBuildRecord }) {
+function RecordPage({ record, onBuildRecord, onOpenCurrent }) {
   const generatedRecord = record && {
     id: record.record_id,
     title: "站控柜 A01 工控机散热异常检修",
@@ -3564,6 +3826,8 @@ function RecordPage({ record, onBuildRecord }) {
     maintainer: "李师傅",
     duration: "42 分钟",
     conclusion: record.conclusion,
+    category: "散热检修",
+    isCurrent: true,
     tags: ["本次流程", "待归档"],
     checks: [
       `已完成 ${record.completed_steps.length || 0} 项检修步骤`,
@@ -3583,6 +3847,7 @@ function RecordPage({ record, onBuildRecord }) {
       maintainer: "李师傅",
       duration: "38 分钟",
       conclusion: "清理滤网和前面板风道后，风扇转速恢复，系统温度下降，告警解除。",
+      category: "散热检修",
       tags: ["散热异常", "已回流知识库"],
       checks: ["完成断电挂牌与防静电确认", "完成滤网清理和风道检查", "恢复上电后连续观察 15 分钟"],
     },
@@ -3596,6 +3861,7 @@ function RecordPage({ record, onBuildRecord }) {
       maintainer: "王工",
       duration: "25 分钟",
       conclusion: "确认风扇积尘并完成清理，未发现接线松动。",
+      category: "风扇检修",
       tags: ["风扇检查", "低风险"],
       checks: ["检查 FAN1/FAN2 接线", "清理风扇叶片积尘", "记录恢复后转速"],
     },
@@ -3609,13 +3875,25 @@ function RecordPage({ record, onBuildRecord }) {
       maintainer: "赵师傅",
       duration: "18 分钟",
       conclusion: "柜体通风良好，未发现进出风口遮挡。",
+      category: "例行巡检",
       tags: ["巡检", "无异常"],
       checks: ["确认柜门滤网状态", "检查柜内线缆遮挡", "记录环境温湿度"],
     },
   ].filter(Boolean);
   const [searchFault, setSearchFault] = useState("");
+  const [activeCategory, setActiveCategory] = useState("全部记录");
   const [detailRecordId, setDetailRecordId] = useState(null);
-  const filteredRecords = records.filter((item) => item.fault.includes(searchFault.trim()));
+  const categories = [
+    { label: "全部记录", count: records.length },
+    { label: "散热检修", count: records.filter((item) => item.category === "散热检修").length },
+    { label: "风扇检修", count: records.filter((item) => item.category === "风扇检修").length },
+    { label: "例行巡检", count: records.filter((item) => item.category === "例行巡检").length },
+  ];
+  const keyword = searchFault.trim();
+  const filteredRecords = records.filter((item) => (
+    (activeCategory === "全部记录" || item.category === activeCategory)
+    && (!keyword || `${item.title} ${item.fault} ${item.equipment}`.includes(keyword))
+  ));
   const selectedRecord = records.find((item) => item.id === detailRecordId);
 
   if (selectedRecord) {
@@ -3704,11 +3982,25 @@ function RecordPage({ record, onBuildRecord }) {
               <Download size={16} />
               导出
             </button>
-            <button className="primary-button" onClick={onBuildRecord}>
+            <button className="primary-button" onClick={record ? onOpenCurrent : onBuildRecord}>
               <FileText size={16} />
-              生成演示记录
+              {record ? "查看本次检修" : "生成演示记录"}
             </button>
           </div>
+        </div>
+
+        <div className="record-category-row" aria-label="检修记录分类">
+          {categories.map((category) => (
+            <button
+              type="button"
+              key={category.label}
+              className={classNames(activeCategory === category.label && "active")}
+              onClick={() => setActiveCategory(category.label)}
+            >
+              <span>{category.label}</span>
+              <strong>{category.count}</strong>
+            </button>
+          ))}
         </div>
 
         <div className="record-filter-row">
@@ -3729,7 +4021,7 @@ function RecordPage({ record, onBuildRecord }) {
               <button
                 key={item.id}
                 className="record-row-item"
-                onClick={() => setDetailRecordId(item.id)}
+                onClick={() => item.isCurrent ? onOpenCurrent() : setDetailRecordId(item.id)}
               >
                 <div>
                   <strong>{item.title}</strong>
@@ -3997,7 +4289,7 @@ function getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep
   const text = message.trim();
   if (stage === "input") {
     if (activeIntakeStep === 0) return "请先确认异常首次发现时间、持续时长和发生频次。确认后系统会结合报障描述识别故障地点。";
-    if (activeIntakeStep === 1) return "当前先确认位置匹配结果：某输气场站、控制中心、站控柜 A01。位置确认后系统再读取该机柜的设备台账。";
+    if (activeIntakeStep === 1) return "当前先确认位置匹配结果：山东德州分输站、控制中心、站控柜 A01。位置确认后系统再读取该机柜的设备台账。";
     if (activeIntakeStep === 2) return "本步建议确认设备型号为 ACP-4000 / IPC-610，再补充工控机角色和 TEMP/FAN 关联告警。";
     if (activeIntakeStep === 3) return "阈值可以先按演示值填写：风扇 <500 rpm、系统温度 >55°C、CPU 温度 >70°C。后续接 API 后可由设备数据自动带入。";
     if (activeIntakeStep === 4) return "请核对依据标准和操作手册。它们用于解释系统为什么形成当前判断，确认后会生成异常事件全景。";

@@ -1,6 +1,6 @@
 # LA 项目文档入口
 
-更新时间：2026-07-11
+更新时间：2026-07-13
 
 本文件是项目文档的唯一入口。阅读顺序和冲突处理规则以这里为准，旧文档不能再单独作为开发依据。
 
@@ -16,19 +16,22 @@
 6. [`backend-case-feedback-business-plan.md`](./backend-case-feedback-business-plan.md)：面向 PPT 与几分钟视频的后台案例回流、专家审核和知识沉淀 V1.2 演示基线。
 7. [`case-feedback-video-script-and-data.md`](./case-feedback-video-script-and-data.md)：案例回流七分钟视频分镜、唯一完整案例、动态知识、图谱变更和演示状态冻结数据。
 8. [`backend-case-feedback-development-spec.md`](./backend-case-feedback-development-spec.md)：从视频脚本反推的后台信息架构、页面组件、JSON 状态、Flask 接口、状态机和开发验收规格。
-9. [`expert-knowledge-graph-display-spec.md`](./expert-knowledge-graph-display-spec.md)：专家知识图谱的入口、当前/本次更新视图、节点详情、发布状态联动和录制验收规格。
-10. [`sqlite-knowledge-feedback-and-sync-spec.md`](./sqlite-knowledge-feedback-and-sync-spec.md)：案例回流、知识版本、图谱关系与工程师本地同步的 SQLite 数据结构和事务规范。
-11. [`case-02-rockwell-6300-power-structured-summary.md`](./case-02-rockwell-6300-power-structured-summary.md)：第二案例的设备判据、演示事实、检修流程、结构化知识、图谱关系与待补现场证据。
-12. [`meeting-analysis-and-dev-plan.md`](./meeting-analysis-and-dev-plan.md)：2026-07-10 会议需求总纲；与老师最新修改意见冲突时以后者为准。
-13. [`runtime-and-loongarch-policy.md`](./runtime-and-loongarch-policy.md)：Node、WSL、龙芯运行与逐模块验证的强制决策。
-7. [`r0-dynamic-intake-workbench-spec.md`](./r0-dynamic-intake-workbench-spec.md)：现有 R0/P0 动态接诊实现规格；R0.1 以新方案和新 Spec 为增量基线。
-8. [`r2-editable-maintenance-plan-design.md`](./r2-editable-maintenance-plan-design.md)：R2 千问式两级检修大纲的用户确认设计。
-9. [`r2-editable-maintenance-plan-spec.md`](./r2-editable-maintenance-plan-spec.md)：R2 状态机、数据结构、组件职责和验收规格。
-10. [`project-business-and-agent-flow.md`](./project-business-and-agent-flow.md)：项目主线业务、Agent 辅线及其对应关系的统一讲解文档。
-11. [`formal-mvp-development-plan.md`](./formal-mvp-development-plan.md)：最新 MVP 分阶段计划。
-12. [`teacher-review-prd-summary-and-demo-flow.md`](./teacher-review-prd-summary-and-demo-flow.md)：PRD 摘要与演示流程。
-13. [`agent-streaming-output-pattern.md`](./agent-streaming-output-pattern.md)：当前 Agent 流式呈现的有效实现规范。
-14. [`software-cup-a1-competition-requirements.md`](./software-cup-a1-competition-requirements.md)：赛事原始要求；用于验收覆盖，不直接代替当前开发计划。
+9. [`engineer-maintenance-record-feedback-spec.md`](./engineer-maintenance-record-feedback-spec.md)：工程师侧最新页面基线；取消独立案例回流工作台，将完整案例确认、恢复对比和上传动作合并进检修完成记录。
+10. [`expert-knowledge-graph-display-spec.md`](./expert-knowledge-graph-display-spec.md)：专家知识图谱的入口、当前/本次更新视图、节点详情、发布状态联动和录制验收规格。
+11. [`industrial-computer-knowledge-graph-overview-and-focus-plan.md`](./industrial-computer-knowledge-graph-overview-and-focus-plan.md)：工控机全局知识图谱、本次新增与修改、工程师候选变更、专家发布及后续轻量案例扩展方案。
+12. [`industrial-computer-knowledge-graph-development-spec.md`](./industrial-computer-knowledge-graph-development-spec.md)：全局/变更视图、React SVG 镜头缩放、数据结构、API、发布动画、实施批次和录制验收规格。
+13. [`sqlite-knowledge-feedback-and-sync-spec.md`](./sqlite-knowledge-feedback-and-sync-spec.md)：案例回流、知识版本、图谱关系与工程师本地同步的 SQLite 数据结构和事务规范。
+14. [`case-02-rockwell-6300-power-structured-summary.md`](./case-02-rockwell-6300-power-structured-summary.md)：第二案例的设备判据、演示事实、检修流程、结构化知识、图谱关系与待补现场证据。
+15. [`meeting-analysis-and-dev-plan.md`](./meeting-analysis-and-dev-plan.md)：2026-07-10 会议需求总纲；与老师最新修改意见冲突时以后者为准。
+16. [`runtime-and-loongarch-policy.md`](./runtime-and-loongarch-policy.md)：Node、WSL、龙芯运行与逐模块验证的强制决策。
+17. [`r0-dynamic-intake-workbench-spec.md`](./r0-dynamic-intake-workbench-spec.md)：现有 R0/P0 动态接诊实现规格；R0.1 以新方案和新 Spec 为增量基线。
+18. [`r2-editable-maintenance-plan-design.md`](./r2-editable-maintenance-plan-design.md)：R2 千问式两级检修大纲的用户确认设计。
+19. [`r2-editable-maintenance-plan-spec.md`](./r2-editable-maintenance-plan-spec.md)：R2 状态机、数据结构、组件职责和验收规格。
+20. [`project-business-and-agent-flow.md`](./project-business-and-agent-flow.md)：项目主线业务、Agent 辅线及其对应关系的统一讲解文档。
+21. [`formal-mvp-development-plan.md`](./formal-mvp-development-plan.md)：最新 MVP 分阶段计划。
+22. [`teacher-review-prd-summary-and-demo-flow.md`](./teacher-review-prd-summary-and-demo-flow.md)：PRD 摘要与演示流程。
+23. [`agent-streaming-output-pattern.md`](./agent-streaming-output-pattern.md)：当前 Agent 流式呈现的有效实现规范。
+24. [`software-cup-a1-competition-requirements.md`](./software-cup-a1-competition-requirements.md)：赛事原始要求；用于验收覆盖，不直接代替当前开发计划。
 
 ## 2. 当前阶段
 
