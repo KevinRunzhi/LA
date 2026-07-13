@@ -51,10 +51,11 @@ def create_app() -> Flask:
     presentation_case = load_path(PRESENTATION_DIR / "case_full_001.json")
     presentation_knowledge = load_path(PRESENTATION_DIR / "knowledge_base.json")
     presentation_graph = load_path(PRESENTATION_DIR / "graph_seed.json")
+    industrial_computer_graph = load_path(PRESENTATION_DIR / "industrial_computer_graph.json")
     verification_scenario = load_path(PRESENTATION_DIR / "verification_scenario.json")
     store = PresentationStore(PRESENTATION_DB_FILE)
     initial_state = load_path(PRESENTATION_INITIAL_STATE_FILE)
-    store.initialize(initial_state, presentation_case, presentation_knowledge)
+    store.initialize(initial_state, presentation_case, presentation_knowledge, industrial_computer_graph)
 
     def load_presentation_state():
         return store.load_state()
@@ -150,7 +151,7 @@ def create_app() -> Flask:
 
     @app.route("/api/presentation/reset", methods=["POST"])
     def presentation_reset():
-        state = store.reset(initial_state, presentation_case, presentation_knowledge)
+        state = store.reset(initial_state, presentation_case, presentation_knowledge, industrial_computer_graph)
         return api_ok(state, "演示状态已重置")
 
     @app.route("/api/presentation/role", methods=["POST"])
@@ -302,8 +303,91 @@ def create_app() -> Flask:
             return api_error("incomplete_knowledge", "请完成结构化知识字段")
         if not relations:
             return api_error("graph_relation_required", "请至少保留一条知识图谱关系")
-        state = store.publish(state, case_id, presentation_knowledge["dynamicKnowledgeId"], draft)
+        state = store.publish(state, case_id, presentation_knowledge["dynamicKnowledgeId"], draft, industrial_computer_graph)
         return api_ok(state, "案例已通过，知识 V1.1 已发布")
+
+    def build_industrial_graph(state: dict, view: str):
+        base_nodes = deepcopy(industrial_computer_graph["nodes"])
+        base_relations = deepcopy(industrial_computer_graph["relations"])
+        template = industrial_computer_graph["changeTemplate"]
+        published = bool(state.get("knowledgePublished"))
+        candidate = bool(state.get("engineerSubmitted") or state.get("expertDraft"))
+        change_status = "published" if published else "candidate" if candidate else "proposed"
+        change_type = "added" if published else "candidate"
+        change_nodes = [
+            {
+                **deepcopy(node),
+                "status": change_status,
+                "changeType": change_type,
+                "knowledgeId": presentation_knowledge["dynamicKnowledgeId"],
+                "knowledgeVersion": state.get("knowledgeVersion", "1.0"),
+                "sourceCaseIds": node.get("sourceCaseIds") or [presentation_case["id"]],
+                "proposedBy": "李师傅",
+                "reviewedBy": "专家账号" if published else None,
+                "publishedAt": state.get("publishedAt"),
+            }
+            for node in template["nodes"]
+        ]
+        all_nodes = [*base_nodes, *change_nodes]
+        ids_by_name = {node["name"]: node["id"] for node in all_nodes}
+        raw_changes = (
+            state.get("publishedRelations")
+            if published
+            else (state.get("expertDraft") or {}).get("relations")
+        ) or presentation_case["graphChanges"]
+        template_by_signature = {
+            (relation["source"], relation["relation"], relation["target"]): relation
+            for relation in template["relations"]
+        }
+        change_relations = []
+        for index, relation in enumerate(raw_changes):
+            template_relation = template_by_signature.get((relation["source"], relation["relation"], relation["target"]), {})
+            source_id = relation.get("sourceNodeId") or template_relation.get("source") or ids_by_name.get(relation["source"])
+            target_id = relation.get("targetNodeId") or template_relation.get("target") or ids_by_name.get(relation["target"])
+            if not source_id or not target_id:
+                continue
+            change_relations.append({
+                "id": str(relation.get("id") or template_relation.get("id") or f"change-{index + 1}"),
+                "source": source_id,
+                "relation": relation["relation"],
+                "target": target_id,
+                "status": change_status,
+                "changeType": relation.get("changeType", change_type),
+                "sourceCaseId": presentation_case["id"],
+                "knowledgeId": presentation_knowledge["dynamicKnowledgeId"],
+                "knowledgeVersion": state.get("knowledgeVersion", "1.0"),
+            })
+        include_changes = published or view == "changes"
+        nodes = all_nodes if include_changes else base_nodes
+        relations = [*base_relations, *change_relations] if include_changes else base_relations
+        case_ids = {case["id"] for case in presentation_cases["items"]}
+        return {
+            "view": view,
+            "centerNodeId": industrial_computer_graph["centerNodeId"],
+            "nodes": nodes,
+            "relations": relations,
+            "changeNodeIds": [node["id"] for node in change_nodes],
+            "changeRelationIds": [relation["id"] for relation in change_relations],
+            "published": published,
+            "changeStatus": change_status,
+            "knowledgeVersion": state.get("knowledgeVersion", "1.0"),
+            "sourceCaseId": presentation_case["id"],
+            "publishedAt": state.get("publishedAt"),
+            "statistics": {
+                "nodeCount": len(nodes),
+                "relationCount": len(relations),
+                "domainCount": 5,
+                "knowledgeCount": len(presentation_knowledge["items"]),
+                "caseCount": len(case_ids),
+            },
+        }
+
+    @app.route("/api/admin/knowledge-graph", methods=["GET"])
+    def admin_knowledge_graph():
+        view = request.args.get("view", "overview").strip()
+        if view not in {"overview", "changes"}:
+            return api_error("invalid_graph_view", "不支持的知识图谱视图")
+        return api_ok(build_industrial_graph(load_presentation_state(), view))
 
     def merged_knowledge_items(state):
         items = deepcopy(presentation_knowledge["items"])

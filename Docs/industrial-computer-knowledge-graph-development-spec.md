@@ -5,7 +5,7 @@
 > 产品方案来源：`industrial-computer-knowledge-graph-overview-and-focus-plan.md`
 > 现有展示基线：`expert-knowledge-graph-display-spec.md`
 > 实现环境：React 18 + Vite 6 + Flask + SQLite
-> 当前状态：开发 Spec 已完成，等待按批次实施
+> 当前状态：首版已完成开发与 WSL 演示验收，等待合并评审和龙芯环境验证
 
 ## 1. 目标与完成定义
 
@@ -208,40 +208,26 @@ grid-template-columns: minmax(0, 1fr) 300px;
 
 ## 5. 前端组件结构
 
-从 `AdminShell.jsx` 中拆出独立目录：
+从 `AdminShell.jsx` 中拆出独立目录。首版按当前规模保留三个文件，页面内部的小组件继续同文件组织，避免在功能稳定前形成过多薄封装：
 
 ```text
 frontend/src/admin/knowledge-graph/
   IndustrialKnowledgeGraphPage.jsx
-  GraphToolbar.jsx
-  GraphViewport.jsx
-  GraphScene.jsx
-  GraphNode.jsx
-  GraphEdge.jsx
-  GraphNodeDetail.jsx
-  GraphLegend.jsx
   graphCamera.js
-  graphLayout.js
-  graphSelectors.js
+  knowledge-graph.css
 ```
 
-组件职责：
+首版职责：
 
-| 组件 | 职责 |
+| 文件 / 内部组件 | 职责 |
 | --- | --- |
 | `IndustrialKnowledgeGraphPage` | 请求数据、管理视图和页面级状态 |
-| `GraphToolbar` | 两种视图切换、返回全局、缩放控制和统计 |
-| `GraphViewport` | 指针事件、滚轮、拖拽和镜头状态 |
-| `GraphScene` | 应用统一 SVG 场景变换 |
-| `GraphNode` | 节点形状、标签、选中和状态标识 |
-| `GraphEdge` | 连线、关系标签和变更状态 |
+| `GraphNode` / `GraphEdge` | 节点、连线、选中、高亮和状态标识 |
 | `GraphNodeDetail` | 节点详情、来源、版本和关联关系 |
-| `GraphLegend` | 节点类型和变更状态说明 |
 | `graphCamera.js` | fit bounds、缩放限制和动画插值 |
-| `graphLayout.js` | 种子坐标、候选槽位和边界计算 |
-| `graphSelectors.js` | 一跳邻居、变更子图和可见关系计算 |
+| `knowledge-graph.css` | 工业控制台视觉、状态线型、发布动画与响应式布局 |
 
-现有 `ExpertKnowledgeGraph` 在新页面稳定后删除，避免新旧两套图谱组件长期并存。
+旧 `ExpertKnowledgeGraph` 已停止路由使用；待独立分支合并前完成死代码清理，避免与本次功能无关的样式回归混入首版实现。
 
 ## 6. 前端状态模型
 
@@ -880,3 +866,54 @@ POST /api/admin/cases/<case_id>/publish
 全局知识图谱负责证明知识覆盖面；本次新增与修改负责证明工程师经验如何经过专家审核进入正式知识。点击节点时通过镜头平移和缩放展示局部关系，发布时通过一次明确的并入动画证明数据状态发生了真实变化。
 
 该方案实现成本可控、画面稳定、适合录制，并且保留后续增加轻量案例、真实手册和更多图谱节点的扩展能力。
+
+## 23. 首版实现与验收记录
+
+### 23.1 已完成实现
+
+- 新增统一图谱种子 `backend/data/presentation/industrial_computer_graph.json`；
+- 新增 `graph_nodes`，并兼容扩展原 `graph_relations`；
+- 新增全局 / 本次变更 API：`GET /api/admin/knowledge-graph`；
+- 专家发布时在同一事务中写入 5 个变更节点和 6 条变更关系；
+- 全局视图发布前展示 38 个节点、40 条关系，发布后展示 43 个节点、46 条关系；
+- 本次新增与修改视图固定展示 5 个变更节点和 6 条变更关系；
+- 已实现点击一跳聚焦、搜索定位、滚轮缩放、画布拖拽、按钮缩放、返回全局和 Escape 复位；
+- 已实现候选黄色虚线、正式发布绿色实线、发布一次性动效和减弱动画兼容；
+- 保留现有工程师提交、专家发布、工程师同步和再次验证链路。
+
+### 23.2 WSL 自动化验证
+
+```text
+Python 语法检查：通过
+backend.test_presentation_store：2/2 通过
+Node 20.19.4 + Vite 6.4.3 生产构建：通过
+```
+
+后端测试覆盖：
+
+- 发布前候选节点不进入全局正式图谱；
+- 图谱所有关系端点均能解析到有效节点；
+- 发布后变更节点和 6 条关系进入全局图谱；
+- SQLite 重启持久化、工程师同步前后问答变化和一键重置不回归。
+
+### 23.3 浏览器演示验收
+
+在 1280×720 实际演示视口完成：
+
+- 专家登录并进入知识图谱；
+- 全局 38 节点 / 40 关系完整显示，默认无节点被错误压暗；
+- 点击“粉尘堵塞”后镜头平滑放大到 177%，详情和 2 条直接关系同步更新；
+- 搜索“湿度凝露”后正确定位并放大到 220%；
+- 本次新增与修改视图自动容纳 5 个节点 / 6 条关系，无关节点保留为弱化背景；
+- 工具栏放大从 130% 到 153%；
+- 滚轮缩放从 130% 到 143%，拖拽后场景坐标发生变化且缩放值保持；
+- 模拟发布后全局统计变为 43 节点 / 46 关系，5 个节点和 6 条关系均为正式发布状态；
+- 发布并入动画成功触发一次；
+- 全流程浏览器控制台无 JavaScript 错误。
+
+### 23.4 当前边界
+
+- 本阶段仍只有散热异常一条完整案例闭环；
+- 其他故障节点属于知识覆盖展示，尚未绑定完整真实手册和完整案例；
+- 工程师候选图谱内容沿用当前案例提交结构，本阶段未建设通用图谱编辑器；
+- 龙芯原生环境尚未验证，需在合并评审后按项目既有龙芯验证流程执行。

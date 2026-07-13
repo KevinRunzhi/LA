@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Cpu, FileCheck2, GitBranch, History, Loader2, Network, Plus, RefreshCcw, Save, Search, Send, ShieldCheck, Sparkles, Trash2, UserRound, Users, Wrench } from "lucide-react";
 import { presentationApi } from "./presentationApi";
+import IndustrialKnowledgeGraphPage from "./knowledge-graph/IndustrialKnowledgeGraphPage";
 import "./admin.css";
 import "./portal.css";
 
@@ -83,7 +84,7 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
       {page === "history" && <HistoryCasesV2 cases={cases} onOpen={(item) => { setSelectedCase(item); setPage("case-detail"); }} />}
       {page === "case-detail" && <ReadonlyCase item={selectedCase} onBack={() => setPage("history")} />}
       {page === "knowledge" && <KnowledgeLibrary items={knowledge} onDynamic={() => setPage("knowledge-result")} />}
-      {page === "knowledge-graph" && portalRole === "expert" && <ExpertKnowledgeGraph state={state} data={fullCase} onReview={() => setPage("expert-review")} />}
+      {page === "knowledge-graph" && portalRole === "expert" && <IndustrialKnowledgeGraphPage state={state} onReview={() => setPage("expert-review")} />}
       {page === "knowledge-graph" && portalRole === "engineer" && <EngineerLocalKnowledgeGraph snapshot={engineerSnapshot} sync={engineerSync} busy={busy} onSync={() => action(presentationApi.engineerSyncLatest, "V1.1 已同步，本地图谱和现场问答已更新", "knowledge-graph")} onVerify={() => setPage("verify")} />}
       {page === "people" && <PeoplePage users={users} />}
       </section>

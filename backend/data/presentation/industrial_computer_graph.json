@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "centerNodeId": "device-industrial-computer",
+  "nodes": [
+    {"id":"device-industrial-computer","name":"工控机","type":"device","domain":"core","level":0,"verificationLevel":"official_document","detail":"工业现场承担监控、数据采集与控制支撑的核心计算设备。","layout":{"x":600,"y":390}},
+
+    {"id":"domain-environment","name":"环境工况异常","type":"domain","domain":"environment","level":1,"verificationLevel":"presentation_seed","detail":"温度、湿度、粉尘与振动等外部工况造成的运行风险。","layout":{"x":250,"y":145}},
+    {"id":"domain-power","name":"供电系统故障","type":"domain","domain":"power","level":1,"verificationLevel":"presentation_seed","detail":"市电、电源本体、配电附件与电压监测异常。","layout":{"x":600,"y":95}},
+    {"id":"domain-hardware","name":"硬件部件失效","type":"domain","domain":"hardware","level":1,"verificationLevel":"presentation_seed","detail":"散热、存储、主板、监控模块与电池等部件故障。","layout":{"x":960,"y":155}},
+    {"id":"domain-maintenance","name":"安装与运维不规范","type":"domain","domain":"maintenance","level":1,"verificationLevel":"presentation_seed","detail":"安装、检修、参数配置和配件使用不规范。","layout":{"x":260,"y":655}},
+    {"id":"domain-monitoring","name":"监控告警失效","type":"domain","domain":"monitoring","level":1,"verificationLevel":"presentation_seed","detail":"指示、蜂鸣、监控总线和告警复位链路失效。","layout":{"x":955,"y":650}},
+
+    {"id":"env-temperature","name":"温度超标","type":"fault_category","domain":"environment","level":2,"verificationLevel":"presentation_seed","detail":"环境高温、低温无加温或存储温区超限。","layout":{"x":75,"y":75}},
+    {"id":"env-condensation","name":"湿度凝露","type":"fault_category","domain":"environment","level":2,"verificationLevel":"collecting","detail":"高湿和快速温差变化可能造成板卡凝露与腐蚀。","layout":{"x":75,"y":175}},
+    {"id":"env-dust","name":"粉尘堵塞","type":"fault_category","domain":"environment","level":2,"verificationLevel":"collecting","detail":"滤网长期不清理或无防尘措施导致进风阻力升高。","layout":{"x":115,"y":285}},
+    {"id":"env-vibration","name":"振动冲击","type":"fault_category","domain":"environment","level":2,"verificationLevel":"presentation_seed","detail":"固定不良、搬运不当或现场振动影响机械连接。","layout":{"x":255,"y":325}},
+    {"id":"env-high-heat","name":"高温堵风道","type":"fault_mode","domain":"environment","level":3,"verificationLevel":"presentation_seed","detail":"高环境温度叠加风道受阻，导致散热余量不足。","layout":{"x":35,"y":25}},
+    {"id":"env-board-moisture","name":"板卡凝露","type":"fault_mode","domain":"environment","level":3,"verificationLevel":"collecting","detail":"凝露可能造成绝缘下降、腐蚀和启动不稳定。","layout":{"x":35,"y":225}},
+    {"id":"env-filter-dust","name":"滤网积尘","type":"fault_cause","domain":"environment","level":3,"verificationLevel":"verified_case","detail":"当前散热案例已验证的进风阻力来源之一。","layout":{"x":80,"y":365}},
+
+    {"id":"power-mains","name":"外部市电异常","type":"fault_category","domain":"power","level":2,"verificationLevel":"presentation_seed","detail":"电压超范围、接地缺失或电源线破损。","layout":{"x":420,"y":40}},
+    {"id":"power-module","name":"电源本体异常","type":"fault_category","domain":"power","level":2,"verificationLevel":"collecting","detail":"电源老化、冗余单路损坏或替换件不匹配。","layout":{"x":535,"y":185}},
+    {"id":"power-distribution","name":"配电附件异常","type":"fault_category","domain":"power","level":2,"verificationLevel":"presentation_seed","detail":"保险丝规格、接线松动和极性错误。","layout":{"x":690,"y":180}},
+    {"id":"power-voltage","name":"电压监测异常","type":"fault_category","domain":"power","level":2,"verificationLevel":"presentation_seed","detail":"多路输出偏移或采集接口松动。","layout":{"x":790,"y":45}},
+    {"id":"power-aging","name":"电源老化","type":"fault_cause","domain":"power","level":3,"verificationLevel":"collecting","detail":"元器件老化可能导致输出波动和带载能力下降。","layout":{"x":495,"y":245}},
+    {"id":"power-redundant","name":"冗余单路损坏","type":"fault_mode","domain":"power","level":3,"verificationLevel":"collecting","detail":"冗余电源的一路失效，系统仍运行但失去冗余能力。","layout":{"x":635,"y":255}},
+    {"id":"power-loose-terminal","name":"接线端子松动","type":"fault_cause","domain":"power","level":3,"verificationLevel":"presentation_seed","detail":"接触电阻升高可能引起压降、温升和间歇掉电。","layout":{"x":765,"y":245}},
+
+    {"id":"hardware-cooling","name":"散热组件异常","type":"fault_category","domain":"hardware","level":2,"verificationLevel":"verified_case","detail":"风扇、风道、滤网和温控链路异常；当前唯一完整案例闭环。","layout":{"x":795,"y":330}},
+    {"id":"hardware-storage","name":"存储硬盘故障","type":"fault_category","domain":"hardware","level":2,"verificationLevel":"presentation_seed","detail":"硬盘物理损坏或状态指示链路故障。","layout":{"x":1090,"y":275}},
+    {"id":"hardware-board","name":"主板与底板故障","type":"fault_category","domain":"hardware","level":2,"verificationLevel":"presentation_seed","detail":"短路、静电击穿、插槽和金手指异常。","layout":{"x":1140,"y":390}},
+    {"id":"hardware-monitor","name":"监控模块故障","type":"fault_category","domain":"hardware","level":2,"verificationLevel":"presentation_seed","detail":"接线、测温、拨码、通信或声光告警部件异常。","layout":{"x":1100,"y":500}},
+    {"id":"hardware-rtc","name":"RTC 电池异常","type":"fault_category","domain":"hardware","level":2,"verificationLevel":"collecting","detail":"电池亏电或替换型号错误导致时间和配置异常。","layout":{"x":1010,"y":545}},
+    {"id":"metric-fan-low","name":"风扇转速低于 500 rpm","type":"metric","domain":"hardware","level":3,"verificationLevel":"official_document","detail":"散热案例的重要异常阈值，用于判断风扇低速。","layout":{"x":750,"y":440}},
+    {"id":"alarm-temp-fan","name":"TEMP/FAN 告警","type":"alarm","domain":"monitoring","level":3,"verificationLevel":"official_document","detail":"温度或风扇状态异常时出现的关键告警。","layout":{"x":875,"y":445}},
+    {"id":"action-clean-airflow","name":"清理滤网与风道","type":"action","domain":"hardware","level":3,"verificationLevel":"verified_case","detail":"断电后清理滤网和进出风通道，并再次测量转速和温度。","layout":{"x":720,"y":545}},
+    {"id":"safety-poweroff","name":"断电 · 挂牌 · 防静电","type":"safety","domain":"maintenance","level":3,"verificationLevel":"expert_confirmed","detail":"拆检和更换风扇前必须满足的安全前置条件。","layout":{"x":580,"y":565}},
+
+    {"id":"maintenance-install","name":"安装错误","type":"fault_category","domain":"maintenance","level":2,"verificationLevel":"presentation_seed","detail":"带电开盖、倒装、固定不足或使用非标配件。","layout":{"x":85,"y":520}},
+    {"id":"maintenance-inspection","name":"检修违规","type":"fault_category","domain":"maintenance","level":2,"verificationLevel":"presentation_seed","detail":"长期不清理、热插拔或未按安全流程拆检。","layout":{"x":105,"y":690}},
+    {"id":"maintenance-config","name":"参数配置错误","type":"fault_category","domain":"maintenance","level":2,"verificationLevel":"presentation_seed","detail":"拨码、温控或告警阈值配置错误。","layout":{"x":365,"y":740}},
+    {"id":"maintenance-parts","name":"配件混用","type":"fault_category","domain":"maintenance","level":2,"verificationLevel":"presentation_seed","detail":"风扇、电源、熔丝或电池规格不匹配。","layout":{"x":465,"y":690}},
+    {"id":"maintenance-filter-cycle","name":"长期不清理滤网","type":"maintenance_cause","domain":"maintenance","level":3,"verificationLevel":"expert_confirmed","detail":"会加速滤网积尘并降低进风能力。","layout":{"x":215,"y":565}},
+
+    {"id":"monitor-led","name":"LED 指示失效","type":"fault_category","domain":"monitoring","level":2,"verificationLevel":"presentation_seed","detail":"状态灯损坏导致无法提供视觉告警。","layout":{"x":760,"y":700}},
+    {"id":"monitor-buzzer","name":"蜂鸣器线路故障","type":"fault_category","domain":"monitoring","level":2,"verificationLevel":"collecting","detail":"声音告警链路故障导致异常不易被发现。","layout":{"x":900,"y":755}},
+    {"id":"monitor-bus","name":"SMBus / PMBus 中断","type":"fault_category","domain":"monitoring","level":2,"verificationLevel":"presentation_seed","detail":"监控通信中断导致远程状态不可见。","layout":{"x":1080,"y":735}},
+    {"id":"monitor-reset","name":"告警复位接口故障","type":"fault_category","domain":"monitoring","level":2,"verificationLevel":"presentation_seed","detail":"异常持续报警或无法正常复位。","layout":{"x":1160,"y":620}}
+  ],
+  "relations": [
+    {"id":"r-core-env","source":"device-industrial-computer","relation":"涉及","target":"domain-environment"},
+    {"id":"r-core-power","source":"device-industrial-computer","relation":"涉及","target":"domain-power"},
+    {"id":"r-core-hardware","source":"device-industrial-computer","relation":"涉及","target":"domain-hardware"},
+    {"id":"r-core-maintenance","source":"device-industrial-computer","relation":"涉及","target":"domain-maintenance"},
+    {"id":"r-core-monitoring","source":"device-industrial-computer","relation":"涉及","target":"domain-monitoring"},
+
+    {"id":"r-env-temperature","source":"domain-environment","relation":"包含","target":"env-temperature"},
+    {"id":"r-env-condensation","source":"domain-environment","relation":"包含","target":"env-condensation"},
+    {"id":"r-env-dust","source":"domain-environment","relation":"包含","target":"env-dust"},
+    {"id":"r-env-vibration","source":"domain-environment","relation":"包含","target":"env-vibration"},
+    {"id":"r-temp-high","source":"env-temperature","relation":"可能表现为","target":"env-high-heat"},
+    {"id":"r-condensation-board","source":"env-condensation","relation":"可能导致","target":"env-board-moisture"},
+    {"id":"r-dust-filter","source":"env-dust","relation":"形成","target":"env-filter-dust"},
+
+    {"id":"r-power-mains","source":"domain-power","relation":"包含","target":"power-mains"},
+    {"id":"r-power-module","source":"domain-power","relation":"包含","target":"power-module"},
+    {"id":"r-power-distribution","source":"domain-power","relation":"包含","target":"power-distribution"},
+    {"id":"r-power-voltage","source":"domain-power","relation":"包含","target":"power-voltage"},
+    {"id":"r-power-aging","source":"power-module","relation":"可能原因","target":"power-aging"},
+    {"id":"r-power-redundant","source":"power-module","relation":"可能表现为","target":"power-redundant"},
+    {"id":"r-power-terminal","source":"power-distribution","relation":"可能原因","target":"power-loose-terminal"},
+
+    {"id":"r-hardware-cooling","source":"domain-hardware","relation":"包含","target":"hardware-cooling"},
+    {"id":"r-hardware-storage","source":"domain-hardware","relation":"包含","target":"hardware-storage"},
+    {"id":"r-hardware-board","source":"domain-hardware","relation":"包含","target":"hardware-board"},
+    {"id":"r-hardware-monitor","source":"domain-hardware","relation":"包含","target":"hardware-monitor"},
+    {"id":"r-hardware-rtc","source":"domain-hardware","relation":"包含","target":"hardware-rtc"},
+    {"id":"r-cooling-speed","source":"hardware-cooling","relation":"监测","target":"metric-fan-low"},
+    {"id":"r-speed-alarm","source":"metric-fan-low","relation":"触发","target":"alarm-temp-fan"},
+    {"id":"r-filter-cooling","source":"env-filter-dust","relation":"影响","target":"hardware-cooling"},
+    {"id":"r-cooling-clean","source":"hardware-cooling","relation":"优先检查","target":"action-clean-airflow"},
+    {"id":"r-clean-safety","source":"action-clean-airflow","relation":"要求","target":"safety-poweroff"},
+
+    {"id":"r-maintenance-install","source":"domain-maintenance","relation":"包含","target":"maintenance-install"},
+    {"id":"r-maintenance-inspection","source":"domain-maintenance","relation":"包含","target":"maintenance-inspection"},
+    {"id":"r-maintenance-config","source":"domain-maintenance","relation":"包含","target":"maintenance-config"},
+    {"id":"r-maintenance-parts","source":"domain-maintenance","relation":"包含","target":"maintenance-parts"},
+    {"id":"r-maintenance-filter","source":"maintenance-inspection","relation":"可能表现为","target":"maintenance-filter-cycle"},
+    {"id":"r-filter-cycle-dust","source":"maintenance-filter-cycle","relation":"导致","target":"env-filter-dust"},
+
+    {"id":"r-monitor-led","source":"domain-monitoring","relation":"包含","target":"monitor-led"},
+    {"id":"r-monitor-buzzer","source":"domain-monitoring","relation":"包含","target":"monitor-buzzer"},
+    {"id":"r-monitor-bus","source":"domain-monitoring","relation":"包含","target":"monitor-bus"},
+    {"id":"r-monitor-reset","source":"domain-monitoring","relation":"包含","target":"monitor-reset"},
+    {"id":"r-alarm-monitor","source":"alarm-temp-fan","relation":"属于","target":"domain-monitoring"}
+  ],
+  "changeTemplate": {
+    "nodes": [
+      {"id":"cause-fan-aging","name":"风扇老化","type":"fault_cause","domain":"hardware","level":3,"verificationLevel":"verified_case","detail":"清理滤网和风道后转速仍低，结合更换后的恢复结果判断为风扇老化。","layout":{"x":900,"y":350}},
+      {"id":"action-replace-fan","name":"更换老化风扇","type":"action","domain":"hardware","level":3,"verificationLevel":"verified_case","detail":"在断电、挂牌和防静电确认后更换同规格风扇。","layout":{"x":980,"y":440}},
+      {"id":"recovery-fan-normal","name":"转速恢复 · 告警解除","type":"recovery","domain":"hardware","level":3,"verificationLevel":"verified_case","detail":"风扇恢复至 1280 rpm，TEMP/FAN 告警解除并稳定观察 15 分钟。","layout":{"x":925,"y":540}},
+      {"id":"case-cooling-001","name":"当前散热检修案例","type":"case","domain":"case","level":2,"verificationLevel":"verified_case","detail":"工程师提交、专家审核并支撑本次知识更新的完整案例。","sourceCaseIds":["CASE-ACP4000-001"],"layout":{"x":740,"y":645}},
+      {"id":"knowledge-kb008-v11","name":"散热检修知识 V1.1","type":"knowledge","domain":"knowledge","level":2,"verificationLevel":"expert_confirmed","detail":"专家发布后包含风扇老化判断和更换条件的正式知识版本。","knowledgeId":"KB-008","layout":{"x":870,"y":650}}
+    ],
+    "relations": [
+      {"id":"change-aging-speed","source":"cause-fan-aging","relation":"导致","target":"metric-fan-low"},
+      {"id":"change-aging-replace","source":"cause-fan-aging","relation":"建议处理","target":"action-replace-fan"},
+      {"id":"change-replace-recovery","source":"action-replace-fan","relation":"恢复至","target":"recovery-fan-normal"},
+      {"id":"change-case-aging","source":"case-cooling-001","relation":"证据支持","target":"cause-fan-aging"},
+      {"id":"change-case-knowledge","source":"case-cooling-001","relation":"更新","target":"knowledge-kb008-v11"},
+      {"id":"change-knowledge-aging","source":"knowledge-kb008-v11","relation":"正式收录","target":"cause-fan-aging"}
+    ]
+  }
+}
