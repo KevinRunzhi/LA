@@ -1,0 +1,232 @@
+.expert-call-backdrop {
+  position: fixed;
+  z-index: 180;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  background: rgba(2, 7, 13, 0.88);
+  backdrop-filter: blur(10px);
+  animation: expertCallBackdropIn 180ms ease-out both;
+}
+
+.expert-call-shell {
+  --call-border: #29445a;
+  --call-panel: #091725;
+  --call-panel-raised: #0d2030;
+  --call-text: #dbe9f2;
+  --call-muted: #7890a2;
+  --call-cyan: #56c7e8;
+  --call-green: #66d1a5;
+  width: min(1460px, 100%);
+  height: min(900px, calc(100vh - 28px));
+  min-height: 620px;
+  overflow: hidden;
+  border: 1px solid #36556c;
+  border-radius: 16px;
+  background: #06111c;
+  color: var(--call-text);
+  box-shadow: 0 34px 100px rgba(0, 0, 0, 0.68), inset 0 1px rgba(255, 255, 255, 0.04);
+  animation: expertCallShellIn 240ms cubic-bezier(.2, .82, .26, 1) both;
+}
+
+.expert-call-shell button { font: inherit; }
+.expert-call-kicker { color: #58bcd8; font-size: 9px; font-weight: 800; letter-spacing: .18em; }
+.expert-call-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #62d4a7; box-shadow: 0 0 0 4px rgba(98, 212, 167, .12), 0 0 13px rgba(98, 212, 167, .55); }
+
+.expert-call-selecting { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: radial-gradient(circle at 6% -10%, rgba(38, 130, 165, .18), transparent 32%), #071421; }
+.expert-call-select-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--call-border); padding: 22px 24px 18px; }
+.expert-call-select-head h2 { margin: 5px 0 4px; color: #edf7fb; font-size: 27px; letter-spacing: .02em; }
+.expert-call-select-head p { margin: 0; color: var(--call-muted); font-size: 11px; }
+.expert-call-select-head > button,
+.expert-call-room-head > button { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #304d62; border-radius: 8px; background: #0b1c2a; color: #8299a9; }
+.expert-call-select-head > button:hover,
+.expert-call-room-head > button:hover { border-color: #4f9ab8; color: #e2f1f6; }
+
+.expert-call-select-grid { min-height: 0; display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(310px, .55fr); gap: 12px; padding: 14px; }
+.expert-call-expert-list { min-height: 0; display: grid; gap: 9px; align-content: start; overflow-y: auto; border: 1px solid var(--call-border); border-radius: 12px; background: rgba(8, 23, 36, .86); padding: 12px; }
+.expert-call-section-title { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 7px; }
+.expert-call-section-title > div { display: flex; align-items: center; gap: 8px; color: var(--call-cyan); }
+.expert-call-section-title > div span { display: grid; gap: 1px; }
+.expert-call-section-title small { color: #577d92; font-size: 8px; letter-spacing: .1em; }
+.expert-call-section-title strong { color: #cbdbe4; font-size: 12px; }
+.expert-call-section-title > em { border: 1px solid rgba(92, 207, 164, .28); border-radius: 999px; background: rgba(52, 145, 111, .12); color: #6bd0aa; padding: 4px 8px; font-size: 9px; font-style: normal; }
+
+.expert-call-expert-card { position: relative; display: grid; grid-template-columns: 54px minmax(0, 1fr) auto 26px; align-items: center; gap: 12px; border: 1px solid #294257; border-radius: 11px; background: linear-gradient(110deg, #0c1c2b, #091725); color: #9db2bf; padding: 13px; text-align: left; transition: border-color 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease; }
+.expert-call-expert-card:hover { border-color: #41728d; background: linear-gradient(110deg, #102638, #0a1b2a); transform: translateY(-1px); }
+.expert-call-expert-card.selected { border-color: rgba(82, 194, 225, .76); background: linear-gradient(110deg, rgba(22, 70, 87, .74), #0b1d2c 64%); box-shadow: inset 3px 0 #58c7e5, 0 10px 26px rgba(0, 0, 0, .18); }
+.expert-call-avatar { display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid #36576d; border-radius: 10px; background: linear-gradient(145deg, #1a4052, #0d2635); color: #9bdced; font-size: 20px; font-weight: 800; }
+.expert-call-expert-copy { min-width: 0; display: grid; gap: 4px; }
+.expert-call-expert-copy > span:first-child { display: flex; align-items: center; gap: 7px; }
+.expert-call-expert-copy strong { color: #e3edf3; font-size: 14px; }
+.expert-call-expert-copy > span:first-child em { border-radius: 4px; background: rgba(86, 199, 232, .14); color: #67c9e4; padding: 2px 5px; font-size: 8px; font-style: normal; }
+.expert-call-expert-copy b { color: #a7c0cc; font-size: 10px; font-weight: 600; }
+.expert-call-expert-copy > small { overflow: hidden; color: #647f90; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.expert-call-specialties { display: flex; gap: 5px; margin-top: 2px; overflow: hidden; }
+.expert-call-specialties i { flex: 0 0 auto; border: 1px solid #2b4659; border-radius: 4px; background: #0a1926; color: #7895a5; padding: 2px 5px; font-size: 8px; font-style: normal; }
+.expert-call-availability { display: grid; grid-template-columns: auto auto; align-items: center; gap: 4px; color: #71d3ac; font-size: 9px; }
+.expert-call-availability > i { width: 6px; height: 6px; border-radius: 50%; background: #62d4a7; box-shadow: 0 0 8px rgba(98, 212, 167, .62); }
+.expert-call-availability small { grid-column: 1 / -1; color: #657f8f; font-size: 8px; }
+.expert-call-radio { display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid #3a586b; border-radius: 50%; color: #e7fbff; }
+.expert-call-expert-card.selected .expert-call-radio { border-color: #55c7e6; background: #267d98; }
+
+.expert-call-context { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; border: 1px solid var(--call-border); border-radius: 12px; background: #091725; }
+.expert-call-context > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #243e51; padding: 14px; color: var(--call-cyan); }
+.expert-call-context > header div { display: grid; gap: 2px; }
+.expert-call-context > header span { color: #58798c; font-size: 8px; letter-spacing: .1em; }
+.expert-call-context > header strong { color: #d1e1e9; font-size: 12px; }
+.expert-call-context-list { min-height: 0; display: grid; gap: 7px; align-content: start; overflow-y: auto; padding: 10px; }
+.expert-call-context-list article { display: grid; gap: 4px; border: 1px solid #233d50; border-radius: 8px; background: #081522; padding: 10px; }
+.expert-call-context-list article.alert { border-left: 3px solid #d6a459; }
+.expert-call-context-list article.current { border-color: rgba(75, 172, 201, .38); background: rgba(22, 75, 94, .2); }
+.expert-call-context-list small { color: #647f91; font-size: 8px; }
+.expert-call-context-list strong { color: #c5d6df; font-size: 10px; line-height: 1.45; }
+.expert-call-context-list p { margin: 0; color: #718b9c; font-size: 8px; line-height: 1.55; }
+.expert-call-context > footer { display: flex; align-items: center; gap: 6px; border-top: 1px solid #203a4c; background: rgba(42, 116, 91, .12); color: #71cda9; padding: 10px 12px; font-size: 9px; }
+
+.expert-call-select-actions { display: flex; align-items: center; justify-content: space-between; gap: 18px; border-top: 1px solid var(--call-border); background: #081623; padding: 13px 18px; }
+.expert-call-select-actions > div { display: flex; align-items: center; gap: 9px; color: #6ccbaa; }
+.expert-call-select-actions > div span { display: grid; gap: 2px; }
+.expert-call-select-actions small { color: #668193; font-size: 8px; }
+.expert-call-select-actions strong { color: #a6bdc9; font-size: 9px; }
+.expert-call-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; border: 1px solid #55c7e6; border-radius: 9px; background: #2381a0; color: #effcff; padding: 0 16px; font-size: 11px; font-weight: 700; box-shadow: 0 8px 22px rgba(19, 102, 132, .3); }
+.expert-call-primary:hover { background: #2d92b3; }
+
+.expert-call-connecting { height: 100%; display: grid; grid-template-rows: 52px minmax(0, 1fr); background: #02070c; }
+.expert-call-connecting > header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #182735; background: #07111b; padding: 0 17px; }
+.expert-call-connecting > header > div { display: flex; align-items: center; gap: 9px; color: #cbdce5; font-size: 11px; font-weight: 700; }
+.expert-call-connecting > header > button { border: 1px solid #374a58; border-radius: 7px; background: #101b24; color: #9aabb5; padding: 7px 10px; font-size: 9px; }
+.expert-call-black-screen { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #000; }
+.expert-call-black-screen.connecting { display: grid; place-items: center; }
+.expert-call-black-screen.connecting::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(23, 90, 117, .15), transparent 32%); }
+.expert-call-scan-line { position: absolute; z-index: 1; left: 8%; right: 8%; height: 1px; background: linear-gradient(90deg, transparent, rgba(83, 198, 230, .48), transparent); box-shadow: 0 0 16px rgba(83, 198, 230, .36); animation: expertCallScan 1.6s ease-in-out infinite; }
+.expert-call-connect-status { z-index: 2; display: grid; justify-items: center; gap: 8px; text-align: center; }
+.expert-call-connect-rings { position: relative; display: grid; place-items: center; width: 76px; height: 76px; border: 1px solid rgba(80, 195, 226, .5); border-radius: 50%; color: #6bd2ec; background: rgba(22, 70, 89, .28); }
+.expert-call-connect-rings::before,
+.expert-call-connect-rings::after { content: ""; position: absolute; inset: -13px; border: 1px solid rgba(75, 188, 220, .2); border-radius: 50%; animation: expertCallRing 1.8s ease-out infinite; }
+.expert-call-connect-rings::after { inset: -27px; animation-delay: 450ms; }
+.expert-call-connect-status > small { margin-top: 18px; color: #3f7185; font-size: 8px; letter-spacing: .2em; }
+.expert-call-connect-status h2 { margin: 0; color: #d7e8ef; font-size: 19px; }
+.expert-call-connect-status p { margin: 0; color: #6f8a99; font-size: 10px; }
+.expert-call-connect-status > div { display: flex; gap: 6px; margin-top: 8px; }
+.expert-call-connect-status > div i { width: 24px; height: 2px; border-radius: 2px; background: #17303e; transition: background 180ms ease, box-shadow 180ms ease; }
+.expert-call-connect-status > div i.active { background: #55c8e7; box-shadow: 0 0 8px rgba(85, 200, 231, .5); }
+.expert-call-corner { position: absolute; width: 42px; height: 42px; opacity: .48; }
+.expert-call-corner.corner-a { top: 22px; left: 22px; border-top: 1px solid #4fa9c4; border-left: 1px solid #4fa9c4; }
+.expert-call-corner.corner-b { right: 22px; bottom: 22px; border-right: 1px solid #4fa9c4; border-bottom: 1px solid #4fa9c4; }
+
+.expert-call-room { height: 100%; display: grid; grid-template-rows: 58px minmax(0, 1fr) 76px; background: #03090f; }
+.expert-call-room-head { display: grid; grid-template-columns: minmax(0, 1fr) auto 34px; align-items: center; gap: 18px; border-bottom: 1px solid #1e3342; background: #081521; padding: 0 14px 0 17px; }
+.expert-call-room-title { min-width: 0; display: flex; align-items: center; gap: 10px; }
+.expert-call-room-title > span:last-child { min-width: 0; display: grid; gap: 1px; }
+.expert-call-room-title small { color: #638093; font-size: 8px; }
+.expert-call-room-title strong { overflow: hidden; color: #d8e6ed; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.expert-call-room-meta { display: flex; align-items: center; gap: 12px; color: #6e8898; font-size: 8px; }
+.expert-call-room-meta > span,
+.expert-call-room-meta > strong { display: flex; align-items: center; gap: 4px; }
+.expert-call-room-meta > span:first-child { color: #6bc8a7; }
+.expert-call-room-meta > strong { color: #a9c7d4; font-variant-numeric: tabular-nums; }
+.expert-call-room-meta > small { border-left: 1px solid #2a4252; padding-left: 12px; }
+.expert-call-room-stage { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; background: #02070b; padding: 8px; }
+.expert-call-room.with-context .expert-call-room-stage { grid-template-columns: minmax(0, 1fr) 310px; }
+.expert-call-video-wall { min-width: 0; min-height: 0; border: 1px solid #192a35; background: #000; }
+.expert-call-black-screen.connected { width: 100%; height: 100%; }
+.expert-call-video-placeholder { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 8px; color: #17242c; }
+.expert-call-video-placeholder span { font-size: 9px; letter-spacing: .08em; }
+.expert-call-nameplate { position: absolute; left: 16px; bottom: 16px; display: grid; grid-template-columns: auto auto; align-items: center; gap: 2px 7px; border: 1px solid #253744; border-radius: 7px; background: rgba(5, 11, 16, .84); padding: 7px 9px; backdrop-filter: blur(8px); }
+.expert-call-nameplate .expert-call-live-dot { width: 5px; height: 5px; }
+.expert-call-nameplate strong { color: #d4e3e9; font-size: 10px; }
+.expert-call-nameplate small { grid-column: 2; color: #5d7380; font-size: 7px; }
+.expert-call-local-tile { position: absolute; right: 16px; bottom: 16px; width: 228px; height: 132px; display: grid; place-content: center; justify-items: center; gap: 6px; border: 1px solid #314a5a; border-radius: 8px; background: #000; color: #263944; box-shadow: 0 14px 34px rgba(0, 0, 0, .5); }
+.expert-call-local-tile span { position: absolute; left: 7px; bottom: 20px; color: #8195a0; font-size: 8px; }
+.expert-call-local-tile i { position: absolute; left: 7px; bottom: 7px; color: #40545f; font-size: 7px; font-style: normal; }
+.expert-call-room-stage > .expert-call-context { border-radius: 5px; }
+
+.expert-call-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 14px; border-top: 1px solid #1e3545; background: #081521; padding: 8px 14px; }
+.expert-call-control-group { display: flex; gap: 5px; }
+.expert-call-control-group button { min-width: 70px; display: grid; justify-items: center; gap: 4px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #9eb2bd; padding: 7px 8px; font-size: 8px; }
+.expert-call-control-group button:hover,
+.expert-call-control-group button.active { border-color: #2e5064; background: #0e2637; color: #cbe3ec; }
+.expert-call-control-group button.off { color: #d38e83; }
+.expert-call-room-state { display: flex; align-items: center; gap: 7px; color: #60cba4; }
+.expert-call-room-state > span { display: grid; gap: 1px; }
+.expert-call-room-state small { color: #557688; font-size: 7px; }
+.expert-call-room-state strong { color: #a8c8d0; font-size: 9px; }
+.expert-call-end { justify-self: end; display: inline-flex; align-items: center; gap: 7px; min-height: 38px; border: 1px solid #bd594f; border-radius: 8px; background: #9c3d36; color: #fff4f2; padding: 0 14px; font-size: 10px; font-weight: 700; }
+.expert-call-end:hover { background: #b5473e; }
+
+.expert-call-confirm-backdrop { position: absolute; z-index: 4; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, .72); backdrop-filter: blur(5px); }
+.expert-call-confirm { width: min(390px, calc(100% - 30px)); display: grid; justify-items: center; gap: 9px; border: 1px solid #3b5363; border-radius: 13px; background: #0b1b28; padding: 24px; text-align: center; box-shadow: 0 26px 70px rgba(0, 0, 0, .52); animation: expertCallConfirmIn 160ms ease-out both; }
+.expert-call-confirm > span { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: rgba(183, 70, 61, .14); color: #e67c70; }
+.expert-call-confirm h3 { margin: 2px 0 0; color: #e6eff3; font-size: 16px; }
+.expert-call-confirm p { margin: 0; color: #78909f; font-size: 9px; line-height: 1.6; }
+.expert-call-confirm > div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; margin-top: 7px; }
+.expert-call-confirm button { min-height: 36px; border: 1px solid #345064; border-radius: 7px; background: #0f2534; color: #a9c0cc; font-size: 9px; }
+.expert-call-confirm button:last-child { border-color: #b75249; background: #983c35; color: #fff4f2; }
+
+.expert-call-complete { height: 100%; display: grid; place-content: center; justify-items: center; gap: 8px; background: radial-gradient(circle at 50% 37%, rgba(45, 139, 112, .15), transparent 27%), #07131f; padding: 24px; text-align: center; }
+.expert-call-complete-mark { display: grid; place-items: center; width: 72px; height: 72px; border: 1px solid rgba(101, 209, 166, .55); border-radius: 50%; background: rgba(43, 124, 94, .2); color: #72d7ae; box-shadow: 0 0 0 12px rgba(91, 201, 158, .05); }
+.expert-call-complete > small { margin-top: 12px; color: #4f987e; font-size: 8px; letter-spacing: .2em; }
+.expert-call-complete h2 { margin: 0; color: #e3eff3; font-size: 25px; }
+.expert-call-complete > p { margin: 0; color: #7b94a2; font-size: 10px; }
+.expert-call-complete-summary { width: min(680px, 90vw); display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+.expert-call-complete-summary article { display: grid; gap: 4px; border: 1px solid #294457; border-radius: 10px; background: #091826; padding: 13px; }
+.expert-call-complete-summary small { color: #607f91; font-size: 8px; }
+.expert-call-complete-summary strong { color: #cfe1e8; font-size: 14px; }
+.expert-call-complete-summary span { color: #6f8796; font-size: 8px; }
+.expert-call-future-note { width: min(680px, 90vw); display: flex; align-items: center; gap: 9px; margin: 3px 0 10px; border: 1px solid rgba(86, 190, 150, .28); border-radius: 9px; background: rgba(40, 113, 88, .12); color: #67cca6; padding: 10px 12px; text-align: left; }
+.expert-call-future-note > span { display: grid; gap: 2px; }
+.expert-call-future-note strong { color: #a9cfc1; font-size: 9px; }
+.expert-call-future-note small { color: #628577; font-size: 8px; }
+
+@keyframes expertCallBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes expertCallShellIn { from { opacity: 0; transform: translateY(10px) scale(.992); } to { opacity: 1; transform: none; } }
+@keyframes expertCallScan { 0%, 100% { top: 16%; opacity: .15; } 50% { top: 84%; opacity: .8; } }
+@keyframes expertCallRing { from { opacity: .7; transform: scale(.82); } to { opacity: 0; transform: scale(1.15); } }
+@keyframes expertCallConfirmIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 980px) {
+  .expert-call-shell { min-height: 0; }
+  .expert-call-select-grid { grid-template-columns: minmax(0, 1fr) 280px; }
+  .expert-call-expert-card { grid-template-columns: 45px minmax(0, 1fr) 24px; }
+  .expert-call-avatar { width: 43px; height: 43px; }
+  .expert-call-availability { display: none; }
+  .expert-call-room.with-context .expert-call-room-stage { grid-template-columns: minmax(0, 1fr) 270px; }
+  .expert-call-room-meta > span,
+  .expert-call-room-meta > small { display: none; }
+  .expert-call-control-group button { min-width: 58px; }
+}
+
+@media (max-width: 760px) {
+  .expert-call-backdrop { padding: 0; }
+  .expert-call-shell { width: 100%; height: 100vh; border: 0; border-radius: 0; }
+  .expert-call-select-head { padding: 15px; }
+  .expert-call-select-head h2 { font-size: 21px; }
+  .expert-call-select-grid { grid-template-columns: 1fr; overflow-y: auto; }
+  .expert-call-expert-list { overflow: visible; }
+  .expert-call-select-grid > .expert-call-context { min-height: 360px; }
+  .expert-call-select-actions { align-items: stretch; flex-direction: column; }
+  .expert-call-select-actions > div { display: none; }
+  .expert-call-room { grid-template-rows: 52px minmax(0, 1fr) auto; }
+  .expert-call-room-head { grid-template-columns: minmax(0, 1fr) auto 34px; gap: 8px; }
+  .expert-call-room-meta > strong { display: flex; }
+  .expert-call-room.with-context .expert-call-room-stage { grid-template-columns: 1fr; overflow-y: auto; }
+  .expert-call-room-stage > .expert-call-context { min-height: 340px; }
+  .expert-call-video-wall { min-height: 420px; }
+  .expert-call-local-tile { width: 160px; height: 96px; }
+  .expert-call-controls { grid-template-columns: 1fr auto; }
+  .expert-call-control-group { overflow-x: auto; }
+  .expert-call-room-state { display: none; }
+  .expert-call-control-group button span { display: none; }
+  .expert-call-control-group button { min-width: 42px; }
+  .expert-call-complete-summary { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .expert-call-backdrop,
+  .expert-call-shell,
+  .expert-call-confirm,
+  .expert-call-scan-line,
+  .expert-call-connect-rings::before,
+  .expert-call-connect-rings::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+}

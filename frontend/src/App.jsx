@@ -26,7 +26,6 @@ import {
   Music2,
   Paperclip,
   PackageCheck,
-  PhoneCall,
   Play,
   Plug,
   Plus,
@@ -51,6 +50,7 @@ import { presentationApi } from "./admin/presentationApi";
 import { SourceCard } from "./components/chat/SourceCard";
 import { StreamingMarkdown } from "./components/chat/StreamingMarkdown";
 import { ThinkingProcess } from "./components/chat/ThinkingProcess";
+import ExpertVideoConsultation from "./components/consultation/ExpertVideoConsultation";
 import { defaultInput } from "./data/fallbackDemo";
 import { maintenanceReferenceFallback, normalizeMaintenanceReferences } from "./data/maintenanceReferenceCatalog";
 import { assistantSources, buildMaintenanceAnswer, retrievalStatuses } from "./data/streamingAssistantDemo";
@@ -3614,6 +3614,7 @@ function GuideStage({
   const isLastGuideStep = activeStep === totalSteps - 1;
   const visual = guideVisuals[currentStep.id];
   const [focusedCheck, setFocusedCheck] = useState(visual?.frames[0]?.check || currentStep.checks[0]);
+  const [consultationOpen, setConsultationOpen] = useState(false);
 
   useEffect(() => {
     setFocusedCheck(guideVisuals[currentStep.id]?.frames[0]?.check || currentStep.checks[0]);
@@ -3702,10 +3703,9 @@ function GuideStage({
           {transitionRunning ? <Loader2 size={16} className="spin" /> : null}
           {transitionRunning ? "Agent 正在生成下一步" : "完成并继续"} <ChevronRight size={16} />
         </button>
-        <button className="ghost-button reserved-action" title="演示按钮，后续接入专家电话会诊">
-          <PhoneCall size={16} />
-          专家电话会诊
-          <span>预留</span>
+        <button className="ghost-button" onClick={() => setConsultationOpen(true)} title="发起专家视频会诊">
+          <Video size={16} />
+          专家视频会诊
         </button>
         <button className="ghost-button reserved-action" title="演示按钮，后续接入语音播报">
           <Volume2 size={16} />
@@ -3714,6 +3714,14 @@ function GuideStage({
         </button>
         <button className="ghost-button" onClick={onRecord} disabled={transitionRunning || !isLastGuideStep}>生成检修记录</button>
       </div>
+      {consultationOpen && (
+        <ExpertVideoConsultation
+          currentStep={currentStep}
+          activeStep={activeStep}
+          totalSteps={totalSteps}
+          onClose={() => setConsultationOpen(false)}
+        />
+      )}
     </div>
   );
 }
