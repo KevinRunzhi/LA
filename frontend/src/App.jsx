@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
+  Archive,
+  BookOpen,
   CalendarClock,
   Check,
   ChevronDown,
@@ -23,6 +25,7 @@ import {
   Mic,
   Music2,
   Paperclip,
+  PackageCheck,
   PhoneCall,
   Play,
   Plug,
@@ -49,6 +52,7 @@ import { SourceCard } from "./components/chat/SourceCard";
 import { StreamingMarkdown } from "./components/chat/StreamingMarkdown";
 import { ThinkingProcess } from "./components/chat/ThinkingProcess";
 import { defaultInput } from "./data/fallbackDemo";
+import { maintenanceReferenceFallback, normalizeMaintenanceReferences } from "./data/maintenanceReferenceCatalog";
 import { assistantSources, buildMaintenanceAnswer, retrievalStatuses } from "./data/streamingAssistantDemo";
 
 const navItems = [
@@ -1014,6 +1018,179 @@ function MaterialPreviewModal({ material, onClose }) {
   );
 }
 
+const referenceTypeMeta = {
+  case: { label: "案例", longLabel: "历史案例", icon: Archive },
+  knowledge: { label: "知识", longLabel: "检修知识", icon: BookOpen },
+  manual: { label: "手册", longLabel: "厂商手册", icon: FileText },
+};
+
+function getReferenceCounts(references) {
+  return references.reduce((counts, item) => ({
+    ...counts,
+    [item.type]: (counts[item.type] || 0) + 1,
+  }), { case: 0, knowledge: 0, manual: 0 });
+}
+
+function ReferencePackageDock({ references, onOpen, onRemove }) {
+  if (!references.length) return null;
+  const counts = getReferenceCounts(references);
+
+  return (
+    <section className="reference-package-dock" aria-label="本次接诊资料包">
+      <div className="reference-package-head">
+        <div className="reference-package-title">
+          <PackageCheck size={16} />
+          <span><small>诊断参考</small><strong>本次接诊资料包 · {references.length} 项</strong></span>
+        </div>
+        <div className="reference-package-counts">
+          <span>{counts.case} 案例</span><span>{counts.knowledge} 知识</span><span>{counts.manual} 手册</span>
+          <button type="button" onClick={onOpen}>调整资料</button>
+        </div>
+      </div>
+      <div className="reference-package-chips">
+        {references.slice(0, 3).map((item) => (
+          <span key={item.key}>
+            <em>{referenceTypeMeta[item.type].label}</em>
+            <strong>{item.title}</strong>
+            <button type="button" onClick={() => onRemove(item.key)} aria-label={`移除 ${item.title}`}><X size={11} /></button>
+          </span>
+        ))}
+        {references.length > 3 && <button type="button" className="reference-package-more" onClick={onOpen}>+{references.length - 3} 项</button>}
+      </div>
+    </section>
+  );
+}
+
+function ReferencePickerModal({ catalog, catalogMode, selectedReferences, onClose, onConfirm }) {
+  const [activeType, setActiveType] = useState("all");
+  const [query, setQuery] = useState("");
+  const [draftKeys, setDraftKeys] = useState(() => selectedReferences.map((item) => item.key));
+  const allReferences = useMemo(() => {
+    const catalogKeys = new Set(catalog.map((item) => item.key));
+    return [...catalog, ...selectedReferences.filter((item) => !catalogKeys.has(item.key))];
+  }, [catalog, selectedReferences]);
+  const draftKeySet = useMemo(() => new Set(draftKeys), [draftKeys]);
+  const selectedDraft = useMemo(
+    () => allReferences.filter((item) => draftKeySet.has(item.key)),
+    [allReferences, draftKeySet]
+  );
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleReferences = useMemo(() => allReferences.filter((item) => {
+    if (activeType !== "all" && item.type !== activeType) return false;
+    if (!normalizedQuery) return true;
+    return `${item.id} ${item.title} ${item.meta} ${item.summary} ${item.tags.join(" ")}`.toLowerCase().includes(normalizedQuery);
+  }), [activeType, allReferences, normalizedQuery]);
+  const recommended = allReferences.filter((item) => item.recommended).slice(0, 4);
+  const catalogCounts = getReferenceCounts(allReferences);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function closeOnEscape(event) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [onClose]);
+
+  function toggleReference(key) {
+    setDraftKeys((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
+  }
+
+  function selectRecommended() {
+    setDraftKeys((current) => [...new Set([...current, ...recommended.map((item) => item.key)])]);
+  }
+
+  const tabs = [
+    ["all", "全部资料", allReferences.length],
+    ["case", "历史案例", catalogCounts.case],
+    ["knowledge", "检修知识", catalogCounts.knowledge],
+    ["manual", "厂商手册", catalogCounts.manual],
+  ];
+
+  return (
+    <div className="reference-picker-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section className="reference-picker-modal" role="dialog" aria-modal="true" aria-label="检修资料编组台">
+        <header className="reference-picker-head">
+          <div>
+            <span className="eyebrow">MAINTENANCE REFERENCE STAGING</span>
+            <h2>检修资料编组台</h2>
+            <p>从专家知识库的案例、检修知识和厂商手册中，编组本次接诊要引用的资料。</p>
+          </div>
+          <div className="reference-catalog-state">
+            <span>{catalogMode === "live" ? "知识库实时目录" : catalogMode === "partial" ? "部分目录 · 演示兜底" : "演示资料目录"}</span>
+            <strong>{allReferences.length} 项可选资料</strong>
+          </div>
+          <button className="reference-picker-close" type="button" onClick={onClose} aria-label="关闭检修资料编组台"><X size={18} /></button>
+        </header>
+
+        <section className="reference-recommendation-rail">
+          <div><Sparkles size={16} /><span><small>当前接诊建议</small><strong>工控机 · TEMP/FAN 与散热异常方向</strong></span></div>
+          <div className="reference-recommendation-items">
+            {recommended.map((item) => <span key={item.key}><em>{referenceTypeMeta[item.type].label}</em>{item.title}</span>)}
+          </div>
+          <button type="button" onClick={selectRecommended}><Plus size={14} />采用推荐资料</button>
+        </section>
+
+        <div className="reference-picker-toolbar">
+          <div className="reference-type-tabs">
+            {tabs.map(([value, label, count]) => <button type="button" className={activeType === value ? "active" : ""} onClick={() => setActiveType(value)} key={value}><span>{label}</span><em>{count}</em></button>)}
+          </div>
+          <label className="reference-search"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索故障、设备、资料标题或编号" />{query && <button type="button" onClick={() => setQuery("")} aria-label="清除搜索"><X size={13} /></button>}</label>
+        </div>
+
+        <div className="reference-picker-workspace">
+          <section className="reference-catalog-wall" aria-label="可选检修资料">
+            {visibleReferences.map((item, index) => {
+              const Icon = referenceTypeMeta[item.type].icon;
+              const selected = draftKeySet.has(item.key);
+              return (
+                <button
+                  className={classNames("reference-catalog-card", `type-${item.type}`, selected && "selected")}
+                  style={{ "--reference-index": index }}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => toggleReference(item.key)}
+                  key={item.key}
+                >
+                  <span className="reference-card-icon"><Icon size={18} /></span>
+                  <span className="reference-card-copy">
+                    <small>{item.eyebrow} · {item.id}</small>
+                    <strong>{item.title}</strong>
+                    <p>{item.summary}</p>
+                    <span className="reference-card-meta">{item.meta}</span>
+                    <span className="reference-card-tags">{item.tags.map((tag) => <em key={tag}>{tag}</em>)}</span>
+                  </span>
+                  <span className="reference-card-select">{selected ? <Check size={14} /> : <Plus size={14} />}</span>
+                </button>
+              );
+            })}
+            {!visibleReferences.length && <div className="reference-catalog-empty"><Search size={24} /><strong>没有匹配的检修资料</strong><span>请更换关键词或查看其他资料类型。</span><button type="button" onClick={() => { setQuery(""); setActiveType("all"); }}>查看全部资料</button></div>}
+          </section>
+
+          <aside className="reference-selection-tray">
+            <header><div><span>本次接诊资料包</span><strong>{selectedDraft.length} 项已编组</strong></div><PackageCheck size={20} /></header>
+            <div className="reference-tray-counts"><span>{getReferenceCounts(selectedDraft).case}<small>案例</small></span><span>{getReferenceCounts(selectedDraft).knowledge}<small>知识</small></span><span>{getReferenceCounts(selectedDraft).manual}<small>手册</small></span></div>
+            <div className="reference-tray-list">
+              {selectedDraft.map((item) => <article key={item.key}><span>{referenceTypeMeta[item.type].label}</span><div><strong>{item.title}</strong><small>{item.id}</small></div><button type="button" onClick={() => toggleReference(item.key)} aria-label={`移除 ${item.title}`}><X size={13} /></button></article>)}
+              {!selectedDraft.length && <div className="reference-tray-empty"><BookOpen size={22} /><strong>尚未编组资料</strong><span>从左侧选择案例、知识或手册。</span></div>}
+            </div>
+            <footer>
+              <button type="button" className="reference-clear-button" onClick={() => setDraftKeys([])} disabled={!selectedDraft.length}>清空</button>
+              <button type="button" className="primary-button" onClick={() => onConfirm(selectedDraft)}><Check size={15} />确认并用于本次接诊</button>
+            </footer>
+          </aside>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(defaultUser);
@@ -1027,6 +1204,10 @@ export default function App() {
   const [intakeMaterials, setIntakeMaterials] = useState([]);
   const [activeMaterialId, setActiveMaterialId] = useState(null);
   const [previewMaterialId, setPreviewMaterialId] = useState(null);
+  const [referenceCatalog, setReferenceCatalog] = useState(maintenanceReferenceFallback);
+  const [referenceCatalogMode, setReferenceCatalogMode] = useState("fallback");
+  const [selectedReferences, setSelectedReferences] = useState([]);
+  const [referencePickerOpen, setReferencePickerOpen] = useState(false);
   const materialUrlsRef = useRef(new Set());
   const [input, setInput] = useState(defaultInput);
   const [incidentTime, setIncidentTime] = useState({
@@ -1089,6 +1270,27 @@ export default function App() {
         setGraph(graphResult);
       })
       .catch(() => setHealth("后端未连接"));
+  }, []);
+  useEffect(() => {
+    let active = true;
+    Promise.allSettled([
+      presentationApi.cases(),
+      presentationApi.knowledge(),
+      presentationApi.manuals(),
+    ]).then(([caseResult, knowledgeResult, manualResult]) => {
+      if (!active) return;
+      const results = { case: caseResult, knowledge: knowledgeResult, manual: manualResult };
+      const remoteCatalog = normalizeMaintenanceReferences({
+        cases: caseResult.status === "fulfilled" && Array.isArray(caseResult.value) ? caseResult.value : [],
+        knowledge: knowledgeResult.status === "fulfilled" && Array.isArray(knowledgeResult.value) ? knowledgeResult.value : [],
+        manuals: manualResult.status === "fulfilled" && Array.isArray(manualResult.value) ? manualResult.value : [],
+      });
+      const failedTypes = Object.entries(results).filter(([, result]) => result.status === "rejected").map(([type]) => type);
+      const fallbackCatalog = maintenanceReferenceFallback.filter((item) => failedTypes.includes(item.type));
+      setReferenceCatalog([...remoteCatalog, ...fallbackCatalog]);
+      setReferenceCatalogMode(failedTypes.length === 0 ? "live" : failedTypes.length === 3 ? "fallback" : "partial");
+    });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -1485,6 +1687,8 @@ export default function App() {
     setHomeDraft("");
     setFeedbackUploadStatus("idle");
     setFeedbackUploadError("");
+    setSelectedReferences([]);
+    setReferencePickerOpen(false);
     clearIntakeMaterials();
   }
 
@@ -1644,12 +1848,15 @@ export default function App() {
             draft={homeDraft}
             userName={currentUser.name}
             materials={intakeMaterials}
+            references={selectedReferences}
             activeMaterialId={activeMaterialId}
             onDraft={setHomeDraft}
             onAddMaterials={addIntakeMaterials}
             onSelectMaterial={setActiveMaterialId}
             onRemoveMaterial={removeIntakeMaterial}
             onPreviewMaterial={setPreviewMaterialId}
+            onOpenReferencePicker={() => setReferencePickerOpen(true)}
+            onRemoveReference={(referenceKey) => setSelectedReferences((current) => current.filter((item) => item.key !== referenceKey))}
             onSubmit={() => enterIntakeFromHome()}
             onQuickPrompt={(prompt) => setHomeDraft(prompt)}
             onUseQuickPrompt={enterIntakeFromHome}
@@ -1696,6 +1903,7 @@ export default function App() {
                   input={input}
                   incidentTime={incidentTime}
                   materials={intakeMaterials}
+                  references={selectedReferences}
                   activeMaterialId={activeMaterialId}
                   loading={loading}
                   activeStep={activeIntakeStep}
@@ -1729,6 +1937,7 @@ export default function App() {
                   input={input}
                   incidentTime={incidentTime}
                   materials={intakeMaterials}
+                  references={selectedReferences}
                   selections={intakeSelections}
                   thresholdValues={thresholdValues}
                   intakeBranch={intakeBranch}
@@ -1819,6 +2028,18 @@ export default function App() {
         )}
       </main>
       {previewMaterial && <MaterialPreviewModal material={previewMaterial} onClose={() => setPreviewMaterialId(null)} />}
+      {referencePickerOpen && (
+        <ReferencePickerModal
+          catalog={referenceCatalog}
+          catalogMode={referenceCatalogMode}
+          selectedReferences={selectedReferences}
+          onClose={() => setReferencePickerOpen(false)}
+          onConfirm={(references) => {
+            setSelectedReferences(references);
+            setReferencePickerOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1886,12 +2107,15 @@ function HomeStage({
   draft,
   userName,
   materials,
+  references,
   activeMaterialId,
   onDraft,
   onAddMaterials,
   onSelectMaterial,
   onRemoveMaterial,
   onPreviewMaterial,
+  onOpenReferencePicker,
+  onRemoveReference,
   onSubmit,
   onQuickPrompt,
   onUseQuickPrompt,
@@ -1911,7 +2135,7 @@ function HomeStage({
     { type: "image", title: "故障图片", detail: "选择现场照片或面板照片", icon: ImagePlus, enabled: true },
     { type: "video", title: "故障视频", detail: "选择现场环境或设备视频", icon: Video, enabled: true },
     { type: "audio", title: "故障录音", detail: "选择异响或现场语音材料", icon: Mic, enabled: true },
-    { type: "document", title: "检修资料", detail: "工单与手册入口 · 后续接入", icon: Paperclip, enabled: false },
+    { type: "document", title: "检修资料", detail: "从案例、知识与厂商手册中编组", icon: Paperclip, enabled: true },
   ];
   const taskCards = [
     ["FT-TEMP-01", "温度告警", "当前演示闭环", "站控柜内工控机温度告警，风扇声音异常，前面板风扇转速很低。", true],
@@ -2003,7 +2227,9 @@ function HomeStage({
             <div className="collection-grid">
               {collectionItems.map((item) => {
                 const Icon = item.icon;
-                const count = materials.filter((material) => material.type === item.type).length;
+                const count = item.type === "document"
+                  ? references.length
+                  : materials.filter((material) => material.type === item.type).length;
                 return (
                   <button
                     className={classNames("collection-card", item.enabled && "enabled", count > 0 && "has-material")}
@@ -2013,6 +2239,7 @@ function HomeStage({
                       if (item.type === "image") imageInputRef.current?.click();
                       if (item.type === "video") videoInputRef.current?.click();
                       if (item.type === "audio") audioInputRef.current?.click();
+                      if (item.type === "document") onOpenReferencePicker();
                     }}
                     aria-disabled={!item.enabled}
                   >
@@ -2078,6 +2305,7 @@ function HomeStage({
                 onRemove={onRemoveMaterial}
               />
             </section>
+            <ReferencePackageDock references={references} onOpen={onOpenReferencePicker} onRemove={onRemoveReference} />
           </section>
 
           <section className="fault-task-section">
@@ -2167,6 +2395,7 @@ function IntakeSummaryStage({
   input,
   incidentTime,
   materials,
+  references,
   selections,
   thresholdValues,
   intakeBranch,
@@ -2182,6 +2411,7 @@ function IntakeSummaryStage({
     ...counts,
     [material.type]: (counts[material.type] || 0) + 1,
   }), {});
+  const referenceCounts = getReferenceCounts(references);
 
   return (
     <div className="stage-content intake-summary-stage">
@@ -2189,7 +2419,7 @@ function IntakeSummaryStage({
         <div>
           <p className="eyebrow">异常事件确认 · 最终核对</p>
           <h2>现场异常事件全景</h2>
-          <p>事件信息已归集。请在启动诊断前核对发生地点、事件对象、现场材料和运行状态。</p>
+          <p>事件信息已归集。请在启动诊断前核对发生地点、事件对象、现场材料、诊断参考和运行状态。</p>
         </div>
         <span className={branchBlocked ? "warning" : undefined}>
           {branchBlocked ? <AlertTriangle size={15} /> : <Check size={15} />}
@@ -2240,7 +2470,7 @@ function IntakeSummaryStage({
           <header><div><small>05 / 判断依据</small><h3>为什么形成当前判断</h3></div><button onClick={() => onEdit(4)}>重新核对</button></header>
           <div className="summary-evidence-grid">
             <article><ShieldCheck size={16} /><div><span>依据标准</span><strong>TEMP/FAN 告警与风扇低速判据</strong><p>运行阈值、设备台账与历史案例共同支持当前诊断方向。</p></div></article>
-            <article><FileText size={16} /><div><span>操作手册</span><strong>ACP-4000 / IPC-610 散热检查</strong><p>命中风道、滤网、风扇拆检和恢复验证章节。</p></div></article>
+            <article><PackageCheck size={16} /><div><span>本次接诊资料包</span><strong>{references.length ? `已引用 ${references.length} 项诊断参考` : "未额外编组检修资料"}</strong><p>{references.length ? `${referenceCounts.case} 个案例 · ${referenceCounts.knowledge} 条知识 · ${referenceCounts.manual} 份手册；${references.slice(0, 2).map((item) => item.title).join("、")}${references.length > 2 ? "等" : ""}。` : "系统仍使用默认阈值、设备台账与基础手册形成演示判断。"}</p></div></article>
           </div>
         </section>
       </div>
@@ -2248,7 +2478,7 @@ function IntakeSummaryStage({
       <footer className="intake-summary-launch">
         <div>
           <span>{branchBlocked ? "已识别非主演示诊断分支" : "诊断输入已准备完成"}</span>
-          <strong>将基于 {materials.length} 项现场材料、1 个设备对象和 4 项运行参数，按“{intakeBranch.diagnosis}”启动多 Agent 会诊。</strong>
+          <strong>将基于 {materials.length} 项现场材料、{references.length} 项诊断参考、1 个设备对象和 4 项运行参数，按“{intakeBranch.diagnosis}”启动多 Agent 会诊。</strong>
         </div>
         <button className="primary-button" onClick={onStart} disabled={loading || branchBlocked}>
           {loading ? <Loader2 size={16} className="spin" /> : <Send size={16} />}
@@ -2647,6 +2877,7 @@ function InputStage({
   input,
   incidentTime,
   materials,
+  references,
   loading,
   activeStep,
   selections,
@@ -2683,6 +2914,7 @@ function InputStage({
   const taskTitles = ["确认异常发生时间", "确认异常发生地点", "确认发生事件与设备对象", "补充其他现象与运行状态", "核对判断依据与操作手册"];
   const knownItems = [
     { label: "初始报障", value: input || defaultInput, step: 0, visible: true },
+    { label: "检修资料", value: references.length ? `${references.length} 项 · 本次接诊资料包` : "未额外编组", step: 4, visible: references.length > 0 },
     { label: "发生时间", value: `${incidentTime.detectedAt?.replace("T", " ")} · ${incidentTime.duration}`, step: 0, visible: activeStep > 0 },
     { label: "发生地点", value: "控制中心 · 站控柜 A01", step: 1, visible: activeStep > 1 },
     { label: "发生事件", value: selections["设备型号"] || "设备对象已确认", step: 2, visible: activeStep > 2 },
@@ -2823,7 +3055,14 @@ function InputStage({
             <section className={cardClass("evidence", 4)}>
               <TaskCardHead number="05" kicker="判断依据" title="核对标准与操作手册" />
               <button type="button" className={classNames("evidence-reference staged-field", expandedEvidence === "standard" && "expanded")} style={{ "--field-index": 0 }} onClick={() => setExpandedEvidence((value) => value === "standard" ? null : "standard")}><ShieldCheck size={18} /><div><span>依据标准 · 点击{expandedEvidence === "standard" ? "收起" : "展开"}</span><strong>TEMP/FAN 告警与风扇低速判据</strong><p>{expandedEvidence === "standard" ? "当前风扇转速低于 500 rpm，同时系统温度与 CPU 温度超过建议阈值，三项条件共同支持散热异常方向。" : "设备阈值、台账记录和历史检修案例共同形成当前判断。"}</p></div></button>
-              <button type="button" className={classNames("evidence-reference staged-field", expandedEvidence === "manual" && "expanded")} style={{ "--field-index": 1 }} onClick={() => setExpandedEvidence((value) => value === "manual" ? null : "manual")}><FileText size={18} /><div><span>操作手册 · 点击{expandedEvidence === "manual" ? "收起" : "展开"}</span><strong>ACP-4000 / IPC-610 散热检查</strong><p>{expandedEvidence === "manual" ? "手册中的风道、滤网和风扇维护章节与当前告警对象一致，因此进入诊断后优先生成断电确认、风道检查和风扇验证任务。" : "已命中风道、滤网、风扇拆检及恢复验证章节。"}</p></div></button>
+              {references.length ? (
+                <section className="evidence-reference reference-package-evidence staged-field" style={{ "--field-index": 1 }}>
+                  <PackageCheck size={18} />
+                  <div><span>本次接诊资料包 · 已确认引用</span><strong>{references.length} 项案例、知识与厂商手册</strong><p>{references.slice(0, 3).map((item) => `${referenceTypeMeta[item.type].label} · ${item.title}`).join("；")}{references.length > 3 ? `；另有 ${references.length - 3} 项` : ""}</p></div>
+                </section>
+              ) : (
+                <button type="button" className={classNames("evidence-reference staged-field", expandedEvidence === "manual" && "expanded")} style={{ "--field-index": 1 }} onClick={() => setExpandedEvidence((value) => value === "manual" ? null : "manual")}><FileText size={18} /><div><span>操作手册 · 点击{expandedEvidence === "manual" ? "收起" : "展开"}</span><strong>工控机散热检查</strong><p>{expandedEvidence === "manual" ? "手册中的风道、滤网和风扇维护章节与当前告警对象一致，因此进入诊断后优先生成断电确认、风道检查和风扇验证任务。" : "未额外编组检修资料，当前使用系统默认手册依据。"}</p></div></button>
+              )}
               <div className={classNames("intake-branch-note staged-field", intakeBranch.tone)} style={{ "--field-index": 2 }}><span>{intakeBranch.label}</span><strong>{intakeBranch.title}</strong><p>{intakeBranch.detail}</p></div>
               <button className="primary-button task-confirm-action staged-confirm" onClick={onContinue} disabled={transitioning}>形成现场异常事件全景 <ChevronRight size={15} /></button>
             </section>
