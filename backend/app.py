@@ -5,7 +5,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_file, send_from_directory
 try:
     from .presentation_store import PresentationStore
 except ImportError:
@@ -13,8 +13,9 @@ except ImportError:
 
 
 BASE_DIR = Path(__file__).resolve().parent
+REPOSITORY_DIR = BASE_DIR.parent
 DATA_DIR = BASE_DIR / "data"
-FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"
+FRONTEND_DIST = REPOSITORY_DIR / "frontend" / "dist"
 PRESENTATION_DIR = DATA_DIR / "presentation"
 PRESENTATION_INITIAL_STATE_FILE = PRESENTATION_DIR / "initial_state.json"
 PRESENTATION_DB_FILE = PRESENTATION_DIR / "presentation.db"
@@ -50,6 +51,7 @@ def create_app() -> Flask:
     presentation_cases = load_path(PRESENTATION_DIR / "cases.json")
     presentation_case = load_path(PRESENTATION_DIR / "case_full_001.json")
     presentation_knowledge = load_path(PRESENTATION_DIR / "knowledge_base.json")
+    manual_sources = load_path(PRESENTATION_DIR / "manual_sources.json")
     presentation_graph = load_path(PRESENTATION_DIR / "graph_seed.json")
     industrial_computer_graph = load_path(PRESENTATION_DIR / "industrial_computer_graph.json")
     verification_scenario = load_path(PRESENTATION_DIR / "verification_scenario.json")
@@ -401,6 +403,29 @@ def create_app() -> Flask:
                 item["publishedAt"] = state.get("publishedAt")
         return items
 
+    def manual_catalog_items():
+        knowledge = merged_knowledge_items(load_presentation_state())
+        result = []
+        for manual in manual_sources["items"]:
+            related_ids = [
+                item["id"]
+                for item in knowledge
+                if any(ref.get("documentId") == manual["id"] for ref in item.get("sourceRefs", []))
+            ]
+            result.append({
+                **deepcopy(manual),
+                "relatedKnowledgeIds": related_ids,
+                "relatedKnowledgeCount": len(related_ids),
+                "fileUrl": f'/api/admin/manuals/{manual["id"]}/file',
+            })
+        return result
+
+    def manual_file_path(manual: dict) -> Path | None:
+        path = (REPOSITORY_DIR / manual["file"]).resolve()
+        if not path.is_relative_to(REPOSITORY_DIR.resolve()) or not path.is_file():
+            return None
+        return path
+
     @app.route("/api/admin/knowledge", methods=["GET"])
     def admin_knowledge():
         return api_ok(merged_knowledge_items(load_presentation_state()))
@@ -420,6 +445,43 @@ def create_app() -> Flask:
         state = load_presentation_state()
         relations = state.get("publishedRelations") or presentation_case["graphChanges"]
         return api_ok({"knowledgeId": knowledge_id, "beforeVersion": "1.0", "afterVersion": "1.1", "before": item["baseContent"], "after": item["publishedContentV11"], "graphChanges": relations})
+
+    @app.route("/api/admin/manuals", methods=["GET"])
+    def admin_manuals():
+        items = manual_catalog_items()
+        query = request.args.get("query", "").strip().lower()
+        manufacturer = request.args.get("manufacturer", "").strip()
+        domain = request.args.get("domain", "").strip()
+        if query:
+            items = [
+                item for item in items
+                if query in " ".join([
+                    item["id"], item["title"], item["manufacturer"],
+                    item.get("publication", ""), *item.get("productScope", []),
+                ]).lower()
+            ]
+        if manufacturer:
+            items = [item for item in items if item["manufacturer"] == manufacturer]
+        if domain:
+            items = [item for item in items if domain in item.get("faultDomains", [])]
+        return api_ok(items)
+
+    @app.route("/api/admin/manuals/<manual_id>", methods=["GET"])
+    def admin_manual_detail(manual_id: str):
+        item = next((item for item in manual_catalog_items() if item["id"] == manual_id), None)
+        if not item:
+            return api_error("manual_not_found", "未找到检修手册", 404)
+        return api_ok(item)
+
+    @app.route("/api/admin/manuals/<manual_id>/file", methods=["GET"])
+    def admin_manual_file(manual_id: str):
+        manual = next((item for item in manual_sources["items"] if item["id"] == manual_id), None)
+        if not manual:
+            return api_error("manual_not_found", "未找到检修手册", 404)
+        path = manual_file_path(manual)
+        if not path:
+            return api_error("manual_file_missing", "检修手册文件不存在", 404)
+        return send_file(path, mimetype="application/pdf", as_attachment=False, conditional=True)
 
     @app.route("/api/knowledge/verify-feedback", methods=["POST"])
     def verify_feedback():

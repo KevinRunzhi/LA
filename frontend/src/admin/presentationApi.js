@@ -32,6 +32,8 @@ export const presentationApi = {
   knowledge: () => request("/api/admin/knowledge"),
   knowledgeDetail: (id) => request(`/api/admin/knowledge/${id}`),
   knowledgeDiff: (id) => request(`/api/admin/knowledge/${id}/diff`),
+  manuals: () => request("/api/admin/manuals"),
+  manualDetail: (id) => request(`/api/admin/manuals/${id}`),
   knowledgeGraph: (view = "overview") => request(`/api/admin/knowledge-graph?view=${encodeURIComponent(view)}`),
   verify: (input) => request("/api/knowledge/verify-feedback", { method: "POST", body: JSON.stringify({ input }) }),
   engineerSyncStatus: () => request("/api/engineer/knowledge-sync"),

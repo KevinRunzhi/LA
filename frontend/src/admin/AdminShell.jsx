@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Cpu, FileCheck2, GitBranch, History, Loader2, Network, Plus, RefreshCcw, Save, Search, Send, ShieldCheck, Sparkles, Trash2, UserRound, Users, Wrench } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Cpu, ExternalLink, FileCheck2, FileText, GitBranch, History, Loader2, Network, Plus, RefreshCcw, Save, Search, Send, ShieldCheck, Sparkles, Trash2, UserRound, Users, Wrench, X } from "lucide-react";
 import { presentationApi } from "./presentationApi";
 import IndustrialKnowledgeGraphPage from "./knowledge-graph/IndustrialKnowledgeGraphPage";
 import "./admin.css";
@@ -16,6 +16,7 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
   const [state, setState] = useState(null);
   const [cases, setCases] = useState([]);
   const [knowledge, setKnowledge] = useState([]);
+  const [manuals, setManuals] = useState([]);
   const [users, setUsers] = useState([]);
   const [fullCase, setFullCase] = useState(null);
   const [engineerSync, setEngineerSync] = useState(null);
@@ -26,6 +27,7 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
+  const [graphKnowledgeId, setGraphKnowledgeId] = useState(null);
   const adminNavItems = portalRole === "expert"
     ? [["workbench","专家工作台",FileCheck2],["history","全部案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","知识图谱",Network]]
     : [["workbench","我的案例",FileCheck2],["history","历史案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","知识图谱",Network]];
@@ -33,8 +35,9 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
   async function loadAll(nextPage) {
     setError("");
     try {
-      const [nextState, nextCases, nextKnowledge, nextUsers, nextFullCase, nextSync, nextSnapshot] = await Promise.all([presentationApi.state(), presentationApi.cases(), presentationApi.knowledge(), presentationApi.users(), presentationApi.caseDetail(CASE_ID), presentationApi.engineerSyncStatus(), presentationApi.engineerSnapshot()]);
+      const [nextState, nextCases, nextKnowledge, nextManuals, nextUsers, nextFullCase, nextSync, nextSnapshot] = await Promise.all([presentationApi.state(), presentationApi.cases(), presentationApi.knowledge(), presentationApi.manuals(), presentationApi.users(), presentationApi.caseDetail(CASE_ID), presentationApi.engineerSyncStatus(), presentationApi.engineerSnapshot()]);
       setState(nextState); setCases(nextCases); setKnowledge(nextKnowledge); setUsers(nextUsers); setFullCase(nextFullCase);
+      setManuals(nextManuals);
       setEngineerSync(nextSync); setEngineerSnapshot(nextSnapshot);
       if (nextPage) setPage(nextPage);
     } catch (nextError) { setError(nextError.message); }
@@ -75,7 +78,7 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
       {(notice || error) && <div className={`admin-toast ${error ? "error" : "success"}`}>{error ? <AlertTriangle size={14}/> : <Check size={14}/>} {error || notice}</div>}
       {page !== "expert-review" && <CaseFlowGuide page={page} state={state} portalRole={portalRole} onBack={page !== "workbench" ? () => setPage("workbench") : null} />}
       {page === "workbench" && portalRole === "engineer" && <EngineerCaseHome state={state} data={fullCase} sync={engineerSync} busy={busy} onSync={() => action(presentationApi.engineerSyncLatest, "本地知识已同步到最新版本", "knowledge-graph")} onEngineer={() => setPage("engineer-confirm")} onKnowledge={() => setPage("knowledge-result")} onExit={onExitToWorkbench} onLogout={onLogout} />}
-      {page === "workbench" && portalRole === "expert" && <Workbench state={state} cases={cases} pending={pending} archived={archived} knowledge={dynamicKnowledge} role={state.activeRole} onEngineer={() => setPage("engineer-confirm")} onReview={() => setPage("expert-review")} onKnowledge={() => setPage("knowledge-result")} onCase={(item) => { setSelectedCase(item); setPage("case-detail"); }} />}
+      {page === "workbench" && portalRole === "expert" && <Workbench state={state} cases={cases} pending={pending} archived={archived} knowledgeCount={knowledge.length} role={state.activeRole} onEngineer={() => setPage("engineer-confirm")} onReview={() => setPage("expert-review")} onKnowledge={() => setPage("knowledge-result")} onCase={(item) => { setSelectedCase(item); setPage("case-detail"); }} />}
       {page === "engineer-confirm" && <EngineerConfirmation data={fullCase} state={state} busy={busy} onBack={() => setPage("workbench")} onSubmit={(result) => action(() => presentationApi.submitCase(CASE_ID, result), `案例 ${CASE_ID} 已提交专家审核`, "submit-success")} />}
       {page === "submit-success" && <SubmitSuccess onSwitch={onLogout} />}
       {page === "expert-review" && <ExpertReviewFlow data={fullCase} state={state} busy={busy} onBack={() => setPage("workbench")} onSave={(draft) => action(() => presentationApi.saveExpertDraft(CASE_ID, draft), "专家修改草稿已保存", "expert-review")} onPublish={(draft) => action(() => presentationApi.publishCase(CASE_ID, draft), "案例已通过，知识 V1.1 已发布", "knowledge-result")} />}
@@ -83,10 +86,11 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
       {page === "verify" && <KnowledgeVerifyV2 state={state} busy={busy} onBack={() => setPage("knowledge-result")} />}
       {page === "history" && <HistoryCasesV2 cases={cases} onOpen={(item) => { setSelectedCase(item); setPage("case-detail"); }} />}
       {page === "case-detail" && <ReadonlyCase item={selectedCase} onBack={() => setPage("history")} />}
-      {page === "knowledge" && <KnowledgeLibrary items={knowledge} onDynamic={() => setPage("knowledge-result")} />}
+      {page === "knowledge" && <KnowledgeLibrary items={knowledge} manuals={manuals} onDynamic={() => setPage("knowledge-result")} onGraph={(knowledgeId) => { setGraphKnowledgeId(knowledgeId); setPage("knowledge-graph"); }} />}
       {page === "knowledge-graph" && <IndustrialKnowledgeGraphPage
         state={state}
         portalRole={portalRole}
+        initialKnowledgeId={graphKnowledgeId}
         engineerSnapshot={engineerSnapshot}
         engineerSync={engineerSync}
         busy={busy}
@@ -142,12 +146,12 @@ function EngineerCaseHome({ state, data, sync, busy, onSync, onEngineer, onKnowl
   );
 }
 
-function Workbench({ state, cases, pending, archived, knowledge, role, onEngineer, onReview, onKnowledge, onCase }) {
+function Workbench({ state, cases, pending, archived, knowledgeCount, role, onEngineer, onReview, onKnowledge, onCase }) {
   const dynamic = cases.find((item) => item.id === CASE_ID);
   const recent = cases.filter((item) => item.dataLevel === "summary").slice(0, 4);
   return <main className="admin-page admin-workbench">
     <section className="admin-hero"><div><span>CASE FEEDBACK LOOP</span><h1>{role === "expert" ? "专家案例审核工作台" : role === "admin" ? "案例与知识运行概览" : "检修案例回流工作台"}</h1><p>将一线检修事实转化为可追溯、可复用的设备知识。</p></div><div className="admin-hero-version"><small>当前动态知识</small><strong>KB-008 · V{state.knowledgeVersion}</strong><em>{state.knowledgePublished ? "已关联 CASE-ACP4000-001" : "等待案例回流"}</em></div></section>
-    <section className="admin-metrics">{[["全部案例",cases.length,"本地演示数据"],["待专家审核",pending,"当前业务待办"],["已归档",archived,"可供工程师查阅"],["知识条目",8,`KB-008 V${state.knowledgeVersion}`]].map(([label,value,note],i)=><article style={{"--metric-index":i}} key={label}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>)}</section>
+    <section className="admin-metrics">{[["全部案例",cases.length,"本地演示数据"],["待专家审核",pending,"当前业务待办"],["已归档",archived,"可供工程师查阅"],["知识条目",knowledgeCount,`KB-008 V${state.knowledgeVersion}`]].map(([label,value,note],i)=><article style={{"--metric-index":i}} key={label}><span>{label}</span><strong>{value}</strong><small>{note}</small></article>)}</section>
     <div className="admin-dashboard-grid"><section className="admin-focus-case"><header><div><span>当前完整案例</span><h3>{dynamic.title}</h3></div><StatusBadge status={state.caseStatus}/></header><div className="admin-case-facts"><p><span>设备</span><strong>{dynamic.equipment}</strong></p><p><span>场站</span><strong>{dynamic.site}</strong></p><p><span>工程师</span><strong>{dynamic.engineer}</strong></p><p><span>知识目标</span><strong>KB-008 · 风扇检查与更换</strong></p></div><div className="admin-focus-path"><span className={state.engineerSubmitted ? "done" : "active"}>工程师确认</span><i/><span className={state.expertApproved ? "done" : state.engineerSubmitted ? "active" : ""}>专家审核</span><i/><span className={state.knowledgePublished ? "done" : ""}>知识发布</span></div>{role === "engineer" && state.caseStatus === "awaiting_engineer_confirmation" && <button className="admin-primary" onClick={onEngineer}>确认现场结果 <ArrowRight size={15}/></button>}{role === "expert" && state.caseStatus === "pending_expert_review" && <button className="admin-primary" onClick={onReview}>进入专家审核 <ArrowRight size={15}/></button>}{state.knowledgePublished && <button className="admin-primary" onClick={onKnowledge}>查看知识更新结果 <ArrowRight size={15}/></button>}{role === "admin" && <p className="admin-readonly-note"><ShieldCheck size={13}/>管理员仅查看运行状态，不能修改专业内容。</p>}</section><section className="admin-recent"><header><div><span>历史沉淀</span><h3>最近归档案例</h3></div><button onClick={()=>{}}>10 条摘要</button></header>{recent.map(item=><button className="admin-recent-row" onClick={()=>onCase(item)} key={item.id}><div><small>{item.id} · {item.site}</small><strong>{item.title}</strong></div><span>{item.faultType}</span><ChevronRight size={14}/></button>)}</section></div>
   </main>;
 }
@@ -371,7 +375,67 @@ function HistoryCasesV2({ cases, onOpen }) {
 
 function HistoryCases({ cases, onOpen }) { const [query,setQuery]=useState(""); const items=useMemo(()=>cases.filter(item=>item.dataLevel!=="full"&&`${item.id}${item.title}${item.equipment}`.toLowerCase().includes(query.toLowerCase())),[cases,query]); return <main className="admin-page"><section className="admin-list-head"><div><span>READONLY ARCHIVE</span><h1>历史检修案例</h1><p>摘要案例仅用于经验查阅，不提供修改和重新审核。</p></div><label><Search size={14}/><input placeholder="搜索案例、设备或编号" value={query} onChange={e=>setQuery(e.target.value)}/></label></section><div className="case-archive-grid">{items.map(item=><button onClick={()=>onOpen(item)} key={item.id}><header><small>{item.id}</small><span>{item.dataLevel==="collecting"?"资料收集中":"已归档"}</span></header><h3>{item.title}</h3><p>{item.site} · {item.equipment}</p><div><em>{item.faultType}</em><strong>{item.handledAt}</strong></div></button>)}</div></main>; }
 function ReadonlyCase({ item, onBack }) { if(!item)return null; return <main className="admin-page"><PageBack onBack={onBack} label="返回历史案例"/><section className="readonly-case-sheet"><header><div><span>{item.id} · 只读归档</span><h1>{item.title}</h1><p>{item.site} · {item.equipment}</p></div><span className="admin-status status-archived_with_knowledge">{item.dataLevel==="collecting"?"资料收集中":"已归档"}</span></header><div className="readonly-case-grid"><Fact label="故障现象 / 类型" value={item.faultType}/><Fact label="最终原因" value={item.cause}/><Fact label="处理方法" value={item.resolution}/><Fact label="恢复结果" value={item.result}/><Fact label="工程师 / 专家" value={`${item.engineer} / ${item.expert}`}/><Fact label="关联知识" value={item.knowledgeTitle}/></div><p className="admin-readonly-note"><ShieldCheck size={13}/>该案例为历史摘要，仅支持查阅。</p></section></main>; }
-function KnowledgeLibrary({ items, onDynamic }) { return <main className="admin-page"><section className="admin-list-head"><div><span>MAINTENANCE KNOWLEDGE</span><h1>检修知识库</h1><p>设备手册、告警规则、专家经验与真实案例共同形成可追溯知识。</p></div></section><div className="knowledge-library-grid">{items.map(item=><button className={item.id==="KB-008"?"dynamic":""} onClick={item.id==="KB-008"?onDynamic:undefined} key={item.id}><header><BookOpen size={16}/><span>{item.mode==="interactive"?"动态知识":"已发布"}</span></header><small>{item.id} · V{item.version}</small><h3>{item.title}</h3><p>{item.equipment} · {item.faultType}</p>{item.sourceCaseIds?.length>0&&<em>来源 {item.sourceCaseIds[0]} · 刚刚更新</em>}</button>)}</div></main>; }
+const knowledgeDetailFields = [
+  ["symptoms", "异常现象"], ["causes", "可能原因"], ["checks", "检查顺序"],
+  ["actions", "处理建议"], ["safety", "安全要求"], ["recoveryCriteria", "恢复标准"],
+  ["exclusions", "适用边界"],
+];
+
+const verificationLabels = { official_document: "官方手册已核实", expert_confirmed: "专家已确认", verified_case: "真实案例已验证", collecting: "资料收集中" };
+const applicabilityLabels = { exact_model: "指定型号", same_series: "同系列参考", cross_brand_general: "跨品牌通用原则", engineering_inference: "工程推导" };
+
+function KnowledgeLibrary({ items, manuals, onDynamic, onGraph }) {
+  const [contentType, setContentType] = useState("knowledge");
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [selected, setSelected] = useState(null);
+  const manualsById = useMemo(() => Object.fromEntries(manuals.map((item) => [item.id, item])), [manuals]);
+  const faultTypes = useMemo(() => [...new Set(items.map((item) => item.faultType).filter(Boolean))], [items]);
+  const manufacturers = useMemo(() => [...new Set(manuals.map((item) => item.manufacturer))], [manuals]);
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleKnowledge = items.filter((item) => {
+    const matchesQuery = !normalizedQuery || `${item.id} ${item.title} ${item.equipment} ${item.faultType}`.toLowerCase().includes(normalizedQuery);
+    return matchesQuery && (filter === "all" || item.faultType === filter);
+  });
+  const visibleManuals = manuals.filter((item) => {
+    const matchesQuery = !normalizedQuery || `${item.id} ${item.title} ${item.manufacturer} ${item.publication} ${item.productScope.join(" ")}`.toLowerCase().includes(normalizedQuery);
+    return matchesQuery && (filter === "all" || item.manufacturer === filter);
+  });
+
+  function switchType(nextType) {
+    setContentType(nextType); setFilter("all"); setSelected(null);
+  }
+
+  return <main className="admin-page maintenance-library-page">
+    <section className="maintenance-library-hero">
+      <div><span>MAINTENANCE KNOWLEDGE CENTER</span><h1>检修知识库</h1><p>把真实案例形成的经验、结构化检修知识和厂商原始手册分层管理，所有结论都能回到来源。</p></div>
+      <div className="maintenance-library-metrics"><p><strong>{items.length}</strong><span>知识条目</span></p><p><strong>{manuals.length}</strong><span>厂商手册</span></p><p><strong>{new Set(items.flatMap((item) => item.sourceRefs?.map((ref) => ref.documentId) || [])).size}</strong><span>已引用资料</span></p></div>
+    </section>
+    <section className="maintenance-library-toolbar">
+      <div className="maintenance-content-tabs"><button className={contentType === "knowledge" ? "active" : ""} onClick={() => switchType("knowledge")}><BookOpen size={15}/><span>知识条目<small>案例经验与检修方法</small></span><em>{items.length}</em></button><button className={contentType === "manual" ? "active" : ""} onClick={() => switchType("manual")}><FileText size={15}/><span>检修手册<small>厂商原始资料</small></span><em>{manuals.length}</em></button></div>
+      <div className="maintenance-library-filters"><label><Search size={14}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={contentType === "knowledge" ? "搜索故障、设备或知识编号" : "搜索厂商、型号或手册编号"}/></label><select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="all">{contentType === "knowledge" ? "全部故障类别" : "全部厂商"}</option>{(contentType === "knowledge" ? faultTypes : manufacturers).map((item) => <option value={item} key={item}>{item}</option>)}</select></div>
+    </section>
+
+    {contentType === "knowledge" ? <div className="maintenance-knowledge-grid">{visibleKnowledge.map((item, index) => <button className={`maintenance-knowledge-card ${item.id === "KB-008" ? "dynamic" : ""}`} style={{"--card-index": index}} onClick={() => setSelected({ type: "knowledge", item })} key={item.id}><header><span>{item.id} · V{item.version || "1.0"}</span><em>{item.id === "KB-008" ? "唯一完整案例闭环" : verificationLabels[item.verificationLevel] || "基础知识"}</em></header><div className="maintenance-card-icon"><BookOpen size={18}/></div><h3>{item.title}</h3><p>{item.summary || `${item.equipment}的${item.faultType}检修知识。`}</p><footer><span>{item.faultType}</span><strong>{item.sourceRefs?.length ? `${item.sourceRefs.length} 份手册依据` : item.sourceCaseIds?.length ? "真实案例来源" : "知识库基线"}<ChevronRight size={13}/></strong></footer></button>)}</div>
+      : <div className="maintenance-manual-list">{visibleManuals.map((item, index) => <button className={`maintenance-manual-card ${item.editionStatus === "historical" ? "historical" : ""}`} style={{"--card-index": index}} onClick={() => setSelected({ type: "manual", item })} key={item.id}><div className="manual-spine"><FileText size={20}/><span>PDF</span></div><div className="manual-card-main"><header><span>{item.manufacturer}</span><em>{item.publication}</em>{item.editionStatus === "historical" && <b>历史版本</b>}</header><h3>{item.title}</h3><p>{item.productScope.join(" · ")}</p><div>{item.faultDomains.slice(0, 5).map((domain) => <i key={domain}>{domain}</i>)}</div></div><aside><strong>{item.pageCount}</strong><span>页</span><em>{item.relatedKnowledgeCount} 条关联知识</em><ChevronRight size={16}/></aside></button>)}</div>}
+    {(contentType === "knowledge" ? visibleKnowledge : visibleManuals).length === 0 && <div className="maintenance-library-empty"><Search size={22}/><strong>没有匹配内容</strong><span>请调整搜索词或筛选条件</span></div>}
+
+    {selected && <div className="maintenance-detail-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside className="maintenance-detail-drawer">
+      <button className="maintenance-detail-close" onClick={() => setSelected(null)} aria-label="关闭详情"><X size={17}/></button>
+      {selected.type === "knowledge" ? <KnowledgeLibraryDetail item={selected.item} manualsById={manualsById} onDynamic={onDynamic} onGraph={onGraph}/> : <ManualLibraryDetail item={selected.item} knowledge={items} onKnowledge={(item) => setSelected({ type: "knowledge", item })}/>}
+    </aside></div>}
+  </main>;
+}
+
+function KnowledgeLibraryDetail({ item, manualsById, onDynamic, onGraph }) {
+  const sources = item.sourceRefs || [];
+  return <div className="maintenance-detail-content"><header><span>{item.id} · V{item.version || "1.0"}</span><em>{verificationLabels[item.verificationLevel] || (item.id === "KB-008" ? "真实案例动态知识" : "知识库基线")}</em><h2>{item.title}</h2><p>{item.summary || `${item.equipment} · ${item.faultType}`}</p></header><div className="maintenance-detail-meta"><p><span>适用设备</span><strong>{item.equipment}</strong></p><p><span>故障类别</span><strong>{item.faultType}</strong></p><p><span>适用范围</span><strong>{applicabilityLabels[item.applicability] || "项目既有知识"}</strong></p></div>{item.content && <section className="maintenance-dynamic-summary"><Sparkles size={16}/><div><strong>当前发布内容</strong><p>{item.content}</p></div></section>}{knowledgeDetailFields.map(([key, label]) => item[key]?.length ? <section className="maintenance-detail-section" key={key}><h3>{label}</h3><ol>{item[key].map((value) => <li key={value}>{value}</li>)}</ol></section> : null)}<section className="maintenance-source-section"><header><div><span>依据与来源</span><h3>{sources.length ? "可追溯到手册页码" : "既有知识来源"}</h3></div><ShieldCheck size={18}/></header>{sources.length ? sources.map((ref) => { const manual = manualsById[ref.documentId]; return <a href={manual?.fileUrl} target="_blank" rel="noreferrer" key={`${ref.documentId}-${ref.pages.join("-")}`}><FileText size={16}/><span><strong>{manual?.title || ref.documentId}</strong><small>{manual?.manufacturer} · PDF 第 {ref.pages.join("、")} 页</small></span><ExternalLink size={13}/></a>; }) : <p>该条目来自项目既有知识基线，后续可继续补充具体手册页码或案例证据。</p>}</section><footer className="maintenance-detail-actions">{item.id === "KB-008" && <button className="admin-secondary" onClick={onDynamic}>查看案例版本变化</button>}<button className="admin-primary" onClick={() => onGraph(item.id)}><Network size={14}/>在知识图谱中定位</button></footer></div>;
+}
+
+function ManualLibraryDetail({ item, knowledge, onKnowledge }) {
+  const related = knowledge.filter((entry) => item.relatedKnowledgeIds.includes(entry.id));
+  return <div className="maintenance-detail-content manual-detail-content"><header><span>{item.manufacturer} · {item.publication}</span><em className={item.editionStatus === "historical" ? "historical" : ""}>{item.editionStatus === "historical" ? "历史版本 · 仅用于旧设备对照" : "厂商原始检修资料"}</em><h2>{item.title}</h2><p>{item.productScope.join(" · ")}</p></header><div className="manual-detail-facts"><p><span>发布日期</span><strong>{item.documentDate}</strong></p><p><span>语言 / 页数</span><strong>{item.language.toUpperCase()} · {item.pageCount} 页</strong></p><p><span>参考等级</span><strong>{applicabilityLabels[item.referencePriority] || item.referencePriority}</strong></p></div><section className="maintenance-detail-section"><h3>覆盖检修领域</h3><div className="manual-domain-cloud">{item.faultDomains.map((domain) => <span key={domain}>{domain}</span>)}</div></section><section className="manual-related-knowledge"><header><span>已加工内容</span><strong>{related.length} 条知识</strong></header>{related.length ? related.map((entry) => <button onClick={() => onKnowledge(entry)} key={entry.id}><BookOpen size={15}/><span><strong>{entry.title}</strong><small>{entry.id} · {entry.faultType}</small></span><ChevronRight size={14}/></button>) : <p>{item.editionStatus === "historical" ? "历史手册只用于旧设备和版本差异核对，不作为当前检修结论的直接来源。" : "该手册已进入资料库，相关知识条目将在后续批次人工复核后补充。"}</p>}</section><section className={`manual-scope-note ${item.editionStatus === "historical" ? "historical" : ""}`}><ShieldCheck size={17}/><div><strong>使用边界</strong><p>{item.editionStatus === "historical" ? "本资料对应历史版设备和结构。现场操作前必须核对铭牌、硬件版本和当前 Ed.6 手册，不得直接套用旧版参数。" : "具体参数、端子、拆装步骤和报警阈值只适用于对应型号；跨型号使用时仅参考通用故障机理和检查方法。"}</p></div></section><footer className="maintenance-detail-actions"><a className="admin-primary" href={item.fileUrl} target="_blank" rel="noreferrer"><FileText size={14}/>打开原始 PDF<ExternalLink size={13}/></a></footer></div>;
+}
 function PeoplePage({ users }) { return <main className="admin-page"><section className="admin-list-head"><div><span>PEOPLE & ROLES</span><h1>工程师与专家</h1><p>第一版只读展示人员、班组和专业角色。</p></div></section><div className="people-grid">{users.map(user=><article key={user.id}><div><UserRound size={20}/></div><span>{user.id}</span><h3>{user.name}</h3><p>{user.role==="engineer"?`${user.site} · ${user.team}`:user.role==="expert"?"全案例审核 · 知识发布":"账号与组织管理"}</p><em>{user.status==="active"?"正常":"停用"}</em></article>)}</div></main>; }
 
 const engineerBaseRelations = [

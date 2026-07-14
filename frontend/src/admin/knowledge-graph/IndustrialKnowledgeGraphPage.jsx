@@ -170,12 +170,13 @@ export default function IndustrialKnowledgeGraphPage({
   portalRole = "expert",
   engineerSnapshot,
   engineerSync,
+  initialKnowledgeId = null,
   busy = false,
   onReview,
   onSync,
   onVerify,
 }) {
-  const [view, setView] = useState("overview");
+  const [view, setView] = useState(initialKnowledgeId === "KB-008" ? "changes" : "overview");
   const [graph, setGraph] = useState(null);
   const [error, setError] = useState("");
   const [selectedNodeId, setSelectedNodeId] = useState(null);
@@ -198,12 +199,16 @@ export default function IndustrialKnowledgeGraphPage({
     try {
       const data = await presentationApi.knowledgeGraph(nextView);
       setGraph(data);
+      const initialNode = nextView === "overview" && initialKnowledgeId
+        ? data.nodes.find((node) => node.knowledgeId === initialKnowledgeId)
+        : null;
       const targetIds = nextView === "changes" ? new Set(data.changeNodeIds) : null;
-      const targetNodes = targetIds ? data.nodes.filter((node) => targetIds.has(node.id)) : data.nodes;
-      const nextCamera = fitGraphBounds(targetNodes, nextView === "changes" ? 150 : 70);
+      const relatedIds = initialNode ? relatedNodeIds(initialNode.id, data.relations) : null;
+      const targetNodes = targetIds ? data.nodes.filter((node) => targetIds.has(node.id)) : relatedIds ? data.nodes.filter((node) => relatedIds.has(node.id)) : data.nodes;
+      const nextCamera = fitGraphBounds(targetNodes, nextView === "changes" ? 150 : initialNode ? 110 : 70);
       setCamera(nextCamera);
-      setSelectedNodeId(nextView === "changes" ? data.changeNodeIds[0] : data.centerNodeId);
-      setFocusedNodeId(null);
+      setSelectedNodeId(nextView === "changes" ? data.changeNodeIds[0] : initialNode?.id || data.centerNodeId);
+      setFocusedNodeId(initialNode?.id || null);
       const motionKey = data.publishedAt ? `knowledge-graph-motion:${data.publishedAt}` : null;
       if (nextView === "changes" && data.published && motionKey && !window.sessionStorage.getItem(motionKey)) {
         setPublishingMotion(true);
@@ -213,7 +218,7 @@ export default function IndustrialKnowledgeGraphPage({
     } catch (nextError) {
       setError(nextError.message);
     }
-  }, []);
+  }, [initialKnowledgeId]);
 
   useEffect(() => { loadGraph(view); }, [loadGraph, view, state.knowledgePublished, state.updatedAt]);
   useEffect(() => () => window.cancelAnimationFrame(animationRef.current), []);

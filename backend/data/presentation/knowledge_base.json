@@ -1,10 +1,121 @@
-{"dynamicKnowledgeId":"KB-008","items":[
-  {"id":"KB-008","mode":"interactive","title":"ACP-4000 / IPC-610 风扇检查与更换","baseVersion":"1.0","equipment":"ACP-4000 / IPC-610","faultType":"风扇异常","baseContent":"检查风扇状态、FAN1/FAN2 接线和供电，必要时更换同规格风扇。","publishedContentV11":"当 TEMP/FAN 告警、风扇转速低于 500 rpm 同时出现，且清理风道与滤网后转速仍未恢复，应重点判断风扇老化，并在断电、挂牌和防静电确认后检查或更换风扇。"},
-  {"id":"KB-001","mode":"readonly","title":"ACP-4000 散热系统结构","version":"1.3","equipment":"ACP-4000","faultType":"散热异常"},
-  {"id":"KB-002","mode":"readonly","title":"TEMP/FAN LED 与蜂鸣告警含义","version":"1.2","equipment":"IPC-610","faultType":"告警判读"},
-  {"id":"KB-003","mode":"readonly","title":"风扇低速告警阈值","version":"1.1","equipment":"工控机","faultType":"风扇异常"},
-  {"id":"KB-004","mode":"readonly","title":"系统与 CPU 温度判断条件","version":"1.4","equipment":"工控机","faultType":"温度异常"},
-  {"id":"KB-006","mode":"readonly","title":"断电、挂牌和防静电要求","version":"2.0","equipment":"通用","faultType":"安全规范"},
-  {"id":"KB-007","mode":"readonly","title":"门滤网与风道清理方法","version":"1.2","equipment":"站控柜","faultType":"散热异常"},
-  {"id":"KB-009","mode":"readonly","title":"恢复运行确认清单","version":"1.1","equipment":"通用","faultType":"恢复验证"}
-]}
+{
+  "dynamicKnowledgeId": "KB-008",
+  "items": [
+    {"id":"KB-008","mode":"interactive","title":"ACP-4000 / IPC-610 风扇检查与更换","baseVersion":"1.0","equipment":"ACP-4000 / IPC-610","faultType":"风扇异常","verificationLevel":"verified_case","applicability":"exact_model","summary":"结合 TEMP/FAN 告警、转速与温度阈值，完成滤网、风道、风扇和 FAN 接线检查，并在清理无效时更换故障风扇。","baseContent":"检查风扇状态、FAN1/FAN2 接线和供电，必要时更换同规格风扇。","publishedContentV11":"当 TEMP/FAN 告警、风扇转速低于 500 rpm 同时出现，且清理风道与滤网后转速仍未恢复，应重点判断风扇老化，并在断电、挂牌和防静电确认后检查或更换风扇。","sourceRefs":[{"documentId":"DOC-ADVANTECH-ACP4000-IPC610-UM-ED6","pages":[32,33,39,40,41]},{"documentId":"DOC-ADVANTECH-ACP4000-DS-20250317","pages":[1,2]},{"documentId":"DOC-ADVANTECH-IPC610H-DS-20221006","pages":[1,2]},{"documentId":"DOC-ADVANTECH-IPC610L-IPC611-DS-20221006","pages":[1,2]},{"documentId":"DOC-ADVANTECH-SAB2000-SM-ED2","pages":[1,2,3]}]},
+    {"id":"KB-001","mode":"readonly","title":"ACP-4000 散热系统结构","version":"1.3","equipment":"ACP-4000","faultType":"散热异常","verificationLevel":"official_document","applicability":"exact_model","sourceRefs":[{"documentId":"DOC-ADVANTECH-ACP4000-IPC610-UM-ED6","pages":[32,33,46]}]},
+    {"id":"KB-002","mode":"readonly","title":"TEMP/FAN LED 与蜂鸣告警含义","version":"1.2","equipment":"ACP-4000","faultType":"告警判读","verificationLevel":"official_document","applicability":"exact_model","sourceRefs":[{"documentId":"DOC-ADVANTECH-ACP4000-IPC610-UM-ED6","pages":[31,39]},{"documentId":"DOC-ADVANTECH-SAB2000-SM-ED2","pages":[1]}]},
+    {"id":"KB-003","mode":"readonly","title":"风扇低速告警阈值","version":"1.1","equipment":"ACP-4000","faultType":"风扇异常","verificationLevel":"official_document","applicability":"exact_model","sourceRefs":[{"documentId":"DOC-ADVANTECH-ACP4000-IPC610-UM-ED6","pages":[39]},{"documentId":"DOC-ADVANTECH-SAB2000-SM-ED2","pages":[1]}]},
+    {"id":"KB-004","mode":"readonly","title":"系统与 CPU 温度判断条件","version":"1.4","equipment":"ACP-4000","faultType":"温度异常","verificationLevel":"official_document","applicability":"exact_model","sourceRefs":[{"documentId":"DOC-ADVANTECH-ACP4000-IPC610-UM-ED6","pages":[39]},{"documentId":"DOC-ADVANTECH-SAB2000-SM-ED2","pages":[1]}]},
+    {"id":"KB-006","mode":"readonly","title":"断电、挂牌和防静电要求","version":"2.0","equipment":"工控机","faultType":"安全规范","verificationLevel":"official_document","applicability":"exact_model","sourceRefs":[{"documentId":"DOC-ADVANTECH-ACP4000-IPC610-UM-ED6","pages":[3,4,5,6,7,8]}]},
+    {"id":"KB-007","mode":"readonly","title":"门滤网与风道清理方法","version":"1.2","equipment":"ACP-4000 / IPC-610","faultType":"散热异常","verificationLevel":"official_document","applicability":"exact_model","sourceRefs":[{"documentId":"DOC-ADVANTECH-ACP4000-IPC610-UM-ED6","pages":[33]},{"documentId":"DOC-ADVANTECH-ACP4000-DS-20250317","pages":[1,2]},{"documentId":"DOC-ADVANTECH-IPC610H-DS-20221006","pages":[1,2]},{"documentId":"DOC-ADVANTECH-IPC610L-IPC611-DS-20221006","pages":[1,2]}]},
+    {"id":"KB-009","mode":"readonly","title":"恢复运行确认清单","version":"1.1","equipment":"ACP-4000 / IPC-610","faultType":"恢复验证","verificationLevel":"expert_confirmed","applicability":"exact_model","sourceRefs":[{"documentId":"DOC-ADVANTECH-ACP4000-IPC610-UM-ED6","pages":[39]},{"documentId":"DOC-ADVANTECH-SAB2000-SM-ED2","pages":[1]}]},
+    {
+      "id":"KB-010","mode":"readonly","title":"工控机整机异常与 POST 故障隔离","version":"1.0","equipment":"工控机","faultType":"启动异常","verificationLevel":"official_document","applicability":"cross_brand_general",
+      "summary":"先断开外设并观察 POST，再将问题分流到外设、软件驱动或硬件诊断。",
+      "symptoms":["无法完成启动","POST 非致命错误","POST 致命错误并中止","接入外设后异常复现"],
+      "causes":["外设连接或外设本体异常","软件或驱动异常","内部硬件故障","UEFI 配置异常"],
+      "checks":["正常关机并断开电源","断开全部外设","重新上电并观察 POST","逐一接回外设","仍未定位时进入 UEFI Diagnostics"],
+      "actions":["重装确认有问题的软件或驱动","隔离故障外设","运行硬件诊断并导出报告","致命错误升级厂家支持"],
+      "safety":["断开外设前先正常关机并断电","不得用反复强制复位代替故障隔离"],
+      "recoveryCriteria":["POST 完成","操作系统正常启动","外设逐一接回后异常不再出现"],
+      "exclusions":["不替代具体型号的蜂鸣代码和诊断错误码说明"],
+      "sourceRefs":[{"documentId":"DOC-ROCKWELL-6177R-UM002F","pages":[81,82,83]},{"documentId":"DOC-ROCKWELL-6300-UM003B","pages":[79]}]
+    },
+    {
+      "id":"KB-011","mode":"readonly","title":"BIOS/UEFI 配置异常与恢复默认值","version":"1.0","equipment":"工控机","faultType":"固件配置异常","verificationLevel":"official_document","applicability":"cross_brand_general",
+      "summary":"配置变更后发生启动异常时先恢复默认值；配置损坏且无法进入设置时再按型号流程清除 UEFI/CMOS。",
+      "symptoms":["修改设置后无法启动","错误信息不可读","无法进入 UEFI 设置","启动顺序异常"],
+      "causes":["错误的 UEFI 参数","系统配置值损坏","启动项或 Secure Boot 配置不匹配"],
+      "checks":["记录变更前后配置","尝试进入 UEFI","确认异常是否由配置修改触发"],
+      "actions":["加载优化默认值并保存","恢复用户默认值","必要时按目标型号流程清除 UEFI/CMOS"],
+      "safety":["清除配置前备份必要数据","清除跳线或按钮位置必须以目标型号手册为准"],
+      "recoveryCriteria":["POST 正常","UEFI 可访问","启动顺序和日期时间正确"],
+      "exclusions":["不跨型号复用清除 CMOS 的位置和步骤"],
+      "sourceRefs":[{"documentId":"DOC-ROCKWELL-6177R-UM002F","pages":[84,85]},{"documentId":"DOC-ROCKWELL-6300-UM003B","pages":[62,65]}]
+    },
+    {
+      "id":"KB-012","mode":"readonly","title":"集成显示黑屏、花屏与画面抖动排查","version":"1.0","equipment":"面板式工控机","faultType":"显示异常","verificationLevel":"official_document","applicability":"exact_model",
+      "summary":"按供电、线缆、分辨率、刷新率和缩放设置依次排查黑屏、花屏、模糊与抖动。",
+      "symptoms":["黑屏","画面花屏","图像模糊","图像不稳定","屏幕抖动或视频噪声"],
+      "causes":["显示供电或电缆异常","视频模式超出范围","分辨率或刷新率不匹配","视频线缆受干扰"],
+      "checks":["确认面板电源","检查视频线缆","核对推荐分辨率和刷新率","核对系统缩放设置"],
+      "actions":["恢复推荐显示模式","更换可疑视频线缆","重新布置受干扰线缆"],
+      "safety":["更换线缆前按设备要求断电"],
+      "recoveryCriteria":["画面清晰稳定","无抖动或噪声","显示模式符合推荐设置"],
+      "exclusions":["具体分辨率和接口能力只适用于对应设备配置"],
+      "sourceRefs":[{"documentId":"DOC-ROCKWELL-6300-UM003B","pages":[79,80]}]
+    },
+    {
+      "id":"KB-013","mode":"readonly","title":"HDD/SSD 存储健康与故障诊断","version":"1.0","equipment":"工控机","faultType":"存储故障","verificationLevel":"official_document","applicability":"cross_brand_general",
+      "summary":"通过存储健康、诊断工具、备份镜像和环境条件判断存储介质风险。",
+      "symptoms":["存储健康告警","系统文件损坏","启动变慢或失败","读写异常"],
+      "causes":["存储介质老化","高温、振动或冲击","异常断电","介质或接口故障"],
+      "checks":["查看硬盘健康和事件日志","运行诊断工具","检查数据与电源连接","确认系统镜像"],
+      "actions":["先备份可读取数据","更换确认故障的介质","使用受控镜像恢复","检查异常断电来源"],
+      "safety":["拆装前断电并采取 ESD 防护","恢复前确认目标磁盘"],
+      "recoveryCriteria":["POST 识别介质","系统正常启动","业务数据和应用验证通过"],
+      "exclusions":["具体备件和拆装结构以目标型号手册为准"],
+      "sourceRefs":[{"documentId":"DOC-ROCKWELL-VERSAVIEW-TG001A","pages":[12,13]},{"documentId":"DOC-ROCKWELL-6177R-UM002F","pages":[38,39]}]
+    },
+    {
+      "id":"KB-014","mode":"readonly","title":"RTC 电池异常与更换后恢复","version":"1.0","equipment":"工控机","faultType":"RTC 电池异常","verificationLevel":"official_document","applicability":"same_series",
+      "summary":"RTC 电池亏电可能造成时间和配置丢失；更换后需重新核对 BIOS 日期、时间和启动配置。",
+      "symptoms":["日期时间复位","断电后配置丢失","RTC 或电池告警","启动配置异常"],
+      "causes":["RTC 电池寿命到期","连接或极性错误","替换电池规格不匹配"],
+      "checks":["记录当前 BIOS 配置","确认电池型号、连接和极性","检查断电后时间是否保持"],
+      "actions":["按型号流程更换电池","重新设置日期和时间","恢复必要 BIOS 参数"],
+      "safety":["正常关机、断电并采取 ESD 防护","型号和极性必须以目标型号手册为准"],
+      "recoveryCriteria":["日期时间正确","断电后配置保持","POST 无 RTC/电池告警"],
+      "exclusions":["不跨型号复用电池型号和拆装步骤"],
+      "sourceRefs":[{"documentId":"DOC-ROCKWELL-6177R-UM002F","pages":[42,43]},{"documentId":"DOC-ROCKWELL-6300-UM003B","pages":[71,72]}]
+    },
+    {
+      "id":"KB-015","mode":"readonly","title":"系统监控阈值、远程告警与事件日志","version":"1.0","equipment":"工控机","faultType":"监控告警","verificationLevel":"official_document","applicability":"cross_brand_general",
+      "summary":"统一监控温度、风扇、电压、硬盘健康、网络状态和资源利用率，并保留事件或邮件告警。",
+      "symptoms":["硬盘健康告警","网络离线","温度或电压越限","风扇转速异常","监控代理离线"],
+      "causes":["监控对象越过阈值","监控代理或网络中断","阈值配置不适用","告警链路异常"],
+      "checks":["查看设备详细状态","核对监控阈值","检查代理和网络连接","查询并导出事件日志"],
+      "actions":["恢复监控代理和网络","根据越限对象进入对应检修流程","保留告警与运行报告"],
+      "safety":["自动关机策略必须评估业务影响","跨品牌默认阈值不能直接套用"],
+      "recoveryCriteria":["监控对象恢复正常","代理在线","无新增告警","报告可生成"],
+      "exclusions":["具体阈值必须以目标型号手册或项目规则为准"],
+      "sourceRefs":[{"documentId":"DOC-SCHNEIDER-RACK-1755-05","pages":[134,142,143,144,145,146]},{"documentId":"DOC-SCHNEIDER-SBOX-1750-01","pages":[118,126,127,128,129,130]}]
+    },
+    {
+      "id":"KB-016","mode":"readonly","title":"操作系统镜像备份与受控恢复","version":"1.0","equipment":"工业计算机","faultType":"系统恢复","verificationLevel":"official_document","applicability":"same_series",
+      "summary":"建立恢复介质和业务镜像；系统损坏后按目标型号流程恢复并验证驱动、应用和数据。",
+      "symptoms":["操作系统损坏","启动失败","异常断电后不可用","升级后需要回退"],
+      "causes":["文件系统损坏","错误升级或配置","存储介质故障","恢复介质不匹配"],
+      "checks":["确认恢复介质和系统版本","确认备份范围","检查目标介质健康","记录驱动和应用版本"],
+      "actions":["备份仍可读取的数据","使用支持的恢复介质","恢复后验证驱动与业务应用"],
+      "safety":["恢复可能覆盖全部数据","开始前确认目标磁盘和停机窗口"],
+      "recoveryCriteria":["系统正常启动","驱动无异常","业务应用和通信恢复","数据验证通过"],
+      "exclusions":["不同型号或系统版本的镜像不能默认互换"],
+      "sourceRefs":[{"documentId":"DOC-ROCKWELL-6300-UM003B","pages":[54,56,58,59,60,61,62,63,64]},{"documentId":"DOC-SCHNEIDER-P6-5086-02","pages":[136,137,138,139,140,141,142,143]}]
+    },
+    {
+      "id":"KB-017","mode":"readonly","title":"接地、振动与安装环境检查","version":"1.0","equipment":"机架式与箱式工控机","faultType":"安装环境异常","verificationLevel":"official_document","applicability":"cross_brand_general",
+      "summary":"通过接地、固定、安装间距、振动冲击和通风条件排除安装环境造成的间歇故障。",
+      "symptoms":["间歇重启","通信受干扰","连接器松动","搬运后故障","异常振动"],
+      "causes":["功能接地不良","固定不足","过度振动或冲击","通风孔遮挡","腐蚀性环境"],
+      "checks":["检查接地和等电位连接","检查紧固和机架支撑","确认维护间距","了解搬运和振动历史"],
+      "actions":["恢复合规接地","重新紧固设备和线缆","改善安装间距与通风","隔离振动或干扰源"],
+      "safety":["调整接地和安装前执行停机断电","重型机架设备使用合适人员和工具"],
+      "recoveryCriteria":["设备固定牢靠","接地连续可靠","线缆无机械应力","观察期无间歇异常"],
+      "exclusions":["具体角度、扭矩和间距以目标型号手册为准"],
+      "sourceRefs":[{"documentId":"DOC-ROCKWELL-6300-UM003B","pages":[36]},{"documentId":"DOC-SCHNEIDER-RACK-1755-05","pages":[47,48]}]
+    },
+    {
+      "id":"KB-018","mode":"readonly","title":"通信接口与外设故障隔离","version":"1.0","equipment":"工控机","faultType":"通信与接口异常","verificationLevel":"official_document","applicability":"cross_brand_general",
+      "summary":"根据接口灯态、线缆、端口模式和逐一接回外设的方法隔离网口、串口与 USB 问题。",
+      "symptoms":["网口无链路","串口通信失败","USB 外设不可识别","接入外设后运行异常"],
+      "causes":["线缆或连接器故障","接口模式错误","驱动不匹配","外设本体故障","线缆固定不合规"],
+      "checks":["观察链路灯和接口状态","核对串口模式与参数","检查线缆屏蔽和固定","逐一接回外设","检查驱动状态"],
+      "actions":["替换故障线缆或外设","修正接口模式和参数","安装匹配驱动","恢复应力释放"],
+      "safety":["不支持热插拔的接口必须停机断电","避免线缆持续拉扯端口"],
+      "recoveryCriteria":["链路或端口正常","通信稳定","外设接回后系统正常","无新增驱动错误"],
+      "exclusions":["接口针脚和支持模式以目标型号手册为准"],
+      "sourceRefs":[{"documentId":"DOC-ROCKWELL-6300-UM003B","pages":[47,48]},{"documentId":"DOC-SCHNEIDER-P6-5086-02","pages":[74,75,81,89,105,106,107,108,109]}]
+    }
+  ]
+}
