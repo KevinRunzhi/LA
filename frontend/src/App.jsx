@@ -4417,6 +4417,21 @@ function AgentConsultationStream({ agents, activeAgentIndex, tick }) {
   );
 }
 
+const ASSISTANT_PET_LABELS = {
+  idle: "等待检修任务",
+  starting: "正在启动检修分析",
+  thinking: "正在分析当前步骤与检修上下文",
+  complete: "辅助建议已生成",
+};
+
+function AssistantPet({ state }) {
+  return (
+    <span className="assistant-pet" aria-hidden="true">
+      <span key={state} className={classNames("assistant-pet-sprite", state)} />
+    </span>
+  );
+}
+
 function AssistantChat({
   stage,
   activeIntakeStep,
@@ -4442,12 +4457,28 @@ function AssistantChat({
   const [sourceVisibleCount, setSourceVisibleCount] = useState(0);
   const [processStarted, setProcessStarted] = useState(false);
   const [consultationTick, setConsultationTick] = useState(0);
+  const [assistantPetState, setAssistantPetState] = useState("idle");
   const timersRef = useRef([]);
+  const petTimersRef = useRef([]);
+  const automaticPetBusyRef = useRef(false);
   const assistantBodyRef = useRef(null);
 
   function clearAssistantTimers() {
     timersRef.current.forEach((timer) => window.clearTimeout(timer));
     timersRef.current = [];
+  }
+
+  function clearAssistantPetTimers() {
+    petTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    petTimersRef.current = [];
+  }
+
+  function playAssistantPetState(state, duration, nextState) {
+    clearAssistantPetTimers();
+    setAssistantPetState(state);
+    if (!duration || !nextState) return;
+    const timer = window.setTimeout(() => setAssistantPetState(nextState), duration);
+    petTimersRef.current.push(timer);
   }
 
   useEffect(() => {
@@ -4467,7 +4498,13 @@ function AssistantChat({
     setRetrievalVisibleCount(0);
     setSourceVisibleCount(0);
     setProcessStarted(false);
-    return clearAssistantTimers;
+    clearAssistantPetTimers();
+    automaticPetBusyRef.current = false;
+    setAssistantPetState("idle");
+    return () => {
+      clearAssistantTimers();
+      clearAssistantPetTimers();
+    };
   }, [context.label, context.suggestion]);
 
   useEffect(() => {
@@ -4488,6 +4525,35 @@ function AssistantChat({
     });
     return () => window.cancelAnimationFrame(frame);
   }, [activeAgentIndex, consultationTick, messages, streamingMessageId, triageCharCount, triageTraceCount]);
+
+  const analysisBusy = Boolean(
+    stage === "analysis"
+      && diagnosis?.agents?.length
+      && activeAgentIndex < diagnosis.agents.length
+  );
+  const automaticPetBusy = triageAgentStatus === "running" || analysisBusy;
+
+  useEffect(() => {
+    if (thinking || streaming) {
+      automaticPetBusyRef.current = automaticPetBusy;
+      return;
+    }
+
+    const wasBusy = automaticPetBusyRef.current;
+    automaticPetBusyRef.current = automaticPetBusy;
+    if (automaticPetBusy) {
+      if (!wasBusy) {
+        playAssistantPetState("starting", 800, "thinking");
+      } else {
+        playAssistantPetState("thinking");
+      }
+      return;
+    }
+
+    if (wasBusy) {
+      playAssistantPetState("complete", 900, "idle");
+    }
+  }, [automaticPetBusy, streaming, thinking]);
 
   function sendMessage() {
     const text = draft.trim();
@@ -4525,6 +4591,7 @@ function AssistantChat({
     setRetrievalVisibleCount(0);
     setSourceVisibleCount(0);
     clearAssistantTimers();
+    playAssistantPetState("starting", 800, "thinking");
 
     evidenceItems.forEach((_, index) => {
       const timer = window.setTimeout(() => {
@@ -4554,6 +4621,7 @@ function AssistantChat({
               ? { ...message, status: "done", evidenceVisibleCount: evidenceItems.length }
               : message
           )));
+          playAssistantPetState("complete", 900, "idle");
         }
       }, streamStartDelay + index * 34);
       timersRef.current.push(streamTimer);
@@ -4589,10 +4657,13 @@ function AssistantChat({
     <aside className="assistant-chat">
       <div className="assistant-head">
         <MessageCircle size={16} />
-        <div>
+        <div className="assistant-head-copy">
           <strong>{stage === "analysis" ? "多 Agent 会诊" : "辅助对话"}</strong>
-          <span>{context.label}</span>
+          <span aria-live="polite">
+            {assistantPetState === "idle" ? context.label : ASSISTANT_PET_LABELS[assistantPetState]}
+          </span>
         </div>
+        <AssistantPet state={assistantPetState} />
       </div>
       <div className="assistant-body" ref={assistantBodyRef}>
         {stage === "analysis" && diagnosis && (

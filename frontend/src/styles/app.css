@@ -7086,6 +7086,89 @@ body {
   .intake-summary-launch .primary-button { justify-content: center; }
 }
 
+/* 辅助对话桌宠：固定在标题右侧，并跟随 Agent 生命周期切换四种状态。 */
+.assistant-head {
+  min-height: 70px;
+  align-items: center;
+  padding-block: 3px;
+}
+
+.assistant-head > svg {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+.assistant-head-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.assistant-pet {
+  position: relative;
+  display: block;
+  flex: 0 0 58px;
+  width: 58px;
+  height: 63px;
+  margin-left: auto;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.assistant-pet-sprite {
+  position: absolute;
+  inset: 0 auto auto 0;
+  display: block;
+  width: 192px;
+  height: 208px;
+  overflow: visible;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 1152px 208px;
+  image-rendering: pixelated;
+  transform: scale(0.302083);
+  transform-origin: left top;
+}
+
+.assistant-pet-sprite.idle {
+  background-image: url("/images/assistant-pet/idle.webp");
+  animation: assistantPetLoopSix 3s steps(6, end) infinite;
+}
+
+.assistant-pet-sprite.starting {
+  background-image: url("/images/assistant-pet/starting.webp");
+  animation: assistantPetOneShotSix 800ms steps(5, end) forwards;
+}
+
+.assistant-pet-sprite.thinking {
+  background-image: url("/images/assistant-pet/thinking.webp");
+  animation: assistantPetLoopSix 1.6s steps(6, end) infinite;
+}
+
+.assistant-pet-sprite.complete {
+  background-image: url("/images/assistant-pet/complete.webp");
+  animation: assistantPetOneShotSix 900ms steps(5, end) forwards;
+}
+
+@keyframes assistantPetLoopSix {
+  to { background-position-x: -1152px; }
+}
+
+@keyframes assistantPetOneShotSix {
+  to { background-position-x: -960px; }
+}
+
+@media (max-width: 1380px) and (min-width: 1181px) {
+  .assistant-pet {
+    flex-basis: 52px;
+    width: 52px;
+    height: 57px;
+  }
+
+  .assistant-pet-sprite {
+    transform: scale(0.270833);
+  }
+}
+
 /* R0 dynamic intake workspace V1.2 */
 .spatial-intake-v12 {
   gap: 12px;
