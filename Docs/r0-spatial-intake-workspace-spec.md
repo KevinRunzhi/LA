@@ -157,6 +157,8 @@ const intakeContext = {
 | 4 | 依据与手册 | 现有 Agent 依据，新增手册摘要卡 |
 | 5 | 现场异常事件确认 | 复用现有最终确认页逻辑，重新命名并扩展时间和依据 |
 
+发生事件卡的设备目录覆盖研华 ACP-4000 / IPC-610、Rockwell ASEM 6300B/6300P、Allen-Bradley 6177R、ControlLogix 1756、浙大中控 ECS-700/JX-300XP、霍尼韦尔 Experion PKS C300/ControlEdge PLC 和西门子 IPC647E。选择具体型号时，系统依据型号知识与设备台账联动推荐设备角色和典型关联告警，工程师仍可逐项修改。
+
 首页描述不再作为步骤 0，而是进入 `intakeContext.description`，并作为顶部已知信息区的第一个紧凑条目；完整描述到“现场异常事件确认”页面集中展示。
 
 ## 5. 状态转换

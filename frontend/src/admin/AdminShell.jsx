@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Cpu, ExternalLink, FileCheck2, FileText, GitBranch, History, Loader2, Network, Plus, RefreshCcw, Save, Search, Send, ShieldCheck, Sparkles, Trash2, UserRound, Users, Wrench, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Cpu, ExternalLink, FileCheck2, FileText, GitBranch, History, Loader2, Network, Plus, RefreshCcw, Save, Search, Send, Settings, ShieldCheck, Sparkles, Trash2, UserRound, Users, Wrench, X } from "lucide-react";
 import { presentationApi } from "./presentationApi";
 import IndustrialKnowledgeGraphPage from "./knowledge-graph/IndustrialKnowledgeGraphPage";
 import "./admin.css";
@@ -7,8 +7,37 @@ import "./portal.css";
 
 const CASE_ID = "CASE-ACP4000-001";
 const VERIFY_INPUT = "同型号站控工控机出现 TEMP/FAN 告警，风扇转速 420 rpm；清理滤网后转速仍未恢复。";
-const roleNames = { engineer: "工程师 · 李师傅", expert: "专家账号", admin: "系统管理员" };
+const EXPERT_PROFILE_STORAGE_KEY = "la-expert-profile-v2";
+const defaultExpertProfile = {
+  name: "王海峰",
+  title: "高级工控设备检修工程师",
+  organization: "国家管网集团山东德州分输站 · 设备技术组",
+  specialties: ["工控机", "站控系统", "散热系统", "工业通信"],
+  equipmentScope: "全部工控设备",
+  contact: "站内分机 806",
+};
+const roleNames = { engineer: "工程师 · 李师傅", expert: "王海峰", admin: "系统管理员" };
 const statusNames = { awaiting_engineer_confirmation: "待工程师确认", pending_expert_review: "待专家审核", archived_with_knowledge: "已通过并沉淀知识" };
+
+function normalizeExpertProfile(value) {
+  const profile = value && typeof value === "object" ? value : {};
+  return {
+    ...defaultExpertProfile,
+    ...profile,
+    specialties: Array.isArray(profile.specialties)
+      ? profile.specialties.filter((item) => typeof item === "string" && item.trim()).slice(0, 5)
+      : defaultExpertProfile.specialties,
+  };
+}
+
+function loadExpertProfile() {
+  if (typeof window === "undefined") return defaultExpertProfile;
+  try {
+    return normalizeExpertProfile(JSON.parse(window.localStorage.getItem(EXPERT_PROFILE_STORAGE_KEY)));
+  } catch {
+    return defaultExpertProfile;
+  }
+}
 
 function StatusBadge({ status }) { return <span className={`admin-status status-${status}`}>{statusNames[status] || status}</span>; }
 
@@ -28,8 +57,9 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
   const [error, setError] = useState("");
   const [confirmReset, setConfirmReset] = useState(false);
   const [graphKnowledgeId, setGraphKnowledgeId] = useState(null);
+  const [expertProfile, setExpertProfile] = useState(loadExpertProfile);
   const adminNavItems = portalRole === "expert"
-    ? [["workbench","专家工作台",FileCheck2],["history","全部案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","知识图谱",Network]]
+    ? [["workbench","专家工作台",FileCheck2],["history","全部案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","知识图谱",Network],["settings","专家设置",Settings]]
     : [["workbench","我的案例",FileCheck2],["history","历史案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","知识图谱",Network]];
 
   async function loadAll(nextPage) {
@@ -60,6 +90,19 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
     finally { setBusy(false); }
   }
 
+  function saveExpertProfile(nextProfile) {
+    const normalized = normalizeExpertProfile(nextProfile);
+    try {
+      window.localStorage.setItem(EXPERT_PROFILE_STORAGE_KEY, JSON.stringify(normalized));
+      setExpertProfile(normalized);
+      setError("");
+      setNotice("专家资料已保存");
+    } catch {
+      setNotice("");
+      setError("浏览器无法保存专家资料，请检查本地存储权限。");
+    }
+  }
+
   if (!state || !fullCase) return error ? <div className="admin-load-failed"><AlertTriangle size={28}/><span>案例回流服务暂时未连接</span><h2>工作台加载失败</h2><p>{error}</p><button className="admin-primary" onClick={() => loadAll()}><RefreshCcw size={14}/>重新加载</button></div> : <div className="admin-loading"><Loader2 className="spin" /> 正在载入案例回流工作台…</div>;
 
   const dynamicKnowledge = knowledge.find((item) => item.id === "KB-008");
@@ -72,17 +115,17 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
         <div className="admin-sidebar-brand"><i><BookOpen size={18}/></i><div><p>知识回流控制台</p><h2>案例经验沉淀中心</h2></div></div>
         <div className="admin-sidebar-caption">工作菜单</div>
         <nav>{adminNavItems.map(([id,label,Icon]) => <button className={page === id ? "active" : ""} onClick={() => setPage(id)} key={id}><Icon size={17}/><span>{label}</span><ChevronRight size={14}/></button>)}</nav>
-        <div className="admin-sidebar-account"><div><UserRound size={16}/><span>当前账号<strong>{roleNames[portalRole]}</strong></span></div>{portalRole === "engineer" && onExitToWorkbench && <button onClick={onExitToWorkbench}>返回诊断台</button>}<button onClick={() => setConfirmReset(true)} disabled={busy}><RefreshCcw size={14}/>重置演示</button>{onLogout && <button className="danger" onClick={onLogout}>退出登录</button>}</div>
+        <div className="admin-sidebar-account"><div><UserRound size={16}/><span>当前账号<strong>{portalRole === "expert" ? expertProfile.name : roleNames[portalRole]}</strong>{portalRole === "expert" && <small>{expertProfile.title}</small>}</span></div>{portalRole === "engineer" && onExitToWorkbench && <button onClick={onExitToWorkbench}>返回诊断台</button>}{portalRole !== "expert" && <button onClick={() => setConfirmReset(true)} disabled={busy}><RefreshCcw size={14}/>重置演示</button>}{onLogout && <button className="danger" onClick={onLogout}>退出登录</button>}</div>
       </aside>
       <section className="admin-main-area">
       {(notice || error) && <div className={`admin-toast ${error ? "error" : "success"}`}>{error ? <AlertTriangle size={14}/> : <Check size={14}/>} {error || notice}</div>}
-      {page !== "expert-review" && <CaseFlowGuide page={page} state={state} portalRole={portalRole} onBack={page !== "workbench" ? () => setPage("workbench") : null} />}
+      {page !== "expert-review" && page !== "settings" && <CaseFlowGuide page={page} state={state} portalRole={portalRole} onBack={page !== "workbench" ? () => setPage("workbench") : null} />}
       {page === "workbench" && portalRole === "engineer" && <EngineerCaseHome state={state} data={fullCase} sync={engineerSync} busy={busy} onSync={() => action(presentationApi.engineerSyncLatest, "本地知识已同步到最新版本", "knowledge-graph")} onEngineer={() => setPage("engineer-confirm")} onKnowledge={() => setPage("knowledge-result")} onExit={onExitToWorkbench} onLogout={onLogout} />}
       {page === "workbench" && portalRole === "expert" && <Workbench state={state} cases={cases} pending={pending} archived={archived} knowledgeCount={knowledge.length} role={state.activeRole} onEngineer={() => setPage("engineer-confirm")} onReview={() => setPage("expert-review")} onKnowledge={() => setPage("knowledge-result")} onCase={(item) => { setSelectedCase(item); setPage("case-detail"); }} />}
       {page === "engineer-confirm" && <EngineerConfirmation data={fullCase} state={state} busy={busy} onBack={() => setPage("workbench")} onSubmit={(result) => action(() => presentationApi.submitCase(CASE_ID, result), `案例 ${CASE_ID} 已提交专家审核`, "submit-success")} />}
       {page === "submit-success" && <SubmitSuccess onSwitch={onLogout} />}
       {page === "expert-review" && <ExpertReviewFlow data={fullCase} state={state} busy={busy} onBack={() => setPage("workbench")} onSave={(draft) => action(() => presentationApi.saveExpertDraft(CASE_ID, draft), "专家修改草稿已保存", "expert-review")} onPublish={(draft) => action(() => presentationApi.publishCase(CASE_ID, draft), "案例已通过，知识 V1.1 已发布", "knowledge-result")} />}
-      {page === "knowledge-result" && <KnowledgeResult state={state} knowledge={dynamicKnowledge} data={fullCase} onLibrary={() => setPage("knowledge")} onVerify={() => setPage("verify")} />}
+      {page === "knowledge-result" && <KnowledgeResult state={state} knowledge={dynamicKnowledge} data={fullCase} expertName={expertProfile.name} onLibrary={() => setPage("knowledge")} onVerify={portalRole === "engineer" ? () => setPage("verify") : null} />}
       {page === "verify" && <KnowledgeVerifyV2 state={state} busy={busy} onBack={() => setPage("knowledge-result")} />}
       {page === "history" && <HistoryCasesV2 cases={cases} onOpen={(item) => { setSelectedCase(item); setPage("case-detail"); }} />}
       {page === "case-detail" && <ReadonlyCase item={selectedCase} onBack={() => setPage("history")} />}
@@ -98,10 +141,102 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
         onSync={() => action(presentationApi.engineerSyncLatest, "V1.1 已同步，本地图谱和现场问答已更新", "knowledge-graph")}
         onVerify={() => setPage("verify")}
       />}
+      {page === "settings" && portalRole === "expert" && <ExpertSettingsPage profile={expertProfile} onSave={saveExpertProfile} onReset={() => setConfirmReset(true)} resetDisabled={busy} />}
       {page === "people" && <PeoplePage users={users} />}
       </section>
       {confirmReset && <div className="presentation-reset-backdrop"><section><RefreshCcw size={24}/><span>录制状态重置</span><h2>恢复案例与知识初始状态？</h2><p>将恢复 CASE-ACP4000-001 待工程师确认、KB-008 V1.0 和发布前图谱。历史展示数据不会变化。</p><div><button className="admin-secondary" onClick={() => setConfirmReset(false)}>取消</button><button className="admin-primary" onClick={async () => { setConfirmReset(false); await action(presentationApi.reset, "演示已恢复：案例待确认，知识 V1.0", "workbench"); }}>确认重置</button></div></section></div>}
     </div>
+  );
+}
+
+function ExpertSettingsPage({ profile, onSave, onReset, resetDisabled }) {
+  const [form, setForm] = useState(profile);
+  const [specialtiesInput, setSpecialtiesInput] = useState(profile.specialties.join("、"));
+  const [validationError, setValidationError] = useState("");
+  const parsedSpecialties = specialtiesInput.split(/[、,，]/).map((item) => item.trim()).filter(Boolean);
+  const dirty = JSON.stringify({ ...form, specialties: parsedSpecialties }) !== JSON.stringify(profile);
+
+  useEffect(() => {
+    setForm(profile);
+    setSpecialtiesInput(profile.specialties.join("、"));
+  }, [profile]);
+
+  function updateField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+    setValidationError("");
+  }
+
+  function updateSpecialties(value) {
+    setSpecialtiesInput(value);
+    setValidationError("");
+  }
+
+  function submit(event) {
+    event.preventDefault();
+    const nextProfile = {
+      ...form,
+      name: form.name.trim(),
+      title: form.title.trim(),
+      organization: form.organization.trim(),
+      contact: form.contact.trim(),
+      specialties: parsedSpecialties,
+    };
+    if (!nextProfile.name || !nextProfile.title || !nextProfile.organization) {
+      setValidationError("请填写显示姓名、专业职称和所属机构。");
+      return;
+    }
+    if (nextProfile.specialties.length > 5) {
+      setValidationError("擅长领域最多填写 5 项。");
+      return;
+    }
+    onSave(nextProfile);
+  }
+
+  return (
+    <main className="admin-page expert-settings-page">
+      <form className="expert-settings-form" onSubmit={submit}>
+        <header className="expert-settings-head">
+          <div><span>EXPERT PROFILE</span><h1>专家资料设置</h1><p>维护专家门户中展示的个人信息和专业范围。</p></div>
+          <div className="expert-settings-actions">
+            <button type="button" className="admin-secondary" onClick={() => { setForm({ ...defaultExpertProfile, specialties: [...defaultExpertProfile.specialties] }); setSpecialtiesInput(defaultExpertProfile.specialties.join("、")); setValidationError(""); }}><RefreshCcw size={14}/>恢复默认</button>
+            <button type="submit" className="admin-primary" disabled={!dirty}><Save size={14}/>保存资料</button>
+          </div>
+        </header>
+
+        {validationError && <div className="expert-settings-error" role="alert"><AlertTriangle size={14}/>{validationError}</div>}
+        <div className="expert-settings-status"><i className={dirty ? "dirty" : "saved"}/><span>{dirty ? "有未保存修改" : "资料已保存"}</span></div>
+
+        <div className="expert-settings-layout">
+          <section className="expert-settings-fields">
+            <div className="expert-settings-section-head"><UserRound size={17}/><div><h2>基本资料</h2><p>这些信息将显示在专家侧栏和审核身份区域。</p></div></div>
+            <div className="expert-settings-grid">
+              <label><span>显示姓名 <em>必填</em></span><input maxLength={20} value={form.name} onChange={(event) => updateField("name", event.target.value)} placeholder="例如：王工"/></label>
+              <label><span>专业职称 <em>必填</em></span><input maxLength={30} value={form.title} onChange={(event) => updateField("title", event.target.value)} placeholder="例如：高级设备检修专家"/></label>
+              <label className="wide"><span>所属机构/团队 <em>必填</em></span><input maxLength={40} value={form.organization} onChange={(event) => updateField("organization", event.target.value)} placeholder="例如：山东德州分输站 · 设备技术组"/></label>
+            </div>
+
+            <div className="expert-settings-divider"/>
+            <div className="expert-settings-section-head"><Wrench size={17}/><div><h2>专业能力</h2><p>用于说明专家擅长的故障方向和审核边界。</p></div></div>
+            <div className="expert-settings-grid">
+              <label className="wide"><span>擅长领域 <small>使用顿号或逗号分隔，最多 5 项</small></span><input value={specialtiesInput} onChange={(event) => updateSpecialties(event.target.value)} placeholder="工控机、散热系统、电源"/></label>
+              <label><span>审核设备范围</span><select value={form.equipmentScope} onChange={(event) => updateField("equipmentScope", event.target.value)}><option>工控机与站控柜</option><option>PLC 与控制系统</option><option>全部工控设备</option></select></label>
+              <label><span>联系方式 <small>选填</small></span><input maxLength={50} value={form.contact} onChange={(event) => updateField("contact", event.target.value)} placeholder="电话或工作邮箱"/></label>
+            </div>
+          </section>
+
+          <aside className="expert-profile-preview">
+            <span>账号摘要</span>
+            <div className="expert-profile-avatar">{form.name.trim().slice(0, 1) || "专"}</div>
+            <h2>{form.name.trim() || "未填写姓名"}</h2>
+            <p>{form.title.trim() || "未填写专业职称"}</p>
+            <dl><div><dt>登录账号</dt><dd>expert</dd></div><div><dt>所属机构</dt><dd>{form.organization.trim() || "—"}</dd></div><div><dt>设备范围</dt><dd>{form.equipmentScope}</dd></div><div><dt>账号状态</dt><dd className="active">正常</dd></div></dl>
+            <section><strong>专业方向</strong><div>{parsedSpecialties.length ? parsedSpecialties.slice(0, 5).map((item) => <i key={item}>{item}</i>) : <small>尚未填写</small>}</div></section>
+            <footer><ShieldCheck size={14}/><span>资料仅保存在当前浏览器，不改变专家权限。</span></footer>
+            <button type="button" className="expert-profile-reset" onClick={onReset} disabled={resetDisabled}><RefreshCcw size={12}/>重置演示数据</button>
+          </aside>
+        </div>
+      </form>
+    </main>
   );
 }
 
@@ -110,12 +245,12 @@ function CaseFlowGuide({ page, state, portalRole, onBack }) {
     ["工程师确认", state.engineerSubmitted],
     ["专家审核", state.expertApproved],
     ["知识发布", state.knowledgePublished],
-    ["应用验证", state.feedbackVerified],
+    ...(portalRole === "engineer" ? [["应用验证", state.feedbackVerified]] : []),
   ];
-  const activeIndex = page === "verify" ? 3
+  const activeIndex = portalRole === "engineer" && page === "verify" ? 3
     : page === "engineer-confirm" || (!state.engineerSubmitted && portalRole === "engineer") ? 0
     : page === "expert-review" || (!state.expertApproved && portalRole === "expert") ? 1
-      : page === "knowledge-result" || !state.feedbackVerified ? 2 : 3;
+      : portalRole === "engineer" && state.feedbackVerified ? 3 : 2;
   return (
     <section className="case-flow-guide">
       <div className="case-flow-context">{onBack ? <button onClick={onBack}><ChevronRight size={13}/>返回当前账号首页</button> : <span>案例回流主线</span>}<strong>CASE-ACP4000-001</strong></div>
@@ -307,7 +442,7 @@ function ExpertReview({ data, state, busy, onBack, onGraph, onPublish }) {
   return <main className="admin-page"><PageBack onBack={onBack} label="返回专家工作台"/><section className="admin-detail-head"><div><span>专家审核 · CASE-ACP4000-001</span><h1>核验现场事实并提炼检修知识</h1><p>专家可修正专业表述后直接通过，所有修改保留来源案例。</p></div><StatusBadge status={state.caseStatus}/></section><div className="expert-review-grid"><section className="expert-case-column"><h3>工程师实际结果</h3><Fact label="最终原因" value={state.engineerResult?.finalCause}/><Fact label="实际处理" value={state.engineerResult?.actualResolution}/><Fact label="恢复结果" value={state.engineerResult?.recoveryResult}/><div className="expert-parameter-row"><span>转速 <strong>{state.engineerResult?.fanSpeedRpm} rpm</strong></span><span>系统 <strong>{state.engineerResult?.systemTemperatureC}°C</strong></span><span>CPU <strong>{state.engineerResult?.cpuTemperatureC}°C</strong></span></div></section><section className="expert-edit-column"><header><div><span>专家简洁案例</span><h3>修正关键结论</h3></div><button onClick={()=>setConclusion(data.expertReviewTemplate.expertConclusion)}><Sparkles size={13}/>采用专家建议</button></header><label>系统草稿<p>{data.expertReviewTemplate.systemDraftConclusion}</p></label><label>专家结论<textarea value={conclusion} onChange={e=>setConclusion(e.target.value)}/></label><div className={`graph-change-card ${state.graphDecision}`}><header><GitBranch size={16}/><div><span>知识图谱变更建议</span><strong>新增风扇老化判断关系</strong></div></header>{data.graphChanges.map((edge,index)=><p key={index}><b>{edge.source}</b><i>{edge.relation}</i><b>{edge.target}</b></p>)}<small>来源 · CASE-ACP4000-001 · 目标知识 KB-008</small><div><button className={state.graphDecision === "accepted" ? "accepted" : ""} onClick={()=>onGraph("accepted")}><Check size={13}/>接受建议</button><button onClick={()=>onGraph("rejected")}>不采用</button></div></div><button className="admin-primary" disabled={!conclusion.trim() || state.graphDecision === "pending" || busy} onClick={()=>onPublish(conclusion)}>{busy?<Loader2 className="spin" size={15}/>:<BookOpen size={15}/>}通过并更新知识</button></section></div></main>;
 }
 
-function KnowledgeResult({ state, knowledge, data, onLibrary, onVerify }) { const releasedRelations=state.publishedRelations?.length?state.publishedRelations:data.graphChanges; return <main className="admin-page"><section className={`knowledge-release-hero ${state.knowledgePublished ? "published" : "pending"}`}><div className="knowledge-release-icon">{state.knowledgePublished?<Check size={28}/>:<BookOpen size={28}/>}</div><div><span>{state.knowledgePublished?"知识发布完成":"动态知识状态"}</span><h1>KB-008 · {knowledge?.title}</h1><p>{state.knowledgePublished?"真实检修经验已经进入知识库，并可参与后续诊断。":"完成专家审核后将在此展示知识版本变化。"}</p></div><div className="knowledge-version-jump"><small>VERSION</small><strong>V1.0</strong><ArrowRight size={18}/><em>V{state.knowledgeVersion}</em></div></section><div className="knowledge-result-grid"><section><header><span>知识内容变化</span><h3>新增风扇老化判断与更换条件</h3></header><div className="knowledge-diff"><article><small>V1.0</small><p>{knowledge?.baseContent}</p></article><article className="after"><small>V1.1 · 新增</small><p>{knowledge?.publishedContentV11}</p></article></div></section><section><header><span>知识来源</span><h3>可追溯发布记录</h3></header><Fact label="来源案例" value={state.knowledgePublished?CASE_ID:"尚未关联"}/><Fact label="修改专家" value={state.knowledgePublished?"专家账号":"—"}/><Fact label="发布时间" value={state.publishedAt?new Date(state.publishedAt).toLocaleString("zh-CN"):"—"}/></section><section className="published-graph"><header><span>发布后知识图谱</span><h3>专家确认的 {releasedRelations.length} 条关系已并入诊断路径</h3></header><GraphPreview edges={releasedRelations} active={state.knowledgePublished}/></section></div><div className="admin-page-actions"><button className="admin-secondary" onClick={onLibrary}>查看检修知识库</button><button className="admin-primary" onClick={onVerify}>验证知识应用 <ArrowRight size={15}/></button></div></main>; }
+function KnowledgeResult({ state, knowledge, data, expertName, onLibrary, onVerify }) { const releasedRelations=state.publishedRelations?.length?state.publishedRelations:data.graphChanges; return <main className="admin-page"><section className={`knowledge-release-hero ${state.knowledgePublished ? "published" : "pending"}`}><div className="knowledge-release-icon">{state.knowledgePublished?<Check size={28}/>:<BookOpen size={28}/>}</div><div><span>{state.knowledgePublished?"知识发布完成":"动态知识状态"}</span><h1>KB-008 · {knowledge?.title}</h1><p>{state.knowledgePublished?"真实检修经验已经进入知识库，并可参与后续诊断。":"完成专家审核后将在此展示知识版本变化。"}</p></div><div className="knowledge-version-jump"><small>VERSION</small><strong>V1.0</strong><ArrowRight size={18}/><em>V{state.knowledgeVersion}</em></div></section><div className="knowledge-result-grid"><section><header><span>知识内容变化</span><h3>新增风扇老化判断与更换条件</h3></header><div className="knowledge-diff"><article><small>V1.0</small><p>{knowledge?.baseContent}</p></article><article className="after"><small>V1.1 · 新增</small><p>{knowledge?.publishedContentV11}</p></article></div></section><section><header><span>知识来源</span><h3>可追溯发布记录</h3></header><Fact label="来源案例" value={state.knowledgePublished?CASE_ID:"尚未关联"}/><Fact label="修改专家" value={state.knowledgePublished?expertName:"—"}/><Fact label="发布时间" value={state.publishedAt?new Date(state.publishedAt).toLocaleString("zh-CN"):"—"}/></section><section className="published-graph"><header><span>发布后知识图谱</span><h3>专家确认的 {releasedRelations.length} 条关系已并入诊断路径</h3></header><GraphPreview edges={releasedRelations} active={state.knowledgePublished}/></section></div><div className="admin-page-actions"><button className="admin-secondary" onClick={onLibrary}>查看检修知识库</button>{onVerify && <button className="admin-primary" onClick={onVerify}>验证知识应用 <ArrowRight size={15}/></button>}</div></main>; }
 
 function KnowledgeVerifyV2({ busy, onBack }) {
   const [input, setInput] = useState(VERIFY_INPUT);

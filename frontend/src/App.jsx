@@ -195,21 +195,65 @@ const equipmentOptionGroups = [
     label: "设备型号",
     helper: "推荐型号匹配",
     source: "设备台账",
-    options: ["研华 ACP-4000 / IPC-610", "西门子 IPC647E 工控机", "PLC 控制柜"],
+    options: [
+      "研华 ACP-4000 / IPC-610",
+      "Rockwell ASEM 6300B-EW1 Box PC",
+      "Rockwell ASEM 6300P-EW1 Panel PC",
+      "Allen-Bradley 6177R 750R 工控机",
+      "Allen-Bradley 6177R 1450R 工控机",
+      "Rockwell ControlLogix 1756-L8x 控制器",
+      "浙大中控 SUPCON ECS-700 控制站",
+      "浙大中控 SUPCON JX-300XP 控制站",
+      "霍尼韦尔 Experion PKS C300 控制器",
+      "霍尼韦尔 ControlEdge PLC",
+      "西门子 IPC647E 工控机",
+    ],
   },
   {
     label: "设备角色",
     helper: "系统角色确认",
     source: "设备台账",
-    options: ["站控画面与数据采集终端", "工程师站与监控终端", "PLC 逻辑控制单元"],
+    options: [
+      "站控画面与数据采集终端",
+      "站控数据采集与业务软件运行终端",
+      "现场操作员站与一体化人机界面",
+      "机架式站控服务器与历史数据终端",
+      "PLC 逻辑控制与 I/O 协调单元",
+      "DCS 控制站冗余控制单元",
+      "DCS 过程控制与安全联锁单元",
+      "工程师站与监控终端",
+    ],
   },
   {
     label: "关联告警",
     helper: "异常信号确认",
     source: "现场描述 + 告警规则",
-    options: ["TEMP/FAN、蜂鸣、温度升高", "仅温度升高（无 TEMP/FAN）", "通信中断 / 数据不上送"],
+    options: [
+      "TEMP/FAN、蜂鸣、温度升高",
+      "仅温度升高（无 TEMP/FAN）",
+      "Power LED 熄灭 / 24 V DC 启动欠压",
+      "POST 致命错误 / 启动失败",
+      "控制器 OK 红闪 / Major Fault",
+      "冗余电源单路失电 / I/O 通道故障",
+      "C300 冗余切换 / I/O LINK 通信故障",
+      "通信中断 / 数据不上送",
+    ],
   },
 ];
+
+const equipmentProfileDefaults = {
+  "研华 ACP-4000 / IPC-610": ["站控画面与数据采集终端", "TEMP/FAN、蜂鸣、温度升高"],
+  "Rockwell ASEM 6300B-EW1 Box PC": ["站控数据采集与业务软件运行终端", "Power LED 熄灭 / 24 V DC 启动欠压"],
+  "Rockwell ASEM 6300P-EW1 Panel PC": ["现场操作员站与一体化人机界面", "Power LED 熄灭 / 24 V DC 启动欠压"],
+  "Allen-Bradley 6177R 750R 工控机": ["机架式站控服务器与历史数据终端", "POST 致命错误 / 启动失败"],
+  "Allen-Bradley 6177R 1450R 工控机": ["机架式站控服务器与历史数据终端", "POST 致命错误 / 启动失败"],
+  "Rockwell ControlLogix 1756-L8x 控制器": ["PLC 逻辑控制与 I/O 协调单元", "控制器 OK 红闪 / Major Fault"],
+  "浙大中控 SUPCON ECS-700 控制站": ["DCS 控制站冗余控制单元", "冗余电源单路失电 / I/O 通道故障"],
+  "浙大中控 SUPCON JX-300XP 控制站": ["DCS 控制站冗余控制单元", "冗余电源单路失电 / I/O 通道故障"],
+  "霍尼韦尔 Experion PKS C300 控制器": ["DCS 过程控制与安全联锁单元", "C300 冗余切换 / I/O LINK 通信故障"],
+  "霍尼韦尔 ControlEdge PLC": ["PLC 逻辑控制与 I/O 协调单元", "通信中断 / 数据不上送"],
+  "西门子 IPC647E 工控机": ["工程师站与监控终端", "POST 致命错误 / 启动失败"],
+};
 
 function getIntakeBranch(selections, thresholdValues) {
   const model = selections["设备型号"] || "";
@@ -217,7 +261,7 @@ function getIntakeBranch(selections, thresholdValues) {
   const led = thresholdValues["TEMP/FAN LED"] || "";
   const fan = thresholdValues["风扇转速"] || "";
 
-  if (model.includes("PLC") || alarm.includes("通信")) {
+  if (/ControlLogix|ECS-700|JX-300XP|C300|ControlEdge|PLC/.test(model) || /Major Fault|I\/O|通信|数据不上送|冗余电源/.test(alarm)) {
     return {
       id: "equipment-mismatch",
       label: "设备链路重新评估",
@@ -225,6 +269,28 @@ function getIntakeBranch(selections, thresholdValues) {
       title: "当前设备或告警与散热知识链不一致",
       detail: "系统已暂停沿用工控机散热结论，下一步应补充控制器状态、通信模块和数据上送信息。",
       diagnosis: "控制器 / 通信链路待补充",
+    };
+  }
+
+  if (/Power LED|24 V DC/.test(alarm)) {
+    return {
+      id: "industrial-computer-power",
+      label: "直流供电链路评估",
+      tone: "warning",
+      title: "当前异常指向工控机直流供电链路",
+      detail: "下一步应核对设备端输入电压、Power LED、接线端子和系统启动完整性。",
+      diagnosis: "工控机直流供电异常方向",
+    };
+  }
+
+  if (/POST|启动失败/.test(alarm)) {
+    return {
+      id: "industrial-computer-startup",
+      label: "整机启动链路评估",
+      tone: "warning",
+      title: "当前异常指向工控机上电自检或启动链路",
+      detail: "下一步应核对电源状态、POST 结果、显示输出和系统启动完整性。",
+      diagnosis: "工控机 POST / 启动异常方向",
     };
   }
 
@@ -274,8 +340,25 @@ const controlBranchInputs = [
   ["电源状态", "正常", "保留电源正常状态", "排除控制器或通信模块掉电"],
 ];
 
+const industrialComputerPowerInputs = [
+  ["Power LED 状态", "熄灭", "记录设备电源指示状态", "确认设备端是否已经获得有效输入电源"],
+  ["设备端输入电压", "11.6 V", "记录启动瞬间最低电压", "与铭牌和对应型号手册的输入范围比较"],
+  ["DC 端子状态", "疑似松动", "记录端子与极性状态", "检查端头紧固、极性和应力释放"],
+  ["系统启动状态", "无法稳定启动", "记录业务系统恢复情况", "确认操作系统与站控业务软件是否完整启动"],
+];
+
+const industrialComputerStartupInputs = [
+  ["电源 / 健康指示灯", "已上电", "记录整机供电与健康状态", "先区分未供电和上电后自检失败"],
+  ["POST 结果", "致命错误", "记录上电自检结果", "区分内存、存储、外设和主板启动故障"],
+  ["显示输出", "无有效画面", "记录本地显示状态", "核对显示链路和启动错误信息"],
+  ["系统启动状态", "启动失败", "记录操作系统启动情况", "确认引导设备、系统镜像和业务软件状态"],
+];
+
 function getBranchThresholdInputs(intakeBranch) {
-  return intakeBranch?.id === "equipment-mismatch" ? controlBranchInputs : thresholdInputs;
+  if (intakeBranch?.id === "equipment-mismatch") return controlBranchInputs;
+  if (intakeBranch?.id === "industrial-computer-power") return industrialComputerPowerInputs;
+  if (intakeBranch?.id === "industrial-computer-startup") return industrialComputerStartupInputs;
+  return thresholdInputs;
 }
 
 const guideVisuals = {
@@ -1164,8 +1247,19 @@ export default function App() {
   }
 
   function updateIntakeSelection(label, value) {
-    setIntakeSelections((current) => ({ ...current, [label]: value }));
-    setEquipmentFieldSources((current) => ({ ...current, [label]: "工程师手动确认" }));
+    const profile = label === "设备型号" ? equipmentProfileDefaults[value] : null;
+    setIntakeSelections((current) => profile ? {
+      ...current,
+      [label]: value,
+      "设备角色": profile[0],
+      "关联告警": profile[1],
+    } : { ...current, [label]: value });
+    setEquipmentFieldSources((current) => profile ? {
+      ...current,
+      [label]: "工程师手动确认",
+      "设备角色": "型号知识 + 设备台账",
+      "关联告警": "型号知识 + 告警规则",
+    } : { ...current, [label]: "工程师手动确认" });
     setAutoRecognized(false);
   }
 
