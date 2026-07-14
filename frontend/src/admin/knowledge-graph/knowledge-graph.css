@@ -31,6 +31,7 @@
 .ikg-release-banner.candidate { border-color: #846337; background: rgba(137,92,31,.14); color: var(--ikg-amber); }
 .ikg-release-banner.published { border-color: #3b8064; background: rgba(35,111,78,.15); color: var(--ikg-green); }
 .ikg-release-banner > button { display: flex; align-items: center; gap: 5px; border: 0; background: transparent; color: #7bd0eb; font-size: 9px; }
+.ikg-release-banner > button:disabled { cursor: wait; opacity: .55; }
 
 .ikg-stat-strip { display: flex; align-items: center; gap: 0; border-block: 1px solid #1e394a; }
 .ikg-stat-strip span { display: flex; align-items: baseline; gap: 5px; min-width: 100px; padding: 7px 13px; border-right: 1px solid #1e394a; color: #70899b; font-size: 8px; }

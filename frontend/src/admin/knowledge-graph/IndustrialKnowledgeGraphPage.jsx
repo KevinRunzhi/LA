@@ -11,6 +11,7 @@ import {
   Minus,
   Network,
   Plus,
+  RefreshCcw,
   Search,
   ShieldCheck,
   Sparkles,
@@ -133,9 +134,10 @@ function GraphEdge({ relation, source, target, emphasized, muted, showLabel, pub
   );
 }
 
-function GraphNodeDetail({ node, relations, nodesById }) {
+function GraphNodeDetail({ node, relations, nodesById, localSyncPending = false }) {
   if (!node) return null;
   const related = relations.filter((relation) => relation.source === node.id || relation.target === node.id);
+  const nodeWaitingForSync = localSyncPending && node.status === "published" && node.changeType;
   return (
     <aside className="ikg-detail-panel" aria-live="polite">
       <div className="ikg-detail-kicker"><Network size={14}/><span>节点详情</span></div>
@@ -146,7 +148,7 @@ function GraphNodeDetail({ node, relations, nodesById }) {
       <dl>
         <div><dt>所属领域</dt><dd>{domainNames[node.domain] || node.domain}</dd></div>
         <div><dt>可信等级</dt><dd>{verificationNames[node.verificationLevel] || node.verificationLevel}</dd></div>
-        <div><dt>知识状态</dt><dd>{node.status === "published" ? "已正式发布" : node.status === "candidate" ? "工程师候选" : "既有知识"}</dd></div>
+        <div><dt>知识状态</dt><dd>{nodeWaitingForSync ? "待同步到本地" : node.status === "published" ? "已正式发布" : node.status === "candidate" ? "工程师候选" : "既有知识"}</dd></div>
         <div><dt>知识版本</dt><dd>{node.knowledgeId ? `${node.knowledgeId} · V${node.knowledgeVersion || "1.0"}` : "图谱基线"}</dd></div>
         <div><dt>来源案例</dt><dd>{node.sourceCaseIds?.[0] || "设备知识库"}</dd></div>
       </dl>
@@ -158,12 +160,21 @@ function GraphNodeDetail({ node, relations, nodesById }) {
           return <p key={relation.id}><span>{outgoing ? relation.relation : `被${relation.relation}`}</span><strong>{other?.name || "未知节点"}</strong></p>;
         }) : <p className="empty">当前没有直接关系</p>}
       </section>
-      {node.changeType && <footer className={`ikg-change-source ${node.status === "published" ? "published" : "candidate"}`}><GitBranch size={15}/><div><strong>{node.status === "published" ? "专家已确认并发布" : "工程师候选变更"}</strong><span>{node.sourceCaseIds?.[0] || "CASE-ACP4000-001"}</span></div></footer>}
+      {node.changeType && <footer className={`ikg-change-source ${node.status === "published" ? "published" : "candidate"}`}><GitBranch size={15}/><div><strong>{nodeWaitingForSync ? "专家已发布 · 等待本地同步" : node.status === "published" ? "专家已确认并发布" : "工程师候选变更"}</strong><span>{node.sourceCaseIds?.[0] || "CASE-ACP4000-001"}</span></div></footer>}
     </aside>
   );
 }
 
-export default function IndustrialKnowledgeGraphPage({ state, onReview }) {
+export default function IndustrialKnowledgeGraphPage({
+  state,
+  portalRole = "expert",
+  engineerSnapshot,
+  engineerSync,
+  busy = false,
+  onReview,
+  onSync,
+  onVerify,
+}) {
   const [view, setView] = useState("overview");
   const [graph, setGraph] = useState(null);
   const [error, setError] = useState("");
@@ -176,6 +187,9 @@ export default function IndustrialKnowledgeGraphPage({ state, onReview }) {
   const cameraRef = useRef(camera);
   const animationRef = useRef(null);
   const dragRef = useRef(null);
+  const isEngineer = portalRole === "engineer";
+  const localVersion = engineerSnapshot?.version || engineerSync?.local_version || "1.0";
+  const hasLocalUpdate = isEngineer && engineerSync?.status === "update_available";
 
   useEffect(() => { cameraRef.current = camera; }, [camera]);
 
@@ -302,19 +316,34 @@ export default function IndustrialKnowledgeGraphPage({ state, onReview }) {
   if (error) return <main className="admin-page ikg-error"><Network size={30}/><h2>知识图谱加载失败</h2><p>{error}</p><button className="admin-primary" onClick={() => loadGraph(view)}>重新加载</button></main>;
   if (!graph) return <main className="admin-page ikg-loading"><Loader2 className="spin"/><span>正在载入工控机知识图谱…</span></main>;
 
+  const engineerBannerClass = hasLocalUpdate ? "candidate" : state.knowledgePublished ? "published" : "proposed";
+  const releaseBannerClass = isEngineer ? engineerBannerClass : graph.published ? "published" : graph.changeStatus;
+  const engineerBannerTitle = hasLocalUpdate
+    ? `发现知识 V${engineerSync.latest_version}，尚未同步到本地`
+    : state.knowledgePublished
+      ? `本地知识 V${localVersion} 已同步并参与诊断`
+      : `本地知识 V${localVersion} · 当前已是最新`;
+  const engineerBannerDetail = hasLocalUpdate
+    ? `当前诊断仍使用 V${localVersion} · 可先预览专家发布的图谱变化`
+    : state.knowledgePublished
+      ? "全局图谱、现场问答与本地 SQLite 快照版本一致"
+      : "当前展示全局知识基线，散热案例变更可在右侧视图预览";
+
   return (
     <main className="admin-page ikg-page">
       <header className="ikg-page-head">
-        <div><span>INDUSTRIAL COMPUTER KNOWLEDGE GRAPH</span><h1>工控机知识图谱</h1><p>从全局知识网络观察故障领域，并追踪本次案例如何形成正式知识。</p></div>
+        <div><span>INDUSTRIAL COMPUTER KNOWLEDGE GRAPH</span><h1>工控机知识图谱</h1><p>{isEngineer ? "查看设备知识覆盖、本地生效版本，以及专家发布后的图谱变化。" : "从全局知识网络观察故障领域，并追踪本次案例如何形成正式知识。"}</p></div>
         <div className="ikg-view-switch" role="group" aria-label="图谱视图">
           <button className={view === "overview" ? "active" : ""} onClick={() => setView("overview")}><Network size={15}/>全局知识图谱</button>
           <button className={view === "changes" ? "active" : ""} onClick={() => setView("changes")}><GitBranch size={15}/>本次新增与修改 <i>{graph.changeRelationIds.length}</i></button>
         </div>
       </header>
 
-      <section className={`ikg-release-banner ${graph.published ? "published" : graph.changeStatus}`}>
-        <div>{graph.published ? <Check size={17}/> : <Sparkles size={17}/>}<span><strong>{graph.published ? `知识 V${graph.knowledgeVersion} 已正式并入图谱` : graph.changeStatus === "candidate" ? "工程师候选变更等待专家确认" : "当前展示图谱基线与知识建设范围"}</strong><small>{graph.published ? `${graph.sourceCaseId} · 专家审核通过` : view === "changes" ? `${graph.changeNodeIds.length} 个候选节点 · ${graph.changeRelationIds.length} 条候选关系` : "点击节点可放大其一跳关系"}</small></span></div>
-        {!graph.published && state.caseStatus === "pending_expert_review" && <button onClick={onReview}>进入专家审核 <ArrowLeft size={13}/></button>}
+      <section className={`ikg-release-banner ${releaseBannerClass}`}>
+        <div>{isEngineer ? hasLocalUpdate ? <RefreshCcw size={17}/> : <ShieldCheck size={17}/> : graph.published ? <Check size={17}/> : <Sparkles size={17}/>}<span><strong>{isEngineer ? engineerBannerTitle : graph.published ? `知识 V${graph.knowledgeVersion} 已正式并入图谱` : graph.changeStatus === "candidate" ? "工程师候选变更等待专家确认" : "当前展示图谱基线与知识建设范围"}</strong><small>{isEngineer ? engineerBannerDetail : graph.published ? `${graph.sourceCaseId} · 专家审核通过` : view === "changes" ? `${graph.changeNodeIds.length} 个候选节点 · ${graph.changeRelationIds.length} 条候选关系` : "点击节点可放大其一跳关系"}</small></span></div>
+        {isEngineer && hasLocalUpdate && <button disabled={busy} onClick={onSync}>{busy ? <Loader2 className="spin" size={13}/> : <RefreshCcw size={13}/>}同步到 V{engineerSync.latest_version}</button>}
+        {isEngineer && !hasLocalUpdate && state.knowledgePublished && onVerify && <button onClick={onVerify}><ShieldCheck size={13}/>验证知识应用</button>}
+        {!isEngineer && !graph.published && state.caseStatus === "pending_expert_review" && <button onClick={onReview}>进入专家审核 <ArrowLeft size={13}/></button>}
       </section>
 
       <section className="ikg-stat-strip">
@@ -370,7 +399,7 @@ export default function IndustrialKnowledgeGraphPage({ state, onReview }) {
           <div className="ikg-canvas-hint"><Maximize2 size={13}/><span>滚轮缩放 · 拖拽平移 · 点击节点查看一跳关系</span></div>
           <div className="ikg-legend"><span><i className="domain"/>故障领域</span><span><i className="knowledge"/>既有知识</span><span><i className="candidate"/>候选变更</span><span><i className="published"/>正式发布</span></div>
         </section>
-        {selectedNode ? <GraphNodeDetail node={selectedNode} relations={graph.relations} nodesById={nodesById}/> : <aside className="ikg-detail-panel ikg-detail-empty"><Network size={28}/><h2>选择一个知识节点</h2><p>点击图谱节点后，镜头会自动放大该节点及其一跳关系。</p><button onClick={resetCamera}><Home size={14}/>返回全局视图</button></aside>}
+        {selectedNode ? <GraphNodeDetail node={selectedNode} relations={graph.relations} nodesById={nodesById} localSyncPending={hasLocalUpdate}/> : <aside className="ikg-detail-panel ikg-detail-empty"><Network size={28}/><h2>选择一个知识节点</h2><p>点击图谱节点后，镜头会自动放大该节点及其一跳关系。</p><button onClick={resetCamera}><Home size={14}/>返回全局视图</button></aside>}
       </div>
     </main>
   );

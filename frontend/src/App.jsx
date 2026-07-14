@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { api } from "./api/client";
 import AdminShell from "./admin/AdminShell";
+import IndustrialKnowledgeGraphPage from "./admin/knowledge-graph/IndustrialKnowledgeGraphPage";
 import { presentationApi } from "./admin/presentationApi";
 import { SourceCard } from "./components/chat/SourceCard";
 import { StreamingMarkdown } from "./components/chat/StreamingMarkdown";
@@ -83,6 +84,16 @@ function recordFromFeedbackPackage(feedbackPackage, caseStatus) {
     )),
     safety_confirmed: true,
   };
+}
+
+const AGENT_STREAM_DELAY_MIN = 600;
+const AGENT_STREAM_DELAY_MAX = 1800;
+
+function getRandomAgentStreamDelay() {
+  return Math.round(
+    AGENT_STREAM_DELAY_MIN
+      + Math.random() * (AGENT_STREAM_DELAY_MAX - AGENT_STREAM_DELAY_MIN),
+  );
 }
 
 const intakeTasks = [
@@ -950,6 +961,9 @@ export default function App() {
   const [record, setRecord] = useState(null);
   const [expertReview, setExpertReview] = useState(null);
   const [feedbackState, setFeedbackState] = useState(null);
+  const [engineerSync, setEngineerSync] = useState(null);
+  const [engineerSnapshot, setEngineerSnapshot] = useState(null);
+  const [graphSyncBusy, setGraphSyncBusy] = useState(false);
   const [feedbackUploadStatus, setFeedbackUploadStatus] = useState("idle");
   const [feedbackUploadError, setFeedbackUploadError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -998,12 +1012,22 @@ export default function App() {
     if (!isAuthenticated || currentUser.userType === "expert") return undefined;
     let active = true;
     presentationApi.switchRole("engineer")
-      .then(() => presentationApi.state())
-      .then((nextState) => {
-        if (active) setFeedbackState(nextState);
+      .then(() => Promise.all([
+        presentationApi.state(),
+        presentationApi.engineerSyncStatus(),
+        presentationApi.engineerSnapshot(),
+      ]))
+      .then(([nextState, nextSync, nextSnapshot]) => {
+        if (!active) return;
+        setFeedbackState(nextState);
+        setEngineerSync(nextSync);
+        setEngineerSnapshot(nextSnapshot);
       })
       .catch(() => {
-        if (active) setFeedbackState(null);
+        if (!active) return;
+        setFeedbackState(null);
+        setEngineerSync(null);
+        setEngineerSnapshot(null);
       });
     return () => { active = false; };
   }, [isAuthenticated, currentUser.userType]);
@@ -1194,6 +1218,9 @@ export default function App() {
   }
 
   function runStageTransition(type, fromIndex, onDone) {
+    const streamStartDelay = type === "intake" && fromIndex === 0
+      ? 1500
+      : getRandomAgentStreamDelay();
     setTriageAgentStatus("running");
     setTriageTraceCount(0);
     setTriageCharCount(0);
@@ -1205,21 +1232,24 @@ export default function App() {
     });
 
     let currentCount = 0;
-    const typingTimer = window.setInterval(() => {
-      currentCount += 1;
-      setTriageCharCount(currentCount);
-      setActiveTransition((current) => (
-        current && current.type === type && current.fromIndex === fromIndex
-          ? { ...current, charCount: currentCount }
-          : current
-      ));
-    }, 48);
+    let typingTimer;
+    window.setTimeout(() => {
+      typingTimer = window.setInterval(() => {
+        currentCount += 1;
+        setTriageCharCount(currentCount);
+        setActiveTransition((current) => (
+          current && current.type === type && current.fromIndex === fromIndex
+            ? { ...current, charCount: currentCount }
+            : current
+        ));
+      }, 48);
+    }, streamStartDelay);
 
     [1, 2, 3, 4].forEach((count, index) => {
-      window.setTimeout(() => setTriageTraceCount(count), 980 * (index + 1));
+      window.setTimeout(() => setTriageTraceCount(count), streamStartDelay + 980 * (index + 1));
     });
 
-    window.setTimeout(() => window.clearInterval(typingTimer), 7200);
+    window.setTimeout(() => window.clearInterval(typingTimer), streamStartDelay + 7200);
     window.setTimeout(() => {
       setTriageAgentStatus("done");
       setTriageCharCount(999);
@@ -1231,7 +1261,7 @@ export default function App() {
       window.setTimeout(() => {
         Promise.resolve(onDone?.());
       }, 520);
-    }, 7200);
+    }, streamStartDelay + 7200);
   }
 
   function continueIntakeStep() {
@@ -1250,24 +1280,25 @@ export default function App() {
   }
 
   function autoFillIntakeSelections() {
+    const streamStartDelay = getRandomAgentStreamDelay();
     setAutoRecognizing(true);
     setAutoRecognized(false);
     setEquipmentTraceCount(0);
     [1, 2, 3, 4, 5].forEach((count, index) => {
-      window.setTimeout(() => setEquipmentTraceCount(count), 520 * (index + 1));
+      window.setTimeout(() => setEquipmentTraceCount(count), streamStartDelay + 520 * (index + 1));
     });
     setEquipmentFieldSources({});
     equipmentOptionGroups.forEach((group, index) => {
       window.setTimeout(() => {
         setIntakeSelections((current) => ({ ...current, [group.label]: group.options[0] }));
         setEquipmentFieldSources((current) => ({ ...current, [group.label]: group.source }));
-      }, 760 * (index + 1));
+      }, streamStartDelay + 760 * (index + 1));
     });
     window.setTimeout(() => {
       setAutoRecognizing(false);
       setAutoRecognized(true);
       setEquipmentTraceCount(5);
-    }, 2850);
+    }, streamStartDelay + 2850);
   }
 
   function updateThresholdValue(label, value) {
@@ -1382,6 +1413,23 @@ export default function App() {
     }
   }
 
+  async function syncEngineerKnowledge() {
+    setGraphSyncBusy(true);
+    try {
+      await presentationApi.engineerSyncLatest();
+      const [nextState, nextSync, nextSnapshot] = await Promise.all([
+        presentationApi.state(),
+        presentationApi.engineerSyncStatus(),
+        presentationApi.engineerSnapshot(),
+      ]);
+      setFeedbackState(nextState);
+      setEngineerSync(nextSync);
+      setEngineerSnapshot(nextSnapshot);
+    } finally {
+      setGraphSyncBusy(false);
+    }
+  }
+
   if (!isAuthenticated) {
     return <LoginPage onLogin={handleLogin} />;
   }
@@ -1458,7 +1506,18 @@ export default function App() {
         </header>
 
         {activePage === "graph" ? (
-          <KnowledgeGraphPage graph={graph} evidence={evidence} />
+          feedbackState ? (
+            <IndustrialKnowledgeGraphPage
+              state={feedbackState}
+              portalRole="engineer"
+              engineerSnapshot={engineerSnapshot}
+              engineerSync={engineerSync}
+              busy={graphSyncBusy}
+              onSync={syncEngineerKnowledge}
+            />
+          ) : (
+            <div className="admin-loading"><Loader2 className="spin" /> 正在载入工程师知识图谱…</div>
+          )
         ) : activePage === "records" ? (
           recordsView === "detail" && (record || feedbackState?.feedbackPackage) ? (
             <MaintenanceRecordPage
@@ -2796,9 +2855,12 @@ function AgentRunStage({ agents, activeAgentIndex }) {
         <div className="consultation-event-summary">
           <span>事件对象</span><strong>站控柜 A01 · ACP-4000 / IPC-610</strong><em>散热异常方向</em>
         </div>
-        <div className="consultation-central-progress"><div><i style={{ width: `${progress}%` }} /></div><span>{progress}%</span></div>
-        <div className="consultation-status-dots">
-          {agents.map((agent, index) => <span className={classNames(index < activeAgentIndex && "done", index === activeAgentIndex && "running")} key={agent.name}>{index < activeAgentIndex ? <Check size={12} /> : index + 1}<small>{agent.name}</small></span>)}
+        <div className="consultation-progress-system">
+          <div className="consultation-central-progress"><i style={{ width: `${progress}%` }} /></div>
+          <span className="consultation-progress-value">{progress}%</span>
+          <div className="consultation-status-dots">
+            {agents.map((agent, index) => <span className={classNames(index < activeAgentIndex && "done", index === activeAgentIndex && "running")} key={agent.name}>{index < activeAgentIndex ? <Check size={12} /> : index + 1}<small>{agent.name}</small></span>)}
+          </div>
         </div>
       </section>
     </div>
@@ -3826,7 +3888,6 @@ function RecordPage({ record, onBuildRecord, onOpenCurrent }) {
     maintainer: "李师傅",
     duration: "42 分钟",
     conclusion: record.conclusion,
-    category: "散热检修",
     isCurrent: true,
     tags: ["本次流程", "待归档"],
     checks: [
@@ -3847,7 +3908,6 @@ function RecordPage({ record, onBuildRecord, onOpenCurrent }) {
       maintainer: "李师傅",
       duration: "38 分钟",
       conclusion: "清理滤网和前面板风道后，风扇转速恢复，系统温度下降，告警解除。",
-      category: "散热检修",
       tags: ["散热异常", "已回流知识库"],
       checks: ["完成断电挂牌与防静电确认", "完成滤网清理和风道检查", "恢复上电后连续观察 15 分钟"],
     },
@@ -3861,7 +3921,6 @@ function RecordPage({ record, onBuildRecord, onOpenCurrent }) {
       maintainer: "王工",
       duration: "25 分钟",
       conclusion: "确认风扇积尘并完成清理，未发现接线松动。",
-      category: "风扇检修",
       tags: ["风扇检查", "低风险"],
       checks: ["检查 FAN1/FAN2 接线", "清理风扇叶片积尘", "记录恢复后转速"],
     },
@@ -3875,25 +3934,13 @@ function RecordPage({ record, onBuildRecord, onOpenCurrent }) {
       maintainer: "赵师傅",
       duration: "18 分钟",
       conclusion: "柜体通风良好，未发现进出风口遮挡。",
-      category: "例行巡检",
       tags: ["巡检", "无异常"],
       checks: ["确认柜门滤网状态", "检查柜内线缆遮挡", "记录环境温湿度"],
     },
   ].filter(Boolean);
   const [searchFault, setSearchFault] = useState("");
-  const [activeCategory, setActiveCategory] = useState("全部记录");
   const [detailRecordId, setDetailRecordId] = useState(null);
-  const categories = [
-    { label: "全部记录", count: records.length },
-    { label: "散热检修", count: records.filter((item) => item.category === "散热检修").length },
-    { label: "风扇检修", count: records.filter((item) => item.category === "风扇检修").length },
-    { label: "例行巡检", count: records.filter((item) => item.category === "例行巡检").length },
-  ];
-  const keyword = searchFault.trim();
-  const filteredRecords = records.filter((item) => (
-    (activeCategory === "全部记录" || item.category === activeCategory)
-    && (!keyword || `${item.title} ${item.fault} ${item.equipment}`.includes(keyword))
-  ));
+  const filteredRecords = records.filter((item) => item.fault.includes(searchFault.trim()));
   const selectedRecord = records.find((item) => item.id === detailRecordId);
 
   if (selectedRecord) {
@@ -3982,25 +4029,11 @@ function RecordPage({ record, onBuildRecord, onOpenCurrent }) {
               <Download size={16} />
               导出
             </button>
-            <button className="primary-button" onClick={record ? onOpenCurrent : onBuildRecord}>
+            <button className="primary-button" onClick={onBuildRecord}>
               <FileText size={16} />
-              {record ? "查看本次检修" : "生成演示记录"}
+              生成演示记录
             </button>
           </div>
-        </div>
-
-        <div className="record-category-row" aria-label="检修记录分类">
-          {categories.map((category) => (
-            <button
-              type="button"
-              key={category.label}
-              className={classNames(activeCategory === category.label && "active")}
-              onClick={() => setActiveCategory(category.label)}
-            >
-              <span>{category.label}</span>
-              <strong>{category.count}</strong>
-            </button>
-          ))}
         </div>
 
         <div className="record-filter-row">
@@ -4463,6 +4496,7 @@ function AssistantChat({
     const userMessage = { id: `user-${Date.now()}`, role: "user", text };
     const reply = buildMaintenanceAnswer(text) || getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep, text);
     const replyId = `assistant-${Date.now()}`;
+    const streamStartDelay = getRandomAgentStreamDelay();
     const evidenceItems = [
       "当前步骤上下文：" + context.label,
       ...retrievalStatuses.map((item) => item.title),
@@ -4499,7 +4533,7 @@ function AssistantChat({
             ? { ...message, evidenceVisibleCount: index + 1 }
             : message
         )));
-      }, 900 + index * 520);
+      }, streamStartDelay + 200 + index * 520);
       timersRef.current.push(timer);
     });
 
@@ -4521,7 +4555,7 @@ function AssistantChat({
               : message
           )));
         }
-      }, 700 + index * 34);
+      }, streamStartDelay + index * 34);
       timersRef.current.push(streamTimer);
     });
   }
@@ -4583,7 +4617,7 @@ function AssistantChat({
                   {triageStatus === "running" && index === triageVisibleLines.length - 1 && <i className="stream-cursor" />}
                 </p>
               )) : (
-                <p>{triageStatus === "running" && <i className="stream-cursor" />}</p>
+                <p>{triageStatus === "running" && triageCharCount > 0 && <i className="stream-cursor" />}</p>
               )}
             </div>
             {showTriageEvidence && (

@@ -28,7 +28,7 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
   const [confirmReset, setConfirmReset] = useState(false);
   const adminNavItems = portalRole === "expert"
     ? [["workbench","专家工作台",FileCheck2],["history","全部案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","知识图谱",Network]]
-    : [["workbench","我的案例",FileCheck2],["history","历史案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","本地知识图谱",Network]];
+    : [["workbench","我的案例",FileCheck2],["history","历史案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","知识图谱",Network]];
 
   async function loadAll(nextPage) {
     setError("");
@@ -84,8 +84,16 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
       {page === "history" && <HistoryCasesV2 cases={cases} onOpen={(item) => { setSelectedCase(item); setPage("case-detail"); }} />}
       {page === "case-detail" && <ReadonlyCase item={selectedCase} onBack={() => setPage("history")} />}
       {page === "knowledge" && <KnowledgeLibrary items={knowledge} onDynamic={() => setPage("knowledge-result")} />}
-      {page === "knowledge-graph" && portalRole === "expert" && <IndustrialKnowledgeGraphPage state={state} onReview={() => setPage("expert-review")} />}
-      {page === "knowledge-graph" && portalRole === "engineer" && <EngineerLocalKnowledgeGraph snapshot={engineerSnapshot} sync={engineerSync} busy={busy} onSync={() => action(presentationApi.engineerSyncLatest, "V1.1 已同步，本地图谱和现场问答已更新", "knowledge-graph")} onVerify={() => setPage("verify")} />}
+      {page === "knowledge-graph" && <IndustrialKnowledgeGraphPage
+        state={state}
+        portalRole={portalRole}
+        engineerSnapshot={engineerSnapshot}
+        engineerSync={engineerSync}
+        busy={busy}
+        onReview={() => setPage("expert-review")}
+        onSync={() => action(presentationApi.engineerSyncLatest, "V1.1 已同步，本地图谱和现场问答已更新", "knowledge-graph")}
+        onVerify={() => setPage("verify")}
+      />}
       {page === "people" && <PeoplePage users={users} />}
       </section>
       {confirmReset && <div className="presentation-reset-backdrop"><section><RefreshCcw size={24}/><span>录制状态重置</span><h2>恢复案例与知识初始状态？</h2><p>将恢复 CASE-ACP4000-001 待工程师确认、KB-008 V1.0 和发布前图谱。历史展示数据不会变化。</p><div><button className="admin-secondary" onClick={() => setConfirmReset(false)}>取消</button><button className="admin-primary" onClick={async () => { setConfirmReset(false); await action(presentationApi.reset, "演示已恢复：案例待确认，知识 V1.0", "workbench"); }}>确认重置</button></div></section></div>}
