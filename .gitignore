@@ -10,3 +10,5 @@ build/
 Thumbs.db
 *.log
 backend/data/presentation/*.db
+release/LA-stable-demo-*.tar.gz
+release/LA-stable-demo-*.tar.gz.sha256

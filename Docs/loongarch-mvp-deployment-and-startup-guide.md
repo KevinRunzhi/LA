@@ -6,6 +6,8 @@
 
 最终汇报时可以另行生成 `frontend/dist` 并由 Flask 托管，但这不是当前模块开发与兼容性验证的替代方案。
 
+当前最终汇报采用的稳定演示包、旧服务切换和现场操作步骤，统一以 [`loongarch-stable-demo-deployment-guide.md`](./loongarch-stable-demo-deployment-guide.md) 为准。
+
 ## 1. 固定环境
 
 | 环境 | 版本/要求 |
