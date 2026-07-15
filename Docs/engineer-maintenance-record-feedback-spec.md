@@ -248,7 +248,7 @@
 {
   "caseId": "CASE-ACP4000-001",
   "recordId": "REC-ACP4000-001",
-  "engineerId": "lishifu",
+  "engineerId": "worker001",
   "incident": {
     "time": "2026-07-10 10:25",
     "site": "某输气场站",

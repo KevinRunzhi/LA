@@ -1,7 +1,11 @@
 {"items":[
-  {"id":"ENG-001","name":"李师傅","role":"engineer","team":"站控运维一班","site":"山东德州分输站","status":"active"},
-  {"id":"ENG-002","name":"王工","role":"engineer","team":"设备保障二班","site":"北区输气场站","status":"active"},
-  {"id":"ENG-003","name":"赵师傅","role":"engineer","team":"自动化维护组","site":"南区分输站","status":"active"},
-  {"id":"EXP-001","name":"专家账号","role":"expert","scope":"all_cases","status":"active"},
-  {"id":"ADM-001","name":"系统管理员","role":"admin","canEditProfessionalContent":false,"status":"active"}
+  {"id":"ENG-001","account":"worker001","name":"李师傅","role":"engineer","team":"站控运维一班","site":"山东德州分输站","status":"active"},
+  {"id":"ENG-002","account":"wangong","name":"王志强","role":"engineer","team":"设备保障二班","site":"北区输气场站","status":"active"},
+  {"id":"ENG-003","account":"zhaoshifu","name":"赵建国","role":"engineer","team":"自动化维护组","site":"南区分输站","status":"active"},
+  {"id":"ENG-004","account":"guojianjun","name":"郭建军","role":"engineer","team":"仪控保障组","site":"德州作业区","status":"active"},
+  {"id":"ENG-005","account":"chenzhiqiang","name":"陈志强","role":"engineer","team":"站控运维二班","site":"山东德州分输站","status":"active"},
+  {"id":"EXP-001","account":"expert001","name":"王海峰","role":"expert","organization":"国家管网集团山东德州分输站 · 设备技术组","specialty":"工控机与站控系统","scope":"all_cases","status":"active"},
+  {"id":"EXP-002","account":"zhouqiming","name":"周启明","role":"expert","organization":"山东区域技术支持中心 · 自动化组","specialty":"PLC、DCS 与控制网络","scope":"all_cases","status":"active"},
+  {"id":"EXP-003","account":"sunjian","name":"孙健","role":"expert","organization":"德州作业区 · 仪控保障组","specialty":"电源系统、仪表回路与联锁保护","scope":"all_cases","status":"active"},
+  {"id":"ADM-001","account":"admin","name":"系统管理员","role":"admin","team":"平台运维中心","canEditProfessionalContent":false,"status":"active"}
 ]}

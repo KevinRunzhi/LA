@@ -20,30 +20,6 @@
   font-size: 9px;
 }
 
-.login-demo-accounts {
-  display: grid;
-  grid-template-columns: auto 1fr 1fr;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(108, 146, 176, 0.18);
-}
-
-.login-demo-accounts span {
-  color: #6f879a;
-  font-size: 9px;
-}
-
-.login-demo-accounts button {
-  padding: 6px 7px;
-  border: 1px solid rgba(91, 151, 192, 0.28);
-  border-radius: 7px;
-  background: rgba(13, 35, 53, 0.62);
-  color: #88bad2;
-  font-size: 8px;
-}
-
 .expert-review-story {
   display: grid;
   grid-template-columns: 0.9fr 0.72fr 1.18fr;

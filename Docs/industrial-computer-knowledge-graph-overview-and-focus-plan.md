@@ -250,7 +250,7 @@
   "knowledgeVersion": "1.1",
   "sourceCaseIds": ["CASE-ACP4000-001"],
   "evidenceRefs": ["清理后风扇转速仍偏低", "更换后转速恢复"],
-  "proposedBy": "lishifu",
+  "proposedBy": "worker001",
   "reviewedBy": null
 }
 ```
