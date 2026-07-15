@@ -507,7 +507,7 @@ const guideVisuals = {
         status: "接线确认",
         check: "FAN1/FAN2 顺序",
         image: "/images/guide/guide-step04-fan-wiring.jpg",
-        detail: "查看主板 FAN 接口位置，拆装前记录接线顺序，恢复时核对 FAN1/FAN2 连接。",
+        detail: "查看智能告警板 FAN 接口标签；拆线前拍照和标记，两只风扇应连续接入 FAN1、FAN2，不能跳号。",
       },
     ],
   },
@@ -4792,7 +4792,7 @@ function getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentSt
   }
 
   return {
-    label: "辅助对话",
+    label: "检修智能体",
     suggestion: "先描述现场现象，我会辅助补充信息并解释当前步骤。",
   };
 }
@@ -5039,15 +5039,43 @@ function AssistantChat({
     if (!text || thinking || streaming) return;
 
     const userMessage = { id: `user-${Date.now()}`, role: "user", text };
-    const reply = buildMaintenanceAnswer(text) || getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep, text);
+    const fanWiringQuestion = stage === "guide"
+      && currentStep?.id === "step-04-filter-fan"
+      && /FAN1|FAN2|接线顺序|风扇.{0,8}接线|接线.{0,8}风扇/i.test(text);
+    const fanSpeedCauseQuestion = stage === "input"
+      && activeIntakeStep === 3
+      && intakeBranch?.id !== "equipment-mismatch"
+      && /风扇.{0,8}转速.{0,16}(什么情况|原因|导致|为什么|异常|偏低|过低)|转速.{0,12}(偏低|过低|异常).{0,12}(原因|导致|为什么)/i.test(text);
+    const reply = buildMaintenanceAnswer(text, {
+      allowFanWiring: fanWiringQuestion,
+      allowFanSpeedCause: fanSpeedCauseQuestion,
+    })
+      || getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep, text);
     const replyId = `assistant-${Date.now()}`;
     const streamStartDelay = getRandomAgentStreamDelay();
-    const evidenceItems = [
-      "当前步骤上下文：" + context.label,
-      ...retrievalStatuses.map((item) => item.title),
-      ...assistantSources.map((source) => source.title),
-      "风险提示：断电、冷却、防静电后再进入拆检动作",
-    ];
+    const evidenceItems = fanWiringQuestion
+      ? [
+          "当前步骤上下文：" + context.label,
+          "ACP-4000 / IPC-610 User Manual Ed.6 · 印刷页 24 · FAN 连续接线说明",
+          "ACP-4000 / IPC-610 User Manual Ed.6 · 印刷页 25 · Table 4.5 风扇数量配置",
+          "ACP-4000 / IPC-610 User Manual Ed.6 · 印刷页 27 · Table 4.20 FAN 针脚定义",
+          "风险提示：断电、标记原线序并做好防静电后再拆装",
+        ]
+      : fanSpeedCauseQuestion
+        ? [
+            "当前步骤上下文：" + context.label,
+            "ACP-4000 / IPC-610 User Manual Ed.6 · 印刷页 20~23 · 转速监控、Smart Fan 与告警判据",
+            "ACP-4000 / IPC-610 User Manual Ed.6 · 印刷页 24~25 · FAN 接线及数量配置",
+            "ACP-4000 / IPC-610 User Manual Ed.6 · 印刷页 27 · +12V_FAN 与 FAN_DEC 针脚",
+            "散热异常检修指南 · 积尘、卡滞、轴承、接线与告警板排查",
+            "风险提示：断电并做好防静电后再检查风扇、插头和告警板",
+          ]
+      : [
+          "当前步骤上下文：" + context.label,
+          ...retrievalStatuses.map((item) => item.title),
+          ...assistantSources.map((source) => source.title),
+          "风险提示：断电、冷却、防静电后再进入拆检动作",
+        ];
 
     setMessages((current) => [
       ...current,
@@ -5137,7 +5165,7 @@ function AssistantChat({
       <div className="assistant-head">
         <MessageCircle size={16} />
         <div className="assistant-head-copy">
-          <strong>{stage === "analysis" ? "多 Agent 会诊" : "辅助对话"}</strong>
+          <strong>{stage === "analysis" ? "多 Agent 会诊" : "检修智能体"}</strong>
           <span aria-live="polite">
             {assistantPetState === "idle" ? context.label : ASSISTANT_PET_LABELS[assistantPetState]}
           </span>

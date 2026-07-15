@@ -79,7 +79,7 @@ export const fallbackGuideSteps = [
     checks: ["门滤网积尘", "风扇滤网积尘", "风扇异响/停转/低速", "FAN1/FAN2 顺序"],
     safety: "拆装风扇或线缆前必须断电并保留照片记录。",
     thresholds: ["风扇 < 500 rpm 判定异常"],
-    source: "风扇与滤网检查流程",
+    source: "ACP-4000 / IPC-610 User Manual Ed.6 · 第 24、25、27 页",
   },
   {
     id: "step-05-verify",

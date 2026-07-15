@@ -7086,7 +7086,7 @@ body {
   .intake-summary-launch .primary-button { justify-content: center; }
 }
 
-/* 辅助对话桌宠：固定在标题右侧，并跟随 Agent 生命周期切换四种状态。 */
+/* 检修智能体桌宠：固定在标题右侧，并跟随 Agent 生命周期切换四种状态。 */
 .assistant-head {
   min-height: 70px;
   align-items: center;
