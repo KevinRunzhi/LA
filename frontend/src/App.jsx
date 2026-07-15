@@ -1200,7 +1200,6 @@ export default function App() {
   const [activePage, setActivePage] = useState("workbench");
   const [recordsView, setRecordsView] = useState("list");
   const [stage, setStage] = useState("home");
-  const [health, setHealth] = useState("连接中");
   const [scenario, setScenario] = useState(null);
   const [homeDraft, setHomeDraft] = useState("");
   const [intakeMaterials, setIntakeMaterials] = useState([]);
@@ -1251,28 +1250,21 @@ export default function App() {
 
   useEffect(() => {
     Promise.all([
-      api.health(),
       api.scenario(),
       api.steps(),
       api.evidence(),
       api.graph(),
     ])
-      .then(([healthResult, scenarioResult, stepResult, evidenceResult, graphResult]) => {
-        setHealth(
-          healthResult.status === "ok"
-            ? "后端已连接"
-            : healthResult.status === "offline"
-              ? "本地演示模式"
-              : "后端异常"
-        );
+      .then(([scenarioResult, stepResult, evidenceResult, graphResult]) => {
         setScenario(scenarioResult);
         setInput(scenarioResult.default_input || defaultInput);
         setSteps(stepResult);
         setEvidence(evidenceResult);
         setGraph(graphResult);
       })
-      .catch(() => setHealth("后端未连接"));
+      .catch(() => {});
   }, []);
+
   useEffect(() => {
     let active = true;
     Promise.allSettled([
@@ -1789,15 +1781,6 @@ export default function App() {
           <div className="topbar-meta">
             <span><MapPin size={16} /> {currentUser.site || scenario?.site || "山东德州分输站"} · {currentUser.team}</span>
             <span><UserRound size={16} /> {currentUser.name} · {currentUser.role}</span>
-            <span
-              className={classNames(
-                "health-pill",
-                health === "后端已连接" && "ok",
-                health === "本地演示模式" && "demo"
-              )}
-            >
-              {health}
-            </span>
             <button className="topbar-logout" onClick={handleLogout} title="退出登录">
               <LogOut size={15} />
               退出

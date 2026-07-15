@@ -4809,6 +4809,57 @@ body {
   border-color: rgba(243, 164, 59, 0.4);
 }
 
+/* 首页接入状态统一：六类快速接诊均使用同一套绿色已接入视觉。 */
+.fault-task-card small {
+  width: fit-content;
+  border: 1px solid rgba(72, 211, 151, 0.24);
+  border-radius: 999px;
+  background: rgba(46, 180, 125, 0.12);
+  color: #72DFAE;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.fault-task-card.enabled,
+.fault-task-card.disabled {
+  border-color: rgba(72, 211, 151, 0.68);
+  background:
+    linear-gradient(90deg, rgba(46, 180, 125, 0.14), rgba(16, 35, 48, 0.92) 42%),
+    #102130;
+  box-shadow:
+    inset 4px 0 #48D397,
+    0 0 0 1px rgba(72, 211, 151, 0.08),
+    0 10px 24px rgba(4, 18, 26, 0.28);
+}
+
+.fault-task-card.enabled:hover,
+.fault-task-card.disabled:hover {
+  border-color: rgba(96, 229, 174, 0.88);
+  background:
+    linear-gradient(90deg, rgba(46, 180, 125, 0.2), rgba(19, 43, 55, 0.96) 46%),
+    #132A36;
+  box-shadow:
+    inset 4px 0 #60E5AE,
+    0 0 0 1px rgba(96, 229, 174, 0.14),
+    0 12px 28px rgba(4, 18, 26, 0.34);
+}
+
+.fault-task-card.enabled > span,
+.fault-task-card.disabled > span {
+  color: #82E8BA;
+  background: rgba(46, 180, 125, 0.16);
+}
+
+.device-object-item em,
+.device-object-item.active em,
+.device-object-item.standby em {
+  color: #79DFB4;
+  background: rgba(46, 180, 125, 0.15);
+  border: 1px solid rgba(72, 211, 151, 0.28);
+}
+
 .fault-pulse,
 .location-pulse {
   border-color: #FFE2AD;
