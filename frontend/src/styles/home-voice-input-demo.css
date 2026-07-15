@@ -1,0 +1,214 @@
+.intake-action-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-voice-input-control {
+  position: relative;
+  display: flex;
+}
+
+.assistant-input.has-voice-input {
+  grid-template-columns: minmax(0, 1fr) 36px 36px;
+}
+
+.assistant-input .home-voice-input-control.is-compact {
+  width: 36px;
+  height: 100%;
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  border-left: 1px solid #243750;
+  background: #080f1f;
+}
+
+.assistant-input .home-voice-input-control.is-compact .home-voice-input-button {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+  grid-template-columns: 5px 16px 5px;
+  gap: 1px;
+  color: #91aaba;
+  border: 1px solid #385064;
+  background: #0d1a25;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
+}
+
+.assistant-input .home-voice-input-control.is-compact .home-voice-input-button:hover {
+  color: #c8edf2;
+  border-color: #548296;
+  background: #102532;
+}
+
+.assistant-input .home-voice-input-control.is-compact .home-voice-input-button.is-listening {
+  color: #e7fbff;
+  border-color: #72d9e3;
+  background: #123340;
+}
+
+.home-voice-input-control.is-compact .home-voice-mic-icon {
+  width: 16px;
+  height: 20px;
+}
+
+.home-voice-input-control.is-compact .home-voice-mic-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.home-voice-input-control.is-compact .home-voice-wave {
+  height: 14px;
+}
+
+.home-voice-input-button {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  grid-template-columns: 8px 20px 8px;
+  place-content: center;
+  align-items: center;
+  gap: 1px;
+  overflow: visible;
+  border: 1px solid #385064;
+  border-radius: 50%;
+  background: #0d1a25;
+  color: #91aaba;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    transform 150ms ease;
+}
+
+.home-voice-input-button:hover {
+  color: #c8edf2;
+  border-color: #548296;
+  background: #102532;
+}
+
+.home-voice-input-button:active {
+  transform: scale(0.96);
+}
+
+.home-voice-input-button:focus-visible {
+  outline: 2px solid #55b8c2;
+  outline-offset: 3px;
+}
+
+.home-voice-input-button.is-listening {
+  color: #e7fbff;
+  border-color: #72d9e3;
+  background: #123340;
+  box-shadow:
+    0 0 0 4px rgba(85, 184, 194, 0.12),
+    0 0 18px rgba(74, 202, 216, 0.34),
+    inset 0 0 12px rgba(94, 213, 225, 0.12);
+  animation: homeVoiceButtonPulse 1.2s ease-in-out infinite;
+}
+
+.home-voice-mic-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 24px;
+}
+
+.home-voice-input-button.is-listening .home-voice-mic-icon {
+  animation: homeVoiceMicFloat 820ms ease-in-out infinite;
+  filter: drop-shadow(0 0 5px rgba(128, 226, 236, 0.55));
+}
+
+.home-voice-wave {
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.home-voice-wave i {
+  display: block;
+  width: 1px;
+  height: 4px;
+  border-radius: 1px;
+  background: currentColor;
+  transform-origin: center;
+}
+
+.home-voice-input-button.is-listening .home-voice-wave {
+  opacity: 0.92;
+}
+
+.home-voice-input-button.is-listening .home-voice-wave i {
+  animation: homeVoiceWave 620ms ease-in-out infinite alternate;
+}
+
+.home-voice-input-button.is-listening .home-voice-wave i:nth-child(2) {
+  animation-delay: -210ms;
+}
+
+.home-voice-input-button.is-listening .home-voice-wave i:nth-child(3) {
+  animation-delay: -410ms;
+}
+
+.home-voice-wave-right {
+  transform: scaleX(-1);
+}
+
+.home-voice-input-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@keyframes homeVoiceMicFloat {
+  0%, 100% { transform: translateY(2px); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes homeVoiceWave {
+  from { transform: scaleY(0.65); opacity: 0.55; }
+  to { transform: scaleY(2.8); opacity: 1; }
+}
+
+@keyframes homeVoiceButtonPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px rgba(85, 184, 194, 0.09),
+      0 0 13px rgba(74, 202, 216, 0.24),
+      inset 0 0 10px rgba(94, 213, 225, 0.1);
+  }
+  50% {
+    box-shadow:
+      0 0 0 5px rgba(85, 184, 194, 0.15),
+      0 0 21px rgba(74, 202, 216, 0.38),
+      inset 0 0 14px rgba(94, 213, 225, 0.16);
+  }
+}
+
+@media (max-width: 760px) {
+  .intake-action-group {
+    gap: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-voice-input-button.is-listening,
+  .home-voice-input-button.is-listening .home-voice-mic-icon,
+  .home-voice-input-button.is-listening .home-voice-wave i {
+    animation: none;
+  }
+}
