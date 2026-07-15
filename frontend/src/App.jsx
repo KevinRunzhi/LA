@@ -4289,10 +4289,107 @@ function RecordPage({ record, onBuildRecord, onOpenCurrent }) {
       tags: ["巡检", "无异常"],
       checks: ["确认柜门滤网状态", "检查柜内线缆遮挡", "记录环境温湿度"],
     },
+    {
+      id: "REC-6177R-20260701",
+      title: "机架式工控机启动失败排查",
+      equipment: "Rockwell 6177R 1450R",
+      fault: "POST 中止、操作系统无法启动",
+      status: "已审核",
+      time: "2026-07-01 08:45",
+      maintainer: "周工",
+      duration: "53 分钟",
+      conclusion: "断开外设后 POST 恢复正常，逐一接回确认 USB 数据采集器异常，更换外设并复测后系统正常启动。",
+      tags: ["启动异常", "外设隔离"],
+      checks: ["记录 POST 报错现象", "断电后隔离全部外设", "逐一接回并验证业务程序启动"],
+    },
+    {
+      id: "REC-6300B-20260630",
+      title: "控制柜工控机硬盘健康告警检修",
+      equipment: "ASEM 6300B-EW1",
+      fault: "SSD 健康告警、系统启动变慢",
+      status: "已归档",
+      time: "2026-06-30 14:12",
+      maintainer: "陈工",
+      duration: "68 分钟",
+      conclusion: "诊断确认系统盘健康度下降，完成数据备份和同规格 SSD 更换，通过受控镜像恢复系统与业务应用。",
+      tags: ["存储故障", "镜像恢复"],
+      checks: ["导出存储健康与事件日志", "核对备份范围和目标磁盘", "验证驱动、应用与业务数据"],
+    },
+    {
+      id: "REC-P6-20260629",
+      title: "操作站显示黑屏故障处理",
+      equipment: "Schneider Harmony P6 Basic",
+      fault: "上电后黑屏、外接显示器画面正常",
+      status: "已审核",
+      time: "2026-06-29 10:28",
+      maintainer: "孙工",
+      duration: "36 分钟",
+      conclusion: "检查确认内置显示线缆接触不良，重新固定线缆并恢复推荐分辨率后，画面持续稳定。",
+      tags: ["显示异常", "线缆检查"],
+      checks: ["确认主机与面板供电", "检查显示线缆和接口固定", "验证分辨率、刷新率与画面稳定性"],
+    },
+    {
+      id: "REC-RACKIPC-20260628",
+      title: "冗余电源切换异常检修",
+      equipment: "Schneider Harmony Rack iPC Universal",
+      fault: "冗余电源告警、单路掉电后设备重启",
+      status: "待审核",
+      time: "2026-06-28 15:40",
+      maintainer: "王工",
+      duration: "47 分钟",
+      conclusion: "发现第二路电源输入端子松动，重新紧固并完成双路独立切换测试，设备运行未再中断。",
+      tags: ["供电异常", "待专家复核"],
+      checks: ["核对双路输入电压与接地", "检查电源模块指示状态", "分别模拟单路掉电并观察运行状态"],
+    },
+    {
+      id: "REC-SBOX-20260627",
+      title: "箱式工控机通信中断排查",
+      equipment: "Magelis S-Box iPC Universal",
+      fault: "双网口链路间歇中断、数据不上送",
+      status: "已归档",
+      time: "2026-06-27 09:55",
+      maintainer: "赵师傅",
+      duration: "41 分钟",
+      conclusion: "确认网线水晶头压接不良且端口存在机械应力，更换屏蔽网线并恢复线缆固定后通信稳定。",
+      tags: ["通信异常", "接口与线缆"],
+      checks: ["检查链路灯与端口事件日志", "替换网线并解除接口应力", "连续验证数据上送 30 分钟"],
+    },
+    {
+      id: "REC-VV5400-20260626",
+      title: "薄客户端日期时间复位检修",
+      equipment: "Rockwell VersaView 5400",
+      fault: "断电后日期时间复位、启动配置丢失",
+      status: "已审核",
+      time: "2026-06-26 13:26",
+      maintainer: "刘工",
+      duration: "32 分钟",
+      conclusion: "按型号要求更换 RTC 电池，重新设置日期、时间和启动参数，断电保持测试通过。",
+      tags: ["RTC 电池", "配置恢复"],
+      checks: ["备份原 BIOS 配置", "核对电池型号、极性和连接", "执行断电后的时间与配置保持测试"],
+    },
+    {
+      id: "REC-RACKIPC-20260625",
+      title: "机架式工控机监控告警恢复",
+      equipment: "Schneider Harmony Rack iPC Performance",
+      fault: "监控代理离线、远程告警持续上报",
+      status: "已归档",
+      time: "2026-06-25 17:08",
+      maintainer: "周工",
+      duration: "29 分钟",
+      conclusion: "监控代理服务异常退出，恢复服务并修正不适用的温度阈值后，远程状态和事件上报恢复正常。",
+      tags: ["监控告警", "阈值校验"],
+      checks: ["导出告警与系统事件日志", "核对代理服务和网络连接", "验证远程状态、阈值与告警恢复"],
+    },
   ].filter(Boolean);
   const [searchFault, setSearchFault] = useState("");
   const [detailRecordId, setDetailRecordId] = useState(null);
-  const filteredRecords = records.filter((item) => item.fault.includes(searchFault.trim()));
+  const normalizedSearch = searchFault.trim().toLowerCase();
+  const filteredRecords = records.filter((item) =>
+    [item.id, item.title, item.equipment, item.fault, item.conclusion, ...item.tags]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedSearch),
+  );
   const selectedRecord = records.find((item) => item.id === detailRecordId);
 
   if (selectedRecord) {
@@ -4394,7 +4491,7 @@ function RecordPage({ record, onBuildRecord, onOpenCurrent }) {
             <input
               value={searchFault}
               onChange={(event) => setSearchFault(event.target.value)}
-              placeholder="搜索故障，例如：风扇、温度、滤网..."
+              placeholder="搜索型号或故障，例如：6177R、供电、风扇..."
             />
           </label>
           <span>共 {filteredRecords.length} 条</span>
