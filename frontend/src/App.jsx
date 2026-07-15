@@ -51,6 +51,7 @@ import { SourceCard } from "./components/chat/SourceCard";
 import { StreamingMarkdown } from "./components/chat/StreamingMarkdown";
 import { ThinkingProcess } from "./components/chat/ThinkingProcess";
 import ExpertVideoConsultation from "./components/consultation/ExpertVideoConsultation";
+import VoiceBroadcastCapsule from "./components/guide/VoiceBroadcastCapsule";
 import { defaultInput } from "./data/fallbackDemo";
 import { maintenanceReferenceFallback, normalizeMaintenanceReferences } from "./data/maintenanceReferenceCatalog";
 import { assistantSources, buildMaintenanceAnswer, retrievalStatuses } from "./data/streamingAssistantDemo";
@@ -3615,6 +3616,7 @@ function GuideStage({
   const visual = guideVisuals[currentStep.id];
   const [focusedCheck, setFocusedCheck] = useState(visual?.frames[0]?.check || currentStep.checks[0]);
   const [consultationOpen, setConsultationOpen] = useState(false);
+  const [voiceBroadcastOpen, setVoiceBroadcastOpen] = useState(false);
 
   useEffect(() => {
     setFocusedCheck(guideVisuals[currentStep.id]?.frames[0]?.check || currentStep.checks[0]);
@@ -3707,10 +3709,13 @@ function GuideStage({
           <Video size={16} />
           专家视频会诊
         </button>
-        <button className="ghost-button reserved-action" title="演示按钮，后续接入语音播报">
+        <button
+          className="ghost-button"
+          onClick={() => setVoiceBroadcastOpen((current) => !current)}
+          title={voiceBroadcastOpen ? "取消语音播报演示" : "播放语音播报演示"}
+        >
           <Volume2 size={16} />
           语音播报
-          <span>预留</span>
         </button>
         <button className="ghost-button" onClick={onRecord} disabled={transitionRunning || !isLastGuideStep}>生成检修记录</button>
       </div>
@@ -3720,6 +3725,12 @@ function GuideStage({
           activeStep={activeStep}
           totalSteps={totalSteps}
           onClose={() => setConsultationOpen(false)}
+        />
+      )}
+      {voiceBroadcastOpen && (
+        <VoiceBroadcastCapsule
+          currentStepTitle={currentStep.title}
+          onClose={() => setVoiceBroadcastOpen(false)}
         />
       )}
     </div>
