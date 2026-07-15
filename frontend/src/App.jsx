@@ -47,6 +47,7 @@ import { api } from "./api/client";
 import AdminShell from "./admin/AdminShell";
 import IndustrialKnowledgeGraphPage from "./admin/knowledge-graph/IndustrialKnowledgeGraphPage";
 import { presentationApi } from "./admin/presentationApi";
+import AdminUserPortal from "./admin/AdminUserPortal";
 import { SourceCard } from "./components/chat/SourceCard";
 import { StreamingMarkdown } from "./components/chat/StreamingMarkdown";
 import { ThinkingProcess } from "./components/chat/ThinkingProcess";
@@ -899,7 +900,7 @@ const modalityActions = [
 ];
 
 const defaultUser = {
-  account: "lishifu",
+  account: "worker001",
   userType: "engineer",
   name: "李师傅",
   role: "一线检修人员",
@@ -908,12 +909,21 @@ const defaultUser = {
 };
 
 const expertUser = {
-  account: "expert",
+  account: "expert001",
   userType: "expert",
-  name: "专家账号",
-  role: "设备检修专家",
-  site: "全场站",
-  team: "专家审核中心",
+  name: "王海峰",
+  role: "高级工控设备检修工程师",
+  site: "山东德州分输站",
+  team: "设备技术组",
+};
+
+const adminUser = {
+  account: "admin",
+  userType: "admin",
+  name: "系统管理员",
+  role: "用户管理员",
+  site: "全部场站",
+  team: "平台运维中心",
 };
 
 function classNames(...items) {
@@ -1289,7 +1299,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated || currentUser.userType === "expert") return undefined;
+    if (!isAuthenticated || currentUser.userType !== "engineer") return undefined;
     let active = true;
     presentationApi.switchRole("engineer")
       .then(() => Promise.all([
@@ -1735,6 +1745,10 @@ export default function App() {
     );
   }
 
+  if (currentUser.userType === "admin") {
+    return <AdminUserPortal onLogout={handleLogout} />;
+  }
+
   return (
     <div className={classNames("app-shell", navOpen && "nav-expanded")}>
       <aside className="sidebar">
@@ -2031,13 +2045,25 @@ export default function App() {
 }
 
 function LoginPage({ onLogin }) {
-  const [account, setAccount] = useState("lishifu");
-  const [password, setPassword] = useState("");
+  const loginRoles = [
+    { id: "engineer", label: "工程师", account: "worker001", icon: Wrench, user: defaultUser },
+    { id: "expert", label: "专家", account: "expert001", icon: ShieldCheck, user: expertUser },
+    { id: "admin", label: "管理员", account: "admin", icon: UserRound, user: adminUser },
+  ];
+  const [selectedRole, setSelectedRole] = useState("engineer");
+  const [account, setAccount] = useState("worker001");
+  const [password, setPassword] = useState("123456");
+
+  function selectRole(role) {
+    setSelectedRole(role.id);
+    setAccount(role.account);
+    setPassword("123456");
+  }
 
   function submitLogin(event) {
     event.preventDefault();
-    const normalizedAccount = account.trim().toLowerCase();
-    onLogin(normalizedAccount === "expert" || normalizedAccount === "zhuanjia" ? expertUser : defaultUser);
+    const selected = loginRoles.find((role) => role.id === selectedRole) || loginRoles[0];
+    onLogin(selected.user);
   }
 
   return (
@@ -2053,37 +2079,28 @@ function LoginPage({ onLogin }) {
           </div>
         </div>
 
-        <form className="login-form" onSubmit={submitLogin}>
-          <label className="login-field">
-            <span>账号</span>
-            <input
-              value={account}
-              onChange={(event) => setAccount(event.target.value)}
-              placeholder="请输入账号"
-              autoComplete="username"
-            />
-          </label>
-          <label className="login-field">
-            <span>密码</span>
-            <input
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="请输入密码"
-              type="password"
-              autoComplete="current-password"
-            />
-          </label>
-
-          <button className="login-submit" type="submit">
-            登录
-            <ChevronRight size={18} />
-          </button>
-          <div className="login-demo-accounts">
-            <span>演示账号</span>
-            <button type="button" onClick={() => setAccount("lishifu")}>工程师 · lishifu</button>
-            <button type="button" onClick={() => setAccount("expert")}>专家 · expert</button>
+        <section className="login-role-select" aria-label="演示账号登录">
+          <div className="login-role-tabs" aria-label="登录身份">
+            {loginRoles.map((role) => {
+              const Icon = role.icon;
+              return <button className={`login-role-tab ${role.id} ${selectedRole === role.id ? "active" : ""}`} type="button" onClick={() => selectRole(role)} aria-pressed={selectedRole === role.id} key={role.id}>
+                <Icon size={16} />
+                <span>{role.label}</span>
+              </button>
+            })}
           </div>
-        </form>
+          <form className="login-form" onSubmit={submitLogin}>
+            <label className="login-field">
+              <span>账号</span>
+              <input value={account} onChange={(event) => setAccount(event.target.value)} placeholder="请输入账号" autoComplete="username" />
+            </label>
+            <label className="login-field">
+              <span>密码</span>
+              <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="请输入密码" type="password" autoComplete="current-password" />
+            </label>
+            <button className="login-submit" type="submit">登录<ChevronRight size={18} /></button>
+          </form>
+        </section>
       </section>
     </main>
   );
@@ -3788,7 +3805,7 @@ function MaintenanceRecordPage({
     const feedbackPackage = {
       caseId: PRESENTATION_CASE_ID,
       recordId: record.record_id,
-      engineerId: "lishifu",
+      engineerId: "worker001",
       incident: {
         time: occurredAt,
         duration: incidentTime?.duration || "约 10 分钟",
