@@ -52,6 +52,7 @@ import { StreamingMarkdown } from "./components/chat/StreamingMarkdown";
 import { ThinkingProcess } from "./components/chat/ThinkingProcess";
 import ExpertVideoConsultation from "./components/consultation/ExpertVideoConsultation";
 import VoiceBroadcastCapsule from "./components/guide/VoiceBroadcastCapsule";
+import MaintenanceJobCardPrint from "./components/records/MaintenanceJobCardPrint";
 import { defaultInput } from "./data/fallbackDemo";
 import { maintenanceReferenceFallback, normalizeMaintenanceReferences } from "./data/maintenanceReferenceCatalog";
 import { assistantSources, buildMaintenanceAnswer, retrievalStatuses } from "./data/streamingAssistantDemo";
@@ -3836,6 +3837,23 @@ function MaintenanceRecordPage({
     }
   }
 
+  function printJobCard() {
+    const previousTitle = document.title;
+    const printDate = new Date(incidentTime?.detectedAt || occurredAt);
+    const datePart = Number.isNaN(printDate.getTime())
+      ? "未记录日期"
+      : `${printDate.getFullYear()}${String(printDate.getMonth() + 1).padStart(2, "0")}${String(printDate.getDate()).padStart(2, "0")}`;
+    const cleanup = () => {
+      document.body.classList.remove("is-printing-job-card");
+      document.title = previousTitle;
+    };
+
+    document.body.classList.add("is-printing-job-card");
+    document.title = `工控机故障检修作业卡_${record.record_id}_${datePart}`;
+    window.addEventListener("afterprint", cleanup, { once: true });
+    window.print();
+  }
+
   return (
     <div className="maintenance-record-page">
       {onBackList && (
@@ -3928,8 +3946,20 @@ function MaintenanceRecordPage({
           <div><span>{submitted ? "上传成功" : "案例回流"}</span><strong>{submitted ? `案例 ${PRESENTATION_CASE_ID} 已进入专家待审核库` : "确认本次结果并上传给专家审核"}</strong><p>{submitted ? "工程师侧流程已完成。专家将在独立账号中修订案例、知识和图谱。" : "上传只生成待审核案例，不会直接修改正式知识库。"}</p></div>
         </div>
         {uploadError && <p className="record-upload-error"><AlertTriangle size={14} />{uploadError}</p>}
-        <div className="record-action-buttons"><button className="ghost-button" onClick={() => window.print()}>打印作业卡</button><button className="primary-button" disabled={!ready || locked} onClick={submitRecord}>{uploading ? <Loader2 className="spin" size={16} /> : submitted ? <Check size={16} /> : <FileText size={16} />}{uploading ? "正在上传…" : submitted ? "已上传至专家知识库" : "上传至专家知识库"}</button></div>
+        <div className="record-action-buttons"><button className="ghost-button" onClick={printJobCard}>打印作业卡</button><button className="primary-button" disabled={!ready || locked} onClick={submitRecord}>{uploading ? <Loader2 className="spin" size={16} /> : submitted ? <Check size={16} /> : <FileText size={16} />}{uploading ? "正在上传…" : submitted ? "已上传至专家知识库" : "上传至专家知识库"}</button></div>
       </footer>
+      <MaintenanceJobCardPrint
+        record={record}
+        scenario={scenario}
+        incidentTime={incidentTime}
+        input={input}
+        currentUser={currentUser}
+        result={form}
+        completedSteps={completedSteps}
+        materials={displayMaterials}
+        caseStatus={caseStatus}
+        occurredAt={occurredAt}
+      />
     </div>
   );
 }
