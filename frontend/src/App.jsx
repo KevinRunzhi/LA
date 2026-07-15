@@ -52,6 +52,7 @@ import { StreamingMarkdown } from "./components/chat/StreamingMarkdown";
 import { ThinkingProcess } from "./components/chat/ThinkingProcess";
 import ExpertVideoConsultation from "./components/consultation/ExpertVideoConsultation";
 import VoiceBroadcastCapsule from "./components/guide/VoiceBroadcastCapsule";
+import VoiceInputDemoButton from "./components/home/VoiceInputDemoButton";
 import MaintenanceJobCardPrint from "./components/records/MaintenanceJobCardPrint";
 import { defaultInput } from "./data/fallbackDemo";
 import { maintenanceReferenceFallback, normalizeMaintenanceReferences } from "./data/maintenanceReferenceCatalog";
@@ -2200,10 +2201,13 @@ function HomeStage({
                 }}
                 placeholder="简述现场现象，如：站控柜内工控机温度告警，风扇声音异常..."
               />
-              <button className="primary-button" onClick={onSubmit}>
-                <Send size={16} />
-                开始接诊
-              </button>
+              <div className="intake-action-group">
+                <VoiceInputDemoButton />
+                <button className="primary-button" onClick={onSubmit}>
+                  <Send size={16} />
+                  开始接诊
+                </button>
+              </div>
             </div>
             <div className="intake-collection-head">
               <h3>现场采集</h3>
