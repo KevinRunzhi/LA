@@ -9,6 +9,58 @@
   display: flex;
 }
 
+.assistant-input.has-voice-input {
+  grid-template-columns: minmax(0, 1fr) 36px 36px;
+}
+
+.assistant-input .home-voice-input-control.is-compact {
+  width: 36px;
+  height: 100%;
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  border-left: 1px solid #243750;
+  background: #080f1f;
+}
+
+.assistant-input .home-voice-input-control.is-compact .home-voice-input-button {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+  grid-template-columns: 5px 16px 5px;
+  gap: 1px;
+  color: #91aaba;
+  border: 1px solid #385064;
+  background: #0d1a25;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
+}
+
+.assistant-input .home-voice-input-control.is-compact .home-voice-input-button:hover {
+  color: #c8edf2;
+  border-color: #548296;
+  background: #102532;
+}
+
+.assistant-input .home-voice-input-control.is-compact .home-voice-input-button.is-listening {
+  color: #e7fbff;
+  border-color: #72d9e3;
+  background: #123340;
+}
+
+.home-voice-input-control.is-compact .home-voice-mic-icon {
+  width: 16px;
+  height: 20px;
+}
+
+.home-voice-input-control.is-compact .home-voice-mic-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.home-voice-input-control.is-compact .home-voice-wave {
+  height: 14px;
+}
+
 .home-voice-input-button {
   position: relative;
   width: 42px;

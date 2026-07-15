@@ -5266,7 +5266,7 @@ function AssistantChat({
           ))}
         </div>
       </div>
-      <div className="assistant-input">
+      <div className="assistant-input has-voice-input">
         <input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -5275,6 +5275,7 @@ function AssistantChat({
           }}
           placeholder="追问当前步骤..."
         />
+        <VoiceInputDemoButton compact contextLabel="检修智能体" />
         <button onClick={sendMessage} disabled={!draft.trim() || thinking || streaming}>
           {thinking || streaming ? <Loader2 size={14} className="spin" /> : <Send size={14} />}
         </button>

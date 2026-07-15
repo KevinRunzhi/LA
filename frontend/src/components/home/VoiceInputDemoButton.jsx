@@ -4,8 +4,9 @@ import "../../styles/home-voice-input-demo.css";
 
 const LISTENING_DURATION_MS = 3600;
 
-export default function VoiceInputDemoButton() {
+export default function VoiceInputDemoButton({ compact = false, contextLabel = "" }) {
   const [listening, setListening] = useState(false);
+  const accessibleContext = contextLabel ? `${contextLabel}` : "";
 
   useEffect(() => {
     if (!listening) return undefined;
@@ -18,14 +19,14 @@ export default function VoiceInputDemoButton() {
   }, [listening]);
 
   return (
-    <span className="home-voice-input-control">
+    <span className={`home-voice-input-control${compact ? " is-compact" : ""}`}>
       <button
         className={`home-voice-input-button${listening ? " is-listening" : ""}`}
         type="button"
         onClick={() => setListening((current) => !current)}
-        aria-label={listening ? "停止语音输入演示" : "开始语音输入演示"}
+        aria-label={`${listening ? "停止" : "开始"}${accessibleContext}语音输入演示`}
         aria-pressed={listening}
-        title={listening ? "停止语音输入演示" : "语音输入演示"}
+        title={listening ? `停止${accessibleContext}语音输入演示` : `${accessibleContext}语音输入演示`}
       >
         <span className="home-voice-wave home-voice-wave-left" aria-hidden="true">
           <i />
@@ -42,7 +43,7 @@ export default function VoiceInputDemoButton() {
         </span>
       </button>
       <span className="home-voice-input-status" aria-live="polite">
-        {listening ? "语音输入演示进行中" : ""}
+        {listening ? `${accessibleContext}语音输入演示进行中` : ""}
       </span>
     </span>
   );
