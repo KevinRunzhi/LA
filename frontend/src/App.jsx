@@ -103,6 +103,20 @@ function recordFromFeedbackPackage(feedbackPackage, caseStatus) {
 
 const AGENT_STREAM_DELAY_MIN = 600;
 const AGENT_STREAM_DELAY_MAX = 1800;
+const ASSISTANT_STREAM_SCROLL_INTERVAL = 120;
+const ASSISTANT_STREAM_SCROLL_MIN_STEP = 18;
+const ASSISTANT_STREAM_SCROLL_MAX_STEP = 72;
+
+function scrollAssistantTowardBottom(container) {
+  const target = Math.max(0, container.scrollHeight - container.clientHeight);
+  const distance = target - container.scrollTop;
+  if (distance <= 0) return;
+  const step = Math.min(
+    ASSISTANT_STREAM_SCROLL_MAX_STEP,
+    Math.max(ASSISTANT_STREAM_SCROLL_MIN_STEP, distance * 0.4),
+  );
+  container.scrollTop = Math.min(target, container.scrollTop + step);
+}
 
 function getRandomAgentStreamDelay() {
   return Math.round(
@@ -4951,6 +4965,9 @@ function AssistantChat({
   const petTimersRef = useRef([]);
   const automaticPetBusyRef = useRef(false);
   const assistantBodyRef = useRef(null);
+  const questionScrollTimerRef = useRef(null);
+  const questionScrollFrameRef = useRef(null);
+  const questionScrollLastAtRef = useRef(0);
 
   function clearAssistantTimers() {
     timersRef.current.forEach((timer) => window.clearTimeout(timer));
@@ -4960,6 +4977,17 @@ function AssistantChat({
   function clearAssistantPetTimers() {
     petTimersRef.current.forEach((timer) => window.clearTimeout(timer));
     petTimersRef.current = [];
+  }
+
+  function clearQuestionScrollSchedule() {
+    if (questionScrollTimerRef.current !== null) {
+      window.clearTimeout(questionScrollTimerRef.current);
+      questionScrollTimerRef.current = null;
+    }
+    if (questionScrollFrameRef.current !== null) {
+      window.cancelAnimationFrame(questionScrollFrameRef.current);
+      questionScrollFrameRef.current = null;
+    }
   }
 
   function playAssistantPetState(state, duration, nextState) {
@@ -4988,11 +5016,13 @@ function AssistantChat({
     setSourceVisibleCount(0);
     setProcessStarted(false);
     clearAssistantPetTimers();
+    clearQuestionScrollSchedule();
     automaticPetBusyRef.current = false;
     setAssistantPetState("idle");
     return () => {
       clearAssistantTimers();
       clearAssistantPetTimers();
+      clearQuestionScrollSchedule();
     };
   }, [context.label, context.suggestion]);
 
@@ -5009,6 +5039,25 @@ function AssistantChat({
   useEffect(() => {
     const container = assistantBodyRef.current;
     if (!container) return undefined;
+
+    if (streamingMessageId) {
+      if (questionScrollTimerRef.current !== null || questionScrollFrameRef.current !== null) {
+        return undefined;
+      }
+      const elapsed = Date.now() - questionScrollLastAtRef.current;
+      const delay = Math.max(0, ASSISTANT_STREAM_SCROLL_INTERVAL - elapsed);
+      questionScrollTimerRef.current = window.setTimeout(() => {
+        questionScrollTimerRef.current = null;
+        questionScrollFrameRef.current = window.requestAnimationFrame(() => {
+          questionScrollFrameRef.current = null;
+          questionScrollLastAtRef.current = Date.now();
+          scrollAssistantTowardBottom(container);
+        });
+      }, delay);
+      return undefined;
+    }
+
+    clearQuestionScrollSchedule();
     const frame = window.requestAnimationFrame(() => {
       container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
     });
