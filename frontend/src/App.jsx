@@ -2379,7 +2379,7 @@ function HomeStage({
             <span className="status-dot neutral" />
             <div>
               <strong>知识库状态</strong>
-              <p>知识条目 11 · 图谱关系 24 · 判据 5 项</p>
+              <p>知识条目 34 · 图谱关系 152 · 判据 10 项</p>
             </div>
           </article>
         </aside>
@@ -4651,7 +4651,6 @@ function SettingsPage({ currentUser, onSave }) {
                 <option>当前场站全部设备</option>
               </select>
             </label>
-            <div className="settings-note">当前 MVP 主流程仍固定为 ACP-4000 / IPC-610 工控机散热异常。</div>
           </section>
 
           <section className="settings-section">
