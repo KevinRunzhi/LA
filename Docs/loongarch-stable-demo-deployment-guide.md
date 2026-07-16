@@ -1,6 +1,6 @@
 # 龙芯稳定演示包部署说明
 
-更新时间：2026-07-14
+更新时间：2026-07-16
 
 适用环境：银河麒麟高级服务器操作系统 V11、`loongarch64`、Python 3.10+
 
@@ -63,7 +63,7 @@ sudo ss -lntp | grep ':8080' || true
 
 ```bash
 cd /home/vmuser
-sha256sum -c LA-stable-demo-*.tar.gz.sha256
+sha256sum -c LA-formal-demo-*.tar.gz.sha256
 ```
 
 必须显示 `OK`。如果失败，重新传输文件，不要继续解压。
@@ -74,7 +74,7 @@ sha256sum -c LA-stable-demo-*.tar.gz.sha256
 cd /home/vmuser
 if [ -e project ]; then mv project "project-backup-$(date +%Y%m%d-%H%M%S)"; fi
 mkdir -p /home/vmuser/project
-tar -xzf LA-stable-demo-*.tar.gz --strip-components=1 -C /home/vmuser/project
+tar -xzf LA-formal-demo-*.tar.gz --strip-components=1 -C /home/vmuser/project
 cd /home/vmuser/project
 cat VERSION
 ```

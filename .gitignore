@@ -15,3 +15,5 @@ backend/data/presentation/*.db
 run/
 release/LA-stable-demo-*.tar.gz
 release/LA-stable-demo-*.tar.gz.sha256
+release/LA-formal-demo-*.tar.gz
+release/LA-formal-demo-*.tar.gz.sha256

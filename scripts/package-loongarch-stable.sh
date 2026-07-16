@@ -10,7 +10,7 @@ if ! git diff --quiet || ! git diff --cached --quiet; then printf '工作区存�
 
 commit="$(git rev-parse --short=8 HEAD)"
 timestamp="$(date +%Y%m%d-%H%M%S)"
-package_name="LA-stable-demo-${timestamp}-${commit}"
+package_name="LA-formal-demo-${timestamp}-${commit}"
 stage_parent="$(mktemp -d)"
 stage="$stage_parent/$package_name"
 archive="$REPO_ROOT/release/$package_name.tar.gz"
@@ -28,7 +28,7 @@ cp -a frontend/dist "$stage/frontend/"
 find "$stage/frontend/dist" -type f -name '*:Zone.Identifier' -delete
 cp -a deploy/loongarch/scripts "$stage/deploy/loongarch/"
 cp Docs/loongarch-stable-demo-deployment-guide.md "$stage/DEPLOYMENT-GUIDE.md"
-printf 'package=%s\ncommit=%s\nbuilt_at=%s\nnode=%s\nmode=prebuilt-dist-plus-flask\n' "$package_name" "$(git rev-parse HEAD)" "$(date --iso-8601=seconds)" "$actual_node" >"$stage/VERSION"
+printf 'package=%s\ncommit=%s\nbuilt_at=%s\nnode=%s\nrelease_type=formal-demo\nmode=prebuilt-dist-plus-flask\n' "$package_name" "$(git rev-parse HEAD)" "$(date --iso-8601=seconds)" "$actual_node" >"$stage/VERSION"
 find "$stage/deploy/loongarch/scripts" -type f -name '*.sh' -exec chmod 755 {} +
 if find "$stage" -type f \( -name '*.db' -o -name '*.pyc' -o -name '*:Zone.Identifier' \) | grep -q .; then printf '发布包中出现了不应包含的运行时文件。\n' >&2; exit 1; fi
 printf '[3/4] 生成 tar.gz……\n'
