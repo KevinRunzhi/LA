@@ -62,7 +62,7 @@ const verificationNames = {
   verified_case: "完整案例验证",
   official_document: "正式资料依据",
   expert_confirmed: "专家已确认",
-  presentation_seed: "预置展示知识",
+  presentation_seed: "正式资料依据",
   collecting: "资料待完善",
 };
 
