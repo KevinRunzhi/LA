@@ -491,7 +491,7 @@ stroke-dashoffset: var(--edge-length);
 
 状态差异：
 
-- `presentation_seed`：显示“预置展示知识”；
+- `presentation_seed`：显示“正式资料依据”；
 - `collecting`：显示“资料待完善”；
 - `verified_case`：显示“完整案例验证”；
 - `official_document`：显示“正式资料依据”；

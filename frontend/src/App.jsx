@@ -57,7 +57,14 @@ import VoiceInputDemoButton from "./components/home/VoiceInputDemoButton";
 import MaintenanceJobCardPrint from "./components/records/MaintenanceJobCardPrint";
 import { defaultInput } from "./data/fallbackDemo";
 import { maintenanceReferenceFallback, normalizeMaintenanceReferences } from "./data/maintenanceReferenceCatalog";
-import { assistantSources, buildMaintenanceAnswer, retrievalStatuses } from "./data/streamingAssistantDemo";
+import {
+  assistantSources,
+  buildMaintenanceAnswer,
+  detectMaintenanceIntent,
+  getAllowedMaintenanceTopics,
+  maintenanceKnowledgeTopics,
+  retrievalStatuses,
+} from "./data/streamingAssistantDemo";
 
 const navItems = [
   { id: "workbench", label: "工作台", icon: LayoutDashboard },
@@ -1214,12 +1221,12 @@ export default function App() {
   const [scenario, setScenario] = useState(null);
   const [homeDraft, setHomeDraft] = useState("");
   const [intakeMaterials, setIntakeMaterials] = useState([]);
-  const [activeMaterialId, setActiveMaterialId] = useState(null);
-  const [previewMaterialId, setPreviewMaterialId] = useState(null);
   const [referenceCatalog, setReferenceCatalog] = useState(maintenanceReferenceFallback);
   const [referenceCatalogMode, setReferenceCatalogMode] = useState("fallback");
   const [selectedReferences, setSelectedReferences] = useState([]);
   const [referencePickerOpen, setReferencePickerOpen] = useState(false);
+  const [activeMaterialId, setActiveMaterialId] = useState(null);
+  const [previewMaterialId, setPreviewMaterialId] = useState(null);
   const materialUrlsRef = useRef(new Set());
   const [input, setInput] = useState(defaultInput);
   const [incidentTime, setIncidentTime] = useState({
@@ -5042,16 +5049,19 @@ function AssistantChat({
     if (!text || thinking || streaming) return;
 
     const userMessage = { id: `user-${Date.now()}`, role: "user", text };
-    const fanWiringQuestion = stage === "guide"
-      && currentStep?.id === "step-04-filter-fan"
-      && /FAN1|FAN2|接线顺序|风扇.{0,8}接线|接线.{0,8}风扇/i.test(text);
-    const fanSpeedCauseQuestion = stage === "input"
-      && activeIntakeStep === 3
-      && intakeBranch?.id !== "equipment-mismatch"
-      && /风扇.{0,8}转速.{0,16}(什么情况|原因|导致|为什么|异常|偏低|过低)|转速.{0,12}(偏低|过低|异常).{0,12}(原因|导致|为什么)/i.test(text);
+    const allowedKnowledgeTopics = getAllowedMaintenanceTopics({
+      stage,
+      activeIntakeStep,
+      currentStep,
+      intakeBranch,
+    });
+    const questionIntent = detectMaintenanceIntent(text);
+    const fanWiringQuestion = allowedKnowledgeTopics.includes(maintenanceKnowledgeTopics.fanWiring)
+      && questionIntent === maintenanceKnowledgeTopics.fanWiring;
+    const fanSpeedCauseQuestion = allowedKnowledgeTopics.includes(maintenanceKnowledgeTopics.fanSpeedCause)
+      && questionIntent === maintenanceKnowledgeTopics.fanSpeedCause;
     const reply = buildMaintenanceAnswer(text, {
-      allowFanWiring: fanWiringQuestion,
-      allowFanSpeedCause: fanSpeedCauseQuestion,
+      allowedTopics: allowedKnowledgeTopics,
     })
       || getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep, text);
     const replyId = `assistant-${Date.now()}`;

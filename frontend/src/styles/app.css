@@ -3474,6 +3474,12 @@ h2 {
 .agent-stream-answer .streaming-markdown {
   gap: 6px;
 }
+
+.assistant-agent-response .agent-stream-answer .streaming-markdown p,
+.assistant-agent-response .agent-stream-answer .markdown-step,
+.assistant-agent-response .agent-stream-answer .markdown-bullet {
+  color: #FFFFFF;
+}
 .assistant-message.typing {
   display: flex;
   align-items: center;

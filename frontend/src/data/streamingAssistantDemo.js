@@ -13,9 +13,45 @@ export const assistantSources = [
   { title: "工控机电源故障排查案例", detail: "风扇转动但系统无显示的相似故障记录" },
 ];
 
-export function buildMaintenanceAnswer(question, { allowFanWiring = false, allowFanSpeedCause = false } = {}) {
-  const fanSpeedCause = allowFanSpeedCause
-    && /风扇.{0,8}转速.{0,16}(什么情况|原因|导致|为什么|异常|偏低|过低)|转速.{0,12}(偏低|过低|异常).{0,12}(原因|导致|为什么)/i.test(question);
+export const maintenanceKnowledgeTopics = {
+  fanWiring: "fan-wiring",
+  fanSpeedCause: "fan-speed-cause",
+};
+
+export function getAllowedMaintenanceTopics({ stage, activeIntakeStep, currentStep, intakeBranch } = {}) {
+  if (stage === "input" && activeIntakeStep === 3 && intakeBranch?.id !== "equipment-mismatch") {
+    return [maintenanceKnowledgeTopics.fanSpeedCause];
+  }
+
+  if (stage === "guide" && currentStep?.id === "step-04-filter-fan") {
+    return [maintenanceKnowledgeTopics.fanWiring, maintenanceKnowledgeTopics.fanSpeedCause];
+  }
+
+  return [];
+}
+
+export function detectMaintenanceIntent(question = "") {
+  const text = question.trim().replace(/\s+/g, " ");
+  const fanWiring = /FAN\s*[12].{0,12}(接|连|插|顺序|接口)|接线|线序|怎么接|如何接|接哪个|先接哪|哪个先接|插哪个|接口顺序|这个顺序|顺序.{0,6}(怎么|如何|对不对|是否正确|怎么样)/i.test(text);
+  if (fanWiring) return maintenanceKnowledgeTopics.fanWiring;
+
+  const fanSpeedCause = /(风扇|FAN).{0,12}(转速|转得|转动).{0,18}(什么情况|怎么回事|原因|导致|为什么|异常|偏低|过低|太低|慢|不稳|掉速)|(风扇|FAN).{0,12}(为什么|原因|什么情况|怎么回事).{0,12}(转速|转得|转动)|(风扇|FAN).{0,8}(太慢|低速|不转|转速低)|转速.{0,12}(偏低|过低|太低|异常|不稳|掉速|不到).{0,12}(原因|导致|为什么|怎么回事|什么情况)?/i.test(text);
+  if (fanSpeedCause) return maintenanceKnowledgeTopics.fanSpeedCause;
+
+  return null;
+}
+
+export function buildMaintenanceAnswer(question, {
+  allowedTopics = [],
+  allowFanWiring = false,
+  allowFanSpeedCause = false,
+} = {}) {
+  const topics = new Set(allowedTopics);
+  if (allowFanWiring) topics.add(maintenanceKnowledgeTopics.fanWiring);
+  if (allowFanSpeedCause) topics.add(maintenanceKnowledgeTopics.fanSpeedCause);
+  const intent = detectMaintenanceIntent(question);
+  const fanSpeedCause = topics.has(maintenanceKnowledgeTopics.fanSpeedCause)
+    && intent === maintenanceKnowledgeTopics.fanSpeedCause;
   if (fanSpeedCause) {
     return `## 风扇转速异常可能由什么导致
 先确认 Device/On 中 FAN1、FAN2 的实际 RPM 和前面板 FAN 告警状态。手册以 **大于 500 rpm 为正常、低于 500 rpm 为故障条件**。转速偏低通常要区分“风扇确实转慢”和“转速检测异常”两类情况。
@@ -47,8 +83,8 @@ export function buildMaintenanceAnswer(question, { allowFanWiring = false, allow
 该判断适用于配有智能告警板并完成风扇监控配置的设备。`;
   }
 
-  const fanWiring = allowFanWiring
-    && /FAN1|FAN2|接线顺序|风扇.{0,8}接线|接线.{0,8}风扇/i.test(question);
+  const fanWiring = topics.has(maintenanceKnowledgeTopics.fanWiring)
+    && intent === maintenanceKnowledgeTopics.fanWiring;
   if (fanWiring) {
     return `## FAN1 / FAN2 接线顺序
 这里的“顺序”是指风扇接入**智能告警板接口的编号顺序**，不是按线缆颜色重新排列针脚。
@@ -97,19 +133,5 @@ FAN1~FAN7 都是 3 针接口：**Pin 1 = GND，Pin 2 = +12V_FAN，Pin 3 = FAN_DE
 - 工控机电源故障排查案例`;
   }
 
-  return `## 初步判断
-结合当前站控柜工控机故障场景，系统优先按**设备状态确认、知识库检索、风险校验、步骤生成**的顺序处理。
-
-### 建议处理
-1. 先确认设备型号、位置和关联告警。
-2. 再核对 TEMP/FAN、蜂鸣器、风扇转速和温度阈值。
-3. 根据检修向导逐项检查风道、滤网、风扇和接线。
-4. 完成后记录恢复验证结果，并生成检修记录。
-
-> 风险提示：任何拆检动作都应在断电、冷却和防静电确认后进行。
-
-### 引用资料
-- ACP-4000 / IPC-610 散热系统资料
-- TEMP/FAN 告警阈值知识条目
-- 站控柜工控机检修案例`;
+  return null;
 }

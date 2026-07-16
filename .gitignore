@@ -3,6 +3,7 @@
 __pycache__/
 *.py[cod]
 .venv/
+.vite/
 node_modules/
 dist/
 build/
@@ -11,5 +12,6 @@ Thumbs.db
 *:Zone.Identifier
 *.log
 backend/data/presentation/*.db
+run/
 release/LA-stable-demo-*.tar.gz
 release/LA-stable-demo-*.tar.gz.sha256
