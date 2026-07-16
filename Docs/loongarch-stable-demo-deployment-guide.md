@@ -13,7 +13,7 @@
 
 这是面向现场汇报的“方式 A：稳定演示模式”。前端已经在开发机使用 Node.js `20.19.4` 编译为普通 HTML、CSS 和 JavaScript；龙芯机器运行时只需要 Python/Flask。浏览器负责执行前端 JavaScript，Flask 同时提供页面、API 和演示状态存储。
 
-包内不包含 `node_modules`、开发虚拟环境、资料 PDF 和开发机的 SQLite 数据库。首次启动时，后端会根据 JSON 种子数据自动创建干净的 `backend/data/presentation/presentation.db`。
+包内不包含 `node_modules`、开发虚拟环境和开发机的 SQLite 数据库，但会包含 `manual_sources.json` 登记的全部厂商原始 PDF，并保持 `Info/` 下的相对路径。首次启动时，后端会根据 JSON 种子数据自动创建干净的 `backend/data/presentation/presentation.db`。
 
 ## 2. 给协助部署的 ChatGPT 的说明
 
