@@ -101,8 +101,8 @@ function recordFromFeedbackPackage(feedbackPackage, caseStatus) {
   };
 }
 
-const AGENT_STREAM_DELAY_MIN = 600;
-const AGENT_STREAM_DELAY_MAX = 1800;
+const AGENT_STREAM_DELAY_MIN = 2100;
+const AGENT_STREAM_DELAY_MAX = 3300;
 const ASSISTANT_STREAM_SCROLL_INTERVAL = 120;
 const ASSISTANT_STREAM_SCROLL_MIN_STEP = 18;
 const ASSISTANT_STREAM_SCROLL_MAX_STEP = 72;
@@ -1541,7 +1541,7 @@ export default function App() {
 
   function runStageTransition(type, fromIndex, onDone) {
     const streamStartDelay = type === "intake" && fromIndex === 0
-      ? 1500
+      ? 3000
       : getRandomAgentStreamDelay();
     setTriageAgentStatus("running");
     setTriageTraceCount(0);
