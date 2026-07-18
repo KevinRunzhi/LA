@@ -32,31 +32,31 @@ cat >"$runtime_root/install-and-start.sh" <<'EOF'
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ ! -x "$ROOT/backend/.venv/bin/python" ]]; then
-  "$ROOT/deploy/loongarch/scripts/install.sh"
+  bash "$ROOT/deploy/loongarch/scripts/install.sh"
 fi
-"$ROOT/deploy/loongarch/scripts/start.sh"
-"$ROOT/deploy/loongarch/scripts/healthcheck.sh"
+bash "$ROOT/deploy/loongarch/scripts/start.sh"
+bash "$ROOT/deploy/loongarch/scripts/healthcheck.sh"
 EOF
 
 cat >"$runtime_root/stop.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-"$ROOT/deploy/loongarch/scripts/stop.sh"
+bash "$ROOT/deploy/loongarch/scripts/stop.sh"
 EOF
 
 cat >"$runtime_root/healthcheck.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-"$ROOT/deploy/loongarch/scripts/healthcheck.sh"
+bash "$ROOT/deploy/loongarch/scripts/healthcheck.sh"
 EOF
 
 cat >"$runtime_root/reset-demo.sh" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-"$ROOT/deploy/loongarch/scripts/reset-demo.sh"
+bash "$ROOT/deploy/loongarch/scripts/reset-demo.sh"
 EOF
 
 chmod 755 "$runtime_root/install-and-start.sh" "$runtime_root/stop.sh" \
@@ -70,16 +70,15 @@ cat >"$runtime_root/作品安装运行说明.txt" <<'EOF'
 
 安装运行：
   cd /home/vmuser/project
-  chmod +x *.sh deploy/loongarch/scripts/*.sh
-  ./install-and-start.sh
+  bash install-and-start.sh
 
 浏览器访问：
   http://127.0.0.1:8080
   http://<龙芯机器IP>:8080
 
-停止：./stop.sh
-检查：./healthcheck.sh
-重置演示：./reset-demo.sh
+停止：bash stop.sh
+检查：bash healthcheck.sh
+重置演示：bash reset-demo.sh
 
 完整部署、旧服务处理、防火墙、数据备份和故障排查见 DEPLOYMENT-GUIDE.md。
 EOF
