@@ -11,16 +11,18 @@ if ! git diff --quiet || ! git diff --cached --quiet; then printf '工作区存�
 commit="$(git rev-parse --short=8 HEAD)"
 timestamp="$(date +%Y%m%d-%H%M%S)"
 package_name="LA-formal-demo-${timestamp}-${commit}"
+package_name="${PACKAGE_NAME_OVERRIDE:-$package_name}"
 stage_parent="$(mktemp -d)"
 stage="$stage_parent/$package_name"
-archive="$REPO_ROOT/release/$package_name.tar.gz"
+release_dir="${RELEASE_DIR_OVERRIDE:-$REPO_ROOT/release}"
+archive="$release_dir/$package_name.tar.gz"
 cleanup() { rm -rf "$stage_parent"; }
 trap cleanup EXIT
 
 printf '[1/4] 构建前端（%s）……\n' "$actual_node"
 npm --prefix frontend run build
 printf '[2/4] 整理稳定演示包……\n'
-mkdir -p "$stage/backend/data/presentation" "$stage/frontend" "$stage/deploy/loongarch" "$REPO_ROOT/release"
+mkdir -p "$stage/backend/data/presentation" "$stage/frontend" "$stage/deploy/loongarch" "$release_dir"
 cp backend/app.py backend/presentation_store.py backend/requirements.txt "$stage/backend/"
 find backend/data -maxdepth 1 -type f -name '*.json' -exec cp {} "$stage/backend/data/" \;
 find backend/data/presentation -maxdepth 1 -type f -name '*.json' -exec cp {} "$stage/backend/data/presentation/" \;
@@ -66,8 +68,8 @@ find "$stage/deploy/loongarch/scripts" -type f -name '*.sh' -exec chmod 755 {} +
 if find "$stage" -type f \( -name '*.db' -o -name '*.pyc' -o -name '*:Zone.Identifier' \) | grep -q .; then printf '发布包中出现了不应包含的运行时文件。\n' >&2; exit 1; fi
 printf '[3/4] 生成 tar.gz……\n'
 tar -C "$stage_parent" -czf "$archive" "$package_name"
-(cd "$REPO_ROOT/release" && sha256sum "$package_name.tar.gz" >"$package_name.tar.gz.sha256")
+(cd "$release_dir" && sha256sum "$package_name.tar.gz" >"$package_name.tar.gz.sha256")
 printf '[4/4] 校验压缩包……\n'
 tar -tzf "$archive" >/dev/null
-(cd "$REPO_ROOT/release" && sha256sum -c "$package_name.tar.gz.sha256")
+(cd "$release_dir" && sha256sum -c "$package_name.tar.gz.sha256")
 printf '\n发布包：%s\n校验文件：%s.sha256\n' "$archive" "$archive"
