@@ -1,6 +1,6 @@
 # LA 项目文档入口
 
-更新时间：2026-07-17
+更新时间：2026-07-26
 
 本文件是项目文档的唯一入口。阅读顺序和冲突处理规则以这里为准，旧文档不能再单独作为开发依据。
 
@@ -36,6 +36,8 @@
 24. [`software-cup-a1-competition-requirements.md`](./software-cup-a1-competition-requirements.md)：赛事原始要求；用于验收覆盖，不直接代替当前开发计划。
 25. [`expert-profile-settings-spec.md`](./expert-profile-settings-spec.md)：专家账号左侧设置入口、简要资料字段、本地保存边界和验收标准。
 26. [`maintenance-reference-picker-spec.md`](./maintenance-reference-picker-spec.md)：首页检修资料编组台、案例/知识/手册选择、异常接入持续引用和演示验收规格。
+27. [`industrial-computer-power-fault-development-spec.md`](./industrial-computer-power-fault-development-spec.md)：工控机多故障案例、供电案例、CaseRun、路由、数据血缘和知识闭环的上位开发规格。
+28. [`power-fault-development/README.md`](./power-fault-development/README.md)：多故障案例 A～F 分阶段执行计划及各阶段详细 Spec 的唯一入口。
 
 ## 2. 当前阶段
 
