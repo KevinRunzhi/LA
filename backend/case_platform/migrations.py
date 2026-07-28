@@ -172,8 +172,53 @@ CASE_PLATFORM_MIGRATION = Migration(
     ),
 )
 
+ENGINEER_SNAPSHOT_HISTORY_MIGRATION = Migration(
+    version="002",
+    name="allow revisioned engineer submission history",
+    statements=(
+        """
+        CREATE TABLE engineer_submission_snapshots_v2 (
+            snapshot_id TEXT PRIMARY KEY,
+            run_id TEXT NOT NULL,
+            revision INTEGER NOT NULL,
+            case_id TEXT NOT NULL,
+            package_hash TEXT NOT NULL,
+            content_hash TEXT NOT NULL,
+            payload TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(run_id, revision),
+            FOREIGN KEY(run_id) REFERENCES case_runs(run_id) ON DELETE RESTRICT
+        )
+        """,
+        """
+        INSERT INTO engineer_submission_snapshots_v2
+        (snapshot_id,run_id,revision,case_id,package_hash,content_hash,payload,created_at)
+        SELECT snapshot_id,s.run_id,
+               COALESCE(
+                   (SELECT MAX(e.revision) FROM case_run_events e
+                    WHERE e.run_id=s.run_id
+                      AND e.event_type='engineer_submitted'),
+                   (SELECT revision FROM case_runs r WHERE r.run_id=s.run_id)
+               ),
+               case_id,package_hash,content_hash,payload,created_at
+        FROM engineer_submission_snapshots s
+        """,
+        "DROP TABLE engineer_submission_snapshots",
+        """
+        ALTER TABLE engineer_submission_snapshots_v2
+        RENAME TO engineer_submission_snapshots
+        """,
+        """
+        CREATE INDEX idx_engineer_submission_run
+        ON engineer_submission_snapshots(run_id, revision)
+        """,
+    ),
+)
 
-DEFAULT_MIGRATIONS = (CASE_PLATFORM_MIGRATION,)
+DEFAULT_MIGRATIONS = (
+    CASE_PLATFORM_MIGRATION,
+    ENGINEER_SNAPSHOT_HISTORY_MIGRATION,
+)
 
 
 class MigrationRunner:

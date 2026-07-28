@@ -139,6 +139,7 @@ class CaseRunStore:
         event_type: str,
         request_payload: dict[str, Any],
         payload_update: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+        transaction_effect: Callable[[sqlite3.Connection, CaseRunView], None] | None = None,
     ) -> CaseRunView:
         self._validate_write_contract(expected_revision, idempotency_key)
         self._validate_payload(request_payload)
@@ -229,6 +230,8 @@ class CaseRunStore:
                     request_payload,
                 )
                 view = self._get_in_transaction(db, run_id)
+                if transaction_effect is not None:
+                    transaction_effect(db, view)
                 self._store_idempotency(
                     db,
                     endpoint,
@@ -253,6 +256,7 @@ class CaseRunStore:
         event_type: str,
         request_payload: dict[str, Any],
         payload_update: Callable[[dict[str, Any]], dict[str, Any]],
+        transaction_effect: Callable[[sqlite3.Connection, CaseRunView], None] | None = None,
     ) -> CaseRunView:
         self._validate_write_contract(expected_revision, idempotency_key)
         self._validate_payload(request_payload)
@@ -315,6 +319,8 @@ class CaseRunStore:
                     request_payload,
                 )
                 view = self._get_in_transaction(db, run_id)
+                if transaction_effect is not None:
+                    transaction_effect(db, view)
                 self._store_idempotency(
                     db,
                     endpoint,
@@ -379,6 +385,186 @@ class CaseRunStore:
             }
             for row in rows
         ]
+
+    def register_attachment(
+        self,
+        run_id: str,
+        actor_id: str,
+        media_type: str,
+        storage: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> dict[str, Any]:
+        self._validate_payload(metadata)
+        storage_key = storage.get("storageKey")
+        sha256 = storage.get("sha256")
+        if not isinstance(storage_key, str) or not storage_key:
+            raise validation_error("附件存储信息缺少 storageKey", "storageKey")
+        if not isinstance(sha256, str) or len(sha256) != 64:
+            raise validation_error("附件存储信息缺少有效 sha256", "sha256")
+        attachment_id = f"ATT-{uuid.uuid4().hex.upper()}"
+        stamp = utc_now()
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            try:
+                run = self._get_in_transaction(db, run_id)
+                if run.status in {CaseRunStatus.PUBLISHED, CaseRunStatus.SYNCED}:
+                    raise PlatformError(
+                        "state_conflict",
+                        "已发布运行不可继续追加附件",
+                        409,
+                        {"currentStatus": run.status},
+                    )
+                db.execute(
+                    """
+                    INSERT INTO case_run_attachments
+                    (attachment_id,run_id,media_type,storage_key,sha256,
+                     metadata,created_at)
+                    VALUES (?,?,?,?,?,?,?)
+                    """,
+                    (
+                        attachment_id,
+                        run_id,
+                        media_type,
+                        storage_key,
+                        sha256,
+                        self._dump(metadata),
+                        stamp,
+                    ),
+                )
+                self._append_event(
+                    db,
+                    run_id,
+                    "attachment_added",
+                    run.status,
+                    run.status,
+                    run.revision,
+                    UserRole.ENGINEER,
+                    actor_id,
+                    {
+                        "attachmentId": attachment_id,
+                        "mediaType": media_type,
+                        "sha256": sha256,
+                    },
+                )
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise
+        return {
+            "attachmentId": attachment_id,
+            "runId": run_id,
+            "mediaType": media_type,
+            "storageKey": storage_key,
+            "sha256": sha256,
+            "size": storage.get("size"),
+            "metadata": metadata,
+            "createdAt": stamp,
+        }
+
+    def attachments(self, run_id: str) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            self._get_in_transaction(db, run_id)
+            rows = db.execute(
+                """
+                SELECT attachment_id,run_id,media_type,storage_key,sha256,
+                       metadata,created_at
+                FROM case_run_attachments
+                WHERE run_id=?
+                ORDER BY created_at,attachment_id
+                """,
+                (run_id,),
+            ).fetchall()
+        return [
+            {
+                "attachmentId": row["attachment_id"],
+                "runId": row["run_id"],
+                "mediaType": row["media_type"],
+                "storageKey": row["storage_key"],
+                "sha256": row["sha256"],
+                "metadata": json.loads(row["metadata"]),
+                "createdAt": row["created_at"],
+            }
+            for row in rows
+        ]
+
+    def snapshot_effect(
+        self,
+        snapshot_type: str,
+        payload: dict[str, Any],
+        *,
+        reviewer_id: str | None = None,
+        decision: str | None = None,
+        verification_level: str | None = None,
+    ) -> Callable[[sqlite3.Connection, CaseRunView], None]:
+        self._validate_payload(payload)
+        supported = {"job_card", "engineer_submission", "expert_review"}
+        if snapshot_type not in supported:
+            raise ValueError(f"unsupported snapshot type: {snapshot_type}")
+
+        def write(db: sqlite3.Connection, run: CaseRunView):
+            stamp = utc_now()
+            content_hash = self._hash_json(payload)
+            snapshot_id = f"SNAP-{uuid.uuid4().hex.upper()}"
+            if snapshot_type == "job_card":
+                db.execute(
+                    """
+                    INSERT INTO job_card_snapshots
+                    (snapshot_id,run_id,revision,content_hash,payload,created_at)
+                    VALUES (?,?,?,?,?,?)
+                    """,
+                    (
+                        snapshot_id,
+                        run.run_id,
+                        run.revision,
+                        content_hash,
+                        self._dump(payload),
+                        stamp,
+                    ),
+                )
+                return
+            if snapshot_type == "engineer_submission":
+                db.execute(
+                    """
+                    INSERT INTO engineer_submission_snapshots
+                    (snapshot_id,run_id,revision,case_id,package_hash,
+                     content_hash,payload,created_at)
+                    VALUES (?,?,?,?,?,?,?,?)
+                    """,
+                    (
+                        snapshot_id,
+                        run.run_id,
+                        run.revision,
+                        run.case_id,
+                        run.package_hash,
+                        content_hash,
+                        self._dump(payload),
+                        stamp,
+                    ),
+                )
+                return
+            if not reviewer_id or not decision or not verification_level:
+                raise ValueError("expert review snapshot metadata is incomplete")
+            db.execute(
+                """
+                INSERT INTO expert_review_snapshots
+                (snapshot_id,run_id,revision,reviewer_id,decision,
+                 verification_level,content_hash,payload,created_at)
+                VALUES (?,?,?,?,?,?,?,?,?)
+                """,
+                (
+                    snapshot_id,
+                    run.run_id,
+                    run.revision,
+                    reviewer_id,
+                    decision,
+                    verification_level,
+                    content_hash,
+                    self._dump(payload),
+                    stamp,
+                ),
+            )
+
+        return write
 
     def _force_reset(
         self,

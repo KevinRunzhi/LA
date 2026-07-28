@@ -55,6 +55,9 @@ class AttachmentStore(Protocol):
     def put(self, storage_key: str, content: bytes) -> dict[str, Any]:
         """Persist one attachment and return storage metadata."""
 
+    def delete(self, storage_key: str) -> None:
+        """Remove an attachment when the database transaction cannot commit."""
+
 
 class RuleBasedDiagnosisProvider:
     provider_id = "rule-based-case-package"
@@ -84,11 +87,7 @@ class RuleBasedDiagnosisProvider:
 
 
 class RemoteModelDiagnosisProvider:
-    """Adapter contract for a future remote model.
-
-    The adapter deliberately fails when it has no configured client. It never
-    returns a fabricated model result.
-    """
+    """Deployment-neutral adapter for a configured remote diagnosis client."""
 
     provider_id = "remote-model"
 
@@ -109,12 +108,55 @@ class RemoteModelDiagnosisProvider:
                 503,
                 {"provider": self.provider_id},
             )
-        raise PlatformError(
-            "provider_not_implemented",
-            "远程诊断适配器需要由部署环境注入具体客户端",
-            501,
-            {"provider": self.provider_id, "model": self.model},
-        )
+        remote_request = {
+            "model": self.model,
+            "case": package.public_summary(),
+            "packageHash": package.package_hash,
+            "intakeFacts": {
+                **run_payload.get("intakeFacts", {}),
+                **request_payload.get("intakeFacts", {}),
+            },
+            "diagnosisContract": package.modules["diagnosis"],
+        }
+        try:
+            if hasattr(self.client, "diagnose"):
+                result = self.client.diagnose(remote_request)
+            elif callable(self.client):
+                result = self.client(remote_request)
+            else:
+                raise TypeError("client must be callable or expose diagnose()")
+        except PlatformError:
+            raise
+        except Exception as exc:
+            raise PlatformError(
+                "provider_failed",
+                "远程诊断提供方调用失败",
+                502,
+                {"provider": self.provider_id, "reason": str(exc)},
+            ) from exc
+        if not isinstance(result, dict):
+            raise PlatformError(
+                "provider_invalid_response",
+                "远程诊断提供方返回格式无效",
+                502,
+                {"provider": self.provider_id},
+            )
+        required = {"direction", "riskLevel", "summary", "evidence", "agents"}
+        missing = sorted(required - set(result))
+        if missing:
+            raise PlatformError(
+                "provider_invalid_response",
+                "远程诊断结果缺少必需字段",
+                502,
+                {"provider": self.provider_id, "missingFields": missing},
+            )
+        return {
+            **result,
+            "provider": self.provider_id,
+            "model": self.model,
+            "caseId": package.case_id,
+            "packageHash": package.package_hash,
+        }
 
 
 class SubmittedFactsTelemetryProvider:
@@ -180,6 +222,8 @@ class LocalAttachmentStore:
     provider_id: str = "local-attachment-store"
 
     def put(self, storage_key: str, content: bytes) -> dict[str, Any]:
+        if not content:
+            raise PlatformError("empty_attachment", "附件内容不能为空", 400)
         if len(content) > self.max_bytes:
             raise PlatformError(
                 "attachment_too_large",
@@ -199,3 +243,10 @@ class LocalAttachmentStore:
             "size": len(content),
             "sha256": hashlib.sha256(content).hexdigest(),
         }
+
+    def delete(self, storage_key: str) -> None:
+        candidate = (self.root / storage_key).resolve()
+        root = self.root.resolve()
+        if not candidate.is_relative_to(root):
+            raise PlatformError("invalid_storage_key", "附件存储路径不安全", 400)
+        candidate.unlink(missing_ok=True)

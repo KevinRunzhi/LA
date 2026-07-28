@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
 from typing import Any
+import uuid
 
 from flask import Blueprint, jsonify, request
+from werkzeug.utils import secure_filename
 
 try:
     from ..case_package import CasePackageError, CasePackageRegistry
@@ -14,7 +17,12 @@ from .case_runs import CaseRunStore
 from .contracts import CaseRunStatus, UserRole
 from .errors import PlatformError, validation_error
 from .knowledge import KnowledgeLifecycleService
-from .providers import DiagnosisProvider
+from .providers import (
+    AttachmentStore,
+    DiagnosisProvider,
+    KnowledgeSearchProvider,
+    TelemetryProvider,
+)
 from .routing import DeterministicCaseRouter
 
 
@@ -24,6 +32,9 @@ def create_platform_blueprint(
     router: DeterministicCaseRouter,
     diagnosis_provider: DiagnosisProvider,
     knowledge_service: KnowledgeLifecycleService,
+    telemetry_provider: TelemetryProvider,
+    knowledge_search_provider: KnowledgeSearchProvider,
+    attachment_store: AttachmentStore,
 ) -> Blueprint:
     blueprint = Blueprint("case_platform", __name__, url_prefix="/api/platform")
 
@@ -312,6 +323,7 @@ def create_platform_blueprint(
             "maintenance_record_generated",
             {"recordId": record["recordId"]},
             update,
+            run_store.snapshot_effect("job_card", record),
         )
         return _ok(
             {
@@ -350,6 +362,15 @@ def create_platform_blueprint(
             "engineer_submitted",
             {"recordId": record["recordId"]},
             update,
+            run_store.snapshot_effect(
+                "engineer_submission",
+                {
+                    "record": record,
+                    "submittedBy": actor["id"],
+                    "caseId": current.case_id,
+                    "packageHash": current.package_hash,
+                },
+            ),
         )
         return _ok(_project_run(run.to_dict(), UserRole.ENGINEER))
 
@@ -387,6 +408,9 @@ def create_platform_blueprint(
             if decision == "approved"
             else CaseRunStatus.REJECTED
         )
+        current = run_store.get(run_id)
+        package = _package_for_run(registry, current.case_id)
+        verification_level = package.provenance["defaultVerificationLevel"]
 
         def update(value: dict[str, Any]) -> dict[str, Any]:
             value["snapshots"]["expertReview"] = {
@@ -406,8 +430,45 @@ def create_platform_blueprint(
             f"expert_review_{decision}",
             {"decision": decision},
             update,
+            run_store.snapshot_effect(
+                "expert_review",
+                {
+                    "decision": decision,
+                    "reviewedBy": actor["id"],
+                    "notes": notes,
+                    "verificationLevel": verification_level,
+                },
+                reviewer_id=actor["id"],
+                decision=decision,
+                verification_level=verification_level,
+            ),
         )
         return _ok(_project_run(run.to_dict(), UserRole.EXPERT))
+
+    @blueprint.route("/case-runs/<run_id>/engineer-rework/start", methods=["POST"])
+    def start_engineer_rework(run_id: str):
+        payload = _json_body()
+        actor = _actor(payload, UserRole.ENGINEER)
+
+        def update(value: dict[str, Any]) -> dict[str, Any]:
+            value["snapshots"]["reworkStarted"] = {
+                "startedBy": actor["id"],
+                "reason": payload.get("reason", ""),
+            }
+            return value
+
+        run = run_store.transition(
+            run_id,
+            CaseRunStatus.IN_PROGRESS,
+            UserRole.ENGINEER,
+            actor["id"],
+            _expected_revision(payload),
+            _required_string(payload, "idempotencyKey"),
+            "engineer_rework_started",
+            {"reason": payload.get("reason", "")},
+            update,
+        )
+        return _ok(_project_run(run.to_dict(), UserRole.ENGINEER))
 
     @blueprint.route("/case-runs/<run_id>/knowledge/publish", methods=["POST"])
     def publish_knowledge(run_id: str):
@@ -437,6 +498,125 @@ def create_platform_blueprint(
         payload = _json_body()
         actor = _actor(payload, UserRole.ENGINEER)
         return _ok(knowledge_service.sync_latest(actor["id"], knowledge_id))
+
+    @blueprint.route("/case-runs/<run_id>/telemetry/resolve", methods=["POST"])
+    def resolve_telemetry(run_id: str):
+        payload = _json_body()
+        _actor(payload, UserRole.ENGINEER)
+        run = run_store.get(run_id)
+        requested_fields = payload.get("requestedFields")
+        if (
+            not isinstance(requested_fields, list)
+            or not requested_fields
+            or not all(isinstance(field, str) and field for field in requested_fields)
+        ):
+            raise validation_error(
+                "requestedFields 必须是非空字符串数组",
+                "requestedFields",
+            )
+        submitted = payload.get("submittedFacts") or run.payload.get(
+            "intakeFacts",
+            {},
+        )
+        if not isinstance(submitted, dict):
+            raise validation_error("submittedFacts 必须是对象", "submittedFacts")
+        equipment_id = str(
+            payload.get("equipmentId")
+            or _package_for_run(registry, run.case_id).identity["equipment"]["model"]
+        )
+        return _ok(
+            telemetry_provider.read_facts(
+                equipment_id,
+                requested_fields,
+                submitted,
+            )
+        )
+
+    @blueprint.route("/case-runs/<run_id>/assistant/search", methods=["POST"])
+    def search_current_step_knowledge(run_id: str):
+        payload = _json_body()
+        _actor(payload, UserRole.ENGINEER)
+        run = run_store.get(run_id)
+        package = _package_for_run(registry, run.case_id)
+        step_id = _required_string(payload, "stepId")
+        query = _required_string(payload, "query")
+        step = next(
+            (
+                item
+                for item in package.modules["guide"]["steps"]
+                if item["id"] == step_id
+            ),
+            None,
+        )
+        if step is None:
+            raise PlatformError("step_not_found", "未找到检修步骤", 404)
+        topics = {
+            topic["id"]: topic
+            for topic in package.modules["assistant"]["topics"]
+        }
+        allowed_claim_ids: set[str] = set()
+        for topic_id in step["assistantTopicIds"]:
+            topic = topics[topic_id]
+            if step_id in topic["allowedStepIds"]:
+                allowed_claim_ids.update(topic["claimIds"])
+        results = knowledge_search_provider.search(
+            package,
+            query,
+            allowed_claim_ids,
+        )
+        return _ok(
+            {
+                "runId": run_id,
+                "caseId": run.case_id,
+                "stepId": step_id,
+                "provider": knowledge_search_provider.provider_id,
+                "allowedClaimIds": sorted(allowed_claim_ids),
+                "results": results,
+            }
+        )
+
+    @blueprint.route("/case-runs/<run_id>/attachments", methods=["GET"])
+    def list_run_attachments(run_id: str):
+        _query_role()
+        return _ok({"runId": run_id, "items": run_store.attachments(run_id)})
+
+    @blueprint.route("/case-runs/<run_id>/attachments", methods=["POST"])
+    def upload_run_attachment(run_id: str):
+        actor_id = request.form.get("actorId", "").strip()
+        actor_role = request.form.get("actorRole", "").strip()
+        if not actor_id:
+            raise validation_error("actorId 不能为空", "actorId")
+        if actor_role != UserRole.ENGINEER:
+            raise PlatformError("role_forbidden", "只有工程师可以上传附件", 403)
+        upload = request.files.get("file")
+        if upload is None:
+            raise validation_error("缺少 file 附件", "file")
+        original_filename = (upload.filename or "").strip()
+        if not original_filename:
+            raise validation_error("附件文件名无效", "file")
+        filename = secure_filename(original_filename) or "attachment.bin"
+        metadata_text = request.form.get("metadata", "{}")
+        try:
+            metadata = json.loads(metadata_text)
+        except json.JSONDecodeError as exc:
+            raise validation_error("metadata 必须是 JSON 对象", "metadata") from exc
+        if not isinstance(metadata, dict):
+            raise validation_error("metadata 必须是 JSON 对象", "metadata")
+        metadata = {**metadata, "originalFilename": original_filename}
+        storage_key = f"{run_id}/{uuid.uuid4().hex}-{filename}"
+        stored = attachment_store.put(storage_key, upload.read())
+        try:
+            attachment = run_store.register_attachment(
+                run_id,
+                actor_id,
+                upload.mimetype or "application/octet-stream",
+                stored,
+                metadata,
+            )
+        except Exception:
+            attachment_store.delete(storage_key)
+            raise
+        return _ok(attachment, status=201)
 
     @blueprint.route("/case-runs/<run_id>/reset", methods=["POST"])
     def reset_run(run_id: str):

@@ -81,6 +81,10 @@ backend/
 │   └── CASE-*/
 └── openapi/
     └── case-platform.openapi.yaml
+
+frontend/src/
+└── api/
+    └── casePlatformClient.js
 ```
 
 职责：
@@ -93,6 +97,7 @@ backend/
 - `knowledge.py`：审核、知识版本、图谱增量与同步服务边界；
 - `providers.py`：大模型、遥测、附件存储和设备目录的可替换接口；
 - `api.py`：Flask Blueprint 和按阶段裁剪的公开接口。
+- `casePlatformClient.js`：Web 端请求合同、CasePlatformSession 与 revision 推进。
 
 ## 5. 第一批真实接口
 
@@ -107,6 +112,15 @@ POST /api/platform/case-runs/<run_id>/plan/confirm
 POST /api/platform/case-runs/<run_id>/guide/start
 POST /api/platform/case-runs/<run_id>/guide/steps/<step_id>/complete
 POST /api/platform/case-runs/<run_id>/records/generate
+POST /api/platform/case-runs/<run_id>/engineer-submit
+POST /api/platform/case-runs/<run_id>/expert/review/start
+POST /api/platform/case-runs/<run_id>/expert/review/decision
+POST /api/platform/case-runs/<run_id>/engineer-rework/start
+POST /api/platform/case-runs/<run_id>/knowledge/publish
+POST /api/platform/case-runs/<run_id>/telemetry/resolve
+POST /api/platform/case-runs/<run_id>/assistant/search
+GET  /api/platform/case-runs/<run_id>/attachments
+POST /api/platform/case-runs/<run_id>/attachments
 POST /api/platform/case-runs/<run_id>/reset
 ```
 
@@ -151,15 +165,15 @@ TelemetryProvider
 └── IndustrialProtocolProvider       adapter_ready
 
 AttachmentStore
-├── LocalAttachmentStore             adapter_ready
-└── ObjectStorageAttachmentStore     planned
+├── LocalAttachmentStore             implemented
+└── ObjectStorageAttachmentStore     adapter_ready
 
 KnowledgeSearchProvider
 ├── CatalogKnowledgeSearchProvider   implemented
 └── VectorKnowledgeSearchProvider    adapter_ready
 ```
 
-远程适配器缺少配置时必须明确报 `provider_not_configured`，不能返回伪造结果。
+远程诊断适配器在注入客户端后执行真实调用并校验返回合同；缺少配置时必须明确报 `provider_not_configured`，不能返回伪造结果。
 
 ## 8. 评审可读性产物
 

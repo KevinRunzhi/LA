@@ -12,7 +12,12 @@ try:
     from .case_platform.case_runs import CaseRunStore
     from .case_platform.migrations import MigrationRunner
     from .case_platform.knowledge import KnowledgeLifecycleService
-    from .case_platform.providers import RuleBasedDiagnosisProvider
+    from .case_platform.providers import (
+        CatalogKnowledgeSearchProvider,
+        LocalAttachmentStore,
+        RuleBasedDiagnosisProvider,
+        SubmittedFactsTelemetryProvider,
+    )
     from .case_platform.routing import DeterministicCaseRouter
     from .presentation_store import PresentationStore
 except ImportError:
@@ -21,7 +26,12 @@ except ImportError:
     from case_platform.case_runs import CaseRunStore
     from case_platform.migrations import MigrationRunner
     from case_platform.knowledge import KnowledgeLifecycleService
-    from case_platform.providers import RuleBasedDiagnosisProvider
+    from case_platform.providers import (
+        CatalogKnowledgeSearchProvider,
+        LocalAttachmentStore,
+        RuleBasedDiagnosisProvider,
+        SubmittedFactsTelemetryProvider,
+    )
     from case_platform.routing import DeterministicCaseRouter
     from presentation_store import PresentationStore
 
@@ -89,6 +99,9 @@ def create_app(database_path: Path | None = None) -> Flask:
             case_router,
             RuleBasedDiagnosisProvider(),
             knowledge_service,
+            SubmittedFactsTelemetryProvider(),
+            CatalogKnowledgeSearchProvider(),
+            LocalAttachmentStore(active_database_path.parent / "attachments"),
         )
     )
 

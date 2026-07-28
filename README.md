@@ -9,7 +9,8 @@
 - 当前前端主案例：工控机散热异常。
 - 案例平台已注册散热和供电两个案例合同。
 - 后端平台接口前缀：`/api/platform`。
-- 本地规则诊断可运行；真实大模型、工业协议遥测和对象存储通过适配接口预留，未伪装为已经接通。
+- 首页输入、CaseRun 创建和诊断入口已连接平台 API。
+- 本地规则诊断、提交事实遥测、步骤知识检索和本地附件存储可运行；远程诊断客户端、工业协议网关和对象存储可通过稳定适配接口替换。
 
 完整文档从 [`Docs/README.md`](./Docs/README.md) 开始阅读。不要使用旧状态文档判断当前进度。
 
@@ -35,6 +36,7 @@ Python 3.10+
 - [`backend/case_platform/migrations.py`](./backend/case_platform/migrations.py)：SQLite 有序迁移；
 - [`backend/case_platform/api.py`](./backend/case_platform/api.py)：Flask Blueprint；
 - [`backend/case_platform/providers.py`](./backend/case_platform/providers.py)：外部能力适配接口；
+- [`frontend/src/api/casePlatformClient.js`](./frontend/src/api/casePlatformClient.js)：Web 端平台 API 与 CaseRun 会话；
 - [`backend/openapi/case-platform.openapi.yaml`](./backend/openapi/case-platform.openapi.yaml)：OpenAPI 合同；
 - [`Docs/competition-submission-architecture.md`](./Docs/competition-submission-architecture.md)：架构和数据流。
 

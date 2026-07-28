@@ -44,6 +44,7 @@ import {
   Zap,
 } from "lucide-react";
 import { api } from "./api/client";
+import { CasePlatformSession } from "./api/casePlatformClient";
 import AdminShell from "./admin/AdminShell";
 import IndustrialKnowledgeGraphPage from "./admin/knowledge-graph/IndustrialKnowledgeGraphPage";
 import { presentationApi } from "./admin/presentationApi";
@@ -1279,6 +1280,8 @@ export default function App() {
   const [equipmentTraceCount, setEquipmentTraceCount] = useState(0);
   const [equipmentFieldSources, setEquipmentFieldSources] = useState({});
   const [planRevisionEvents, setPlanRevisionEvents] = useState([]);
+  const [platformSession, setPlatformSession] = useState(null);
+  const [platformConnectionError, setPlatformConnectionError] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -1405,6 +1408,33 @@ export default function App() {
     setActiveTransition(null);
     setTriageAgentStatus("idle");
     try {
+      if (platformSession?.active && platformSession.run.status === "created") {
+        const intakeFacts = platformSession.run.caseId === "CASE-ACP4000-001"
+          ? {
+              "field-equipment-model": intakeSelections["设备型号"] || "ACP-4000 / IPC-610",
+              "field-temp-fan-alarm": true,
+              "field-fan-speed": Number(thresholdValues["风扇转速"] || 420),
+            }
+          : {
+              "field-power-equipment-model": intakeSelections["设备型号"] || "Rockwell 6300B",
+              "field-power-led": "OFF",
+              "field-power-upstream-voltage": 24,
+              "field-power-device-voltage": 11.6,
+            };
+        await platformSession.confirmIntake(intakeFacts);
+        await platformSession.diagnose();
+        setPlatformSession(platformSession);
+        setPlatformConnectionError("");
+      }
+      const result = await api.startDiagnosis(input || defaultInput);
+      setDiagnosis(result);
+      setSteps(await api.steps());
+      setActivePage("workbench");
+      setStage("analysis");
+      setActiveStep(0);
+      setActiveDiagnosisTask(0);
+    } catch (error) {
+      setPlatformConnectionError(error.message || "案例平台连接失败");
       const result = await api.startDiagnosis(input || defaultInput);
       setDiagnosis(result);
       setSteps(await api.steps());
@@ -1665,7 +1695,7 @@ export default function App() {
     }
   }
 
-  function enterIntakeFromHome(value = homeDraft) {
+  async function enterIntakeFromHome(value = homeDraft) {
     const nextInput = value.trim() || defaultInput;
     setInput(nextInput);
     setActivePage("workbench");
@@ -1685,6 +1715,19 @@ export default function App() {
       duration: "约 10 分钟",
       recurrence: "首次发现",
     });
+    try {
+      const actor = { id: currentUser.account, role: "engineer" };
+      const session = await CasePlatformSession.begin(nextInput, actor);
+      setPlatformSession(session);
+      setPlatformConnectionError("");
+      window.sessionStorage.setItem(
+        "la.casePlatformSession",
+        JSON.stringify(session.snapshot()),
+      );
+    } catch (error) {
+      setPlatformSession(null);
+      setPlatformConnectionError(error.message || "案例平台连接失败");
+    }
   }
 
   function jumpToPhase(phaseIndex) {
@@ -1715,6 +1758,9 @@ export default function App() {
     setFeedbackUploadError("");
     setSelectedReferences([]);
     setReferencePickerOpen(false);
+    setPlatformSession(null);
+    setPlatformConnectionError("");
+    window.sessionStorage.removeItem("la.casePlatformSession");
     clearIntakeMaterials();
   }
 

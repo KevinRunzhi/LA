@@ -17,21 +17,22 @@
 | 运行事件日志 | `implemented` | `case_run_events` | 保存状态、revision、角色和摘要 |
 | 检修计划快照 | `implemented` | `plan/confirm` API | 向导读取固化版本 |
 | 步骤执行校验 | `implemented` | `guide/steps/*/complete` API | 必需检查和测量由后端校验 |
-| 动态记录字段 | `implemented` | `records/generate` API | 从当前案例 output 模块读取 |
-| 工程师提交 | `implemented` | `engineer-submit` API | 依赖已生成检修记录 |
-| 专家审核状态 | `implemented` | `expert/review/*` API | 角色和状态转换受控 |
+| 动态记录字段 | `implemented` | `records/generate` API、`job_card_snapshots` | 从当前案例 output 模块读取并固化 |
+| 工程师提交 | `implemented` | `engineer-submit` API、`engineer_submission_snapshots` | 依赖已生成检修记录，按 revision 保存不可变提交历史，支持驳回后重提 |
+| 专家审核与返工 | `implemented` | `expert/review/*`、`engineer-rework/start`、审核快照表 | 驳回后返回工程师执行态，多轮审核人与可信级别均可追溯 |
 | 知识版本发布 | `implemented` | `backend/case_platform/knowledge.py` | 与 run/case/hash 绑定 |
 | 图谱版本增量 | `implemented` | `case_graph_version_deltas` | 与知识版本绑定 |
 | 可信度保护 | `implemented` | `knowledge.py` | 无现场证据不得升级 verified_case |
 | 工程师知识同步 | `implemented` | `knowledge/*/sync` API | 按 engineer + knowledge 隔离 |
 | 本地规则诊断 | `implemented` | `RuleBasedDiagnosisProvider` | 读取案例诊断模块 |
-| 工程师提交事实遥测 | `implemented` | `SubmittedFactsTelemetryProvider` | 不声称连接真实 PLC/网关 |
-| 案例 claim 检索 | `implemented` | `CatalogKnowledgeSearchProvider` | 按当前步骤允许 claim 裁剪 |
-| 本地附件存储 | `adapter_ready` | `LocalAttachmentStore` | 尚未接入现有上传页面 |
-| 远程大模型 | `adapter_ready` | `RemoteModelDiagnosisProvider` | 未配置时明确失败 |
+| 工程师提交事实遥测 | `implemented` | `telemetry/resolve` API、`SubmittedFactsTelemetryProvider` | 返回值、缺失字段和事实来源；不声称连接真实 PLC/网关 |
+| 案例 claim 检索 | `implemented` | `assistant/search` API、`CatalogKnowledgeSearchProvider` | 按当前步骤允许 claim 裁剪并返回证据引用 |
+| 本地附件存储 | `implemented` | `attachments` API、`LocalAttachmentStore`、`case_run_attachments` | multipart 上传、20 MiB 限制、SHA-256、失败补偿删除和事件登记 |
+| Web 端平台会话 | `implemented` | `frontend/src/api/casePlatformClient.js`、`App.jsx` | 首页输入真实路由并创建 CaseRun，诊断入口推进 intake 与 diagnosis |
+| 远程诊断客户端 | `adapter_ready` | `RemoteModelDiagnosisProvider` | 注入客户端后真实调用并校验结果合同；未配置时明确失败 |
 | 工业协议网关 | `adapter_ready` | `TelemetryProvider` Protocol | 需要部署侧具体实现 |
 | 向量知识检索 | `adapter_ready` | `KnowledgeSearchProvider` Protocol | 当前使用结构化 claim 检索 |
-| 对象存储 | `planned` | `AttachmentStore` Protocol | 未提供虚假云端实现 |
+| 对象存储 | `adapter_ready` | `AttachmentStore` Protocol | 当前使用本地持久化，可部署时替换为对象存储 |
 | 真实图像识别 | `planned` | 前端仍使用人工确认标签 | 当前不声称真实识别 |
 | 真实语音识别 | `planned` | 前端保留交互入口 | 当前不声称真实识别 |
 

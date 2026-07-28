@@ -111,6 +111,105 @@ paths:
           $ref: "#/components/responses/Conflict"
         "503":
           description: Selected remote provider is not configured
+  /api/platform/case-runs/{runId}/telemetry/resolve:
+    post:
+      summary: Resolve requested telemetry fields from the configured provider
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [actor, requestedFields]
+              properties:
+                actor:
+                  $ref: "#/components/schemas/Actor"
+                equipmentId:
+                  type: string
+                requestedFields:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                submittedFacts:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Values, missing fields and telemetry provenance
+        "400":
+          $ref: "#/components/responses/ValidationError"
+  /api/platform/case-runs/{runId}/assistant/search:
+    post:
+      summary: Search only knowledge claims allowed for the current guide step
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [actor, stepId, query]
+              properties:
+                actor:
+                  $ref: "#/components/schemas/Actor"
+                stepId:
+                  type: string
+                query:
+                  type: string
+                  minLength: 1
+      responses:
+        "200":
+          description: Step-scoped claim results with evidence references
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/platform/case-runs/{runId}/attachments:
+    get:
+      summary: List evidence attachments registered to a CaseRun
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - in: query
+          name: role
+          schema:
+            $ref: "#/components/schemas/UserRole"
+      responses:
+        "200":
+          description: Attachment metadata and SHA-256 hashes
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      summary: Store and register one evidence attachment
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [actorId, actorRole, file]
+              properties:
+                actorId:
+                  type: string
+                actorRole:
+                  type: string
+                  const: engineer
+                metadata:
+                  type: string
+                  description: JSON object with step and evidence metadata
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: File stored and evidence metadata registered
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "413":
+          description: Attachment exceeds configured size
   /api/platform/case-runs/{runId}/plan/confirm:
     post:
       summary: Freeze the resolved maintenance plan
@@ -210,6 +309,20 @@ paths:
           description: Immutable expert decision added to the run
         "403":
           $ref: "#/components/responses/Forbidden"
+  /api/platform/case-runs/{runId}/engineer-rework/start:
+    post:
+      summary: Return a rejected run to engineer rework
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        $ref: "#/components/requestBodies/RevisionWrite"
+      responses:
+        "200":
+          description: Rejected run returned to in_progress
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /api/platform/case-runs/{runId}/knowledge/publish:
     post:
       summary: Atomically publish knowledge and graph version delta

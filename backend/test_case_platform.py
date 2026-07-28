@@ -1,3 +1,5 @@
+import hashlib
+import io
 import json
 import sqlite3
 import tempfile
@@ -11,7 +13,11 @@ from backend.case_platform.case_runs import CaseRunStore
 from backend.case_platform.contracts import CaseRunStatus, RouteStatus, UserRole
 from backend.case_platform.errors import PlatformError
 from backend.case_platform.knowledge import KnowledgeLifecycleService
-from backend.case_platform.migrations import MigrationRunner
+from backend.case_platform.migrations import (
+    CASE_PLATFORM_MIGRATION,
+    MigrationRunner,
+)
+from backend.case_platform.providers import RemoteModelDiagnosisProvider
 from backend.case_platform.routing import DeterministicCaseRouter
 
 
@@ -90,6 +96,37 @@ class DeterministicRoutingTest(unittest.TestCase):
             self.router.route({"description": "x" * 2001})
 
 
+class ProviderContractTest(unittest.TestCase):
+    def test_remote_model_adapter_calls_client_and_validates_contract(self):
+        captured = {}
+
+        def remote_client(payload):
+            captured.update(payload)
+            return {
+                "direction": "供电路径压降",
+                "riskLevel": "medium",
+                "summary": "设备端启动电压低于案例阈值",
+                "evidence": [],
+                "agents": [],
+            }
+
+        package = registry().get("CASE-ROCKWELL-6300-002")
+        provider = RemoteModelDiagnosisProvider(remote_client, "diagnosis-v1")
+        result = provider.diagnose(
+            package,
+            {"intakeFacts": {"field-power-device-voltage": 11.6}},
+            {},
+        )
+        self.assertEqual("remote-model", result["provider"])
+        self.assertEqual("diagnosis-v1", captured["model"])
+        self.assertEqual(package.package_hash, captured["packageHash"])
+
+        invalid = RemoteModelDiagnosisProvider(lambda _: {}, "diagnosis-v1")
+        with self.assertRaises(PlatformError) as error:
+            invalid.diagnose(package, {}, {})
+        self.assertEqual("provider_invalid_response", error.exception.code)
+
+
 class MigrationAndCaseRunTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -101,7 +138,7 @@ class MigrationAndCaseRunTest(unittest.TestCase):
             db.execute("CREATE TABLE legacy_state (id INTEGER PRIMARY KEY, value TEXT)")
             db.execute("INSERT INTO legacy_state VALUES (1, 'keep-me')")
         self.runner = MigrationRunner(self.database, self.backups)
-        self.assertEqual(["001"], self.runner.migrate())
+        self.assertEqual(["001", "002"], self.runner.migrate())
         self.store = CaseRunStore(self.database)
         self.registry = registry()
 
@@ -113,10 +150,58 @@ class MigrationAndCaseRunTest(unittest.TestCase):
                 db.execute("SELECT value FROM legacy_state WHERE id=1").fetchone()[0],
             )
             self.assertEqual(
-                1,
+                2,
                 db.execute("SELECT count(*) FROM schema_migrations").fetchone()[0],
             )
         self.assertEqual(1, len(list(self.backups.glob("*.db"))))
+
+    def test_revisioned_snapshot_migration_preserves_existing_submission(self):
+        database = Path(self.temporary.name) / "version-one.db"
+        first_runner = MigrationRunner(
+            database,
+            Path(self.temporary.name) / "v1-backups",
+            migrations=(CASE_PLATFORM_MIGRATION,),
+        )
+        self.assertEqual(["001"], first_runner.migrate())
+        package = self.registry.get("CASE-ACP4000-001")
+        old_store = CaseRunStore(database)
+        run = old_store.create_run(
+            package,
+            "worker001",
+            key(),
+            {"description": "TEMP/FAN告警"},
+        )
+        with sqlite3.connect(database) as db:
+            db.execute(
+                """
+                INSERT INTO engineer_submission_snapshots
+                (snapshot_id,run_id,case_id,package_hash,content_hash,payload,created_at)
+                VALUES ('SNAP-OLD',?,?,?,?,?,?)
+                """,
+                (
+                    run.run_id,
+                    run.case_id,
+                    run.package_hash,
+                    "a" * 64,
+                    '{"result":"preserved"}',
+                    "2026-07-28T00:00:00+00:00",
+                ),
+            )
+        upgraded = MigrationRunner(
+            database,
+            Path(self.temporary.name) / "v2-backups",
+        )
+        self.assertEqual(["002"], upgraded.migrate())
+        with sqlite3.connect(database) as db:
+            row = db.execute(
+                """
+                SELECT snapshot_id,revision,payload
+                FROM engineer_submission_snapshots
+                WHERE run_id=?
+                """,
+                (run.run_id,),
+            ).fetchone()
+        self.assertEqual(("SNAP-OLD", 1, '{"result":"preserved"}'), row)
 
     def test_revision_idempotency_parallel_runs_and_targeted_reset(self):
         package = self.registry.get("CASE-ACP4000-001")
@@ -256,9 +341,21 @@ class PlatformApiSmokeTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        database = Path(self.temporary.name) / "api.db"
-        self.client = create_app(database).test_client()
+        self.database = Path(self.temporary.name) / "api.db"
+        self.client = create_app(self.database).test_client()
         self.actor = {"id": "worker001", "role": "engineer"}
+        self.expert = {"id": "expert001", "role": "expert"}
+
+    def post_run(self, run_id, action, revision, actor=None, **fields):
+        return self.client.post(
+            f"/api/platform/case-runs/{run_id}/{action}",
+            json={
+                "expectedRevision": revision,
+                "idempotencyKey": key(),
+                "actor": actor or self.actor,
+                **fields,
+            },
+        )
 
     def test_route_create_and_diagnose_without_default_case(self):
         missing = self.client.post(
@@ -322,6 +419,294 @@ class PlatformApiSmokeTest(unittest.TestCase):
         data = diagnosed.get_json()["data"]
         self.assertEqual("diagnosed", data["run"]["status"])
         self.assertIn("24V DC", data["diagnosis"]["direction"])
+
+    def test_telemetry_and_step_scoped_knowledge_search(self):
+        created = self.client.post(
+            "/api/platform/case-runs",
+            json={
+                "caseId": "CASE-ROCKWELL-6300-002",
+                "idempotencyKey": key(),
+                "actor": self.actor,
+                "input": {"description": "Power LED不亮"},
+            },
+        ).get_json()["data"]
+        run_id = created["runId"]
+        intake = self.post_run(
+            run_id,
+            "intake/confirm",
+            1,
+            intakeFacts={
+                "field-power-device-voltage": 11.6,
+                "field-power-led": "OFF",
+            },
+        )
+        self.assertEqual(200, intake.status_code)
+
+        telemetry = self.client.post(
+            f"/api/platform/case-runs/{run_id}/telemetry/resolve",
+            json={
+                "actor": self.actor,
+                "requestedFields": [
+                    "field-power-device-voltage",
+                    "field-power-upstream-voltage",
+                ],
+            },
+        )
+        self.assertEqual(200, telemetry.status_code)
+        facts = telemetry.get_json()["data"]
+        self.assertEqual("submitted-facts", facts["provider"])
+        self.assertEqual(
+            11.6,
+            facts["values"]["field-power-device-voltage"],
+        )
+        self.assertEqual(
+            ["field-power-upstream-voltage"],
+            facts["missingFields"],
+        )
+
+        search = self.client.post(
+            f"/api/platform/case-runs/{run_id}/assistant/search",
+            json={
+                "actor": self.actor,
+                "stepId": "step-power-measure",
+                "query": "24V 电压范围",
+            },
+        )
+        self.assertEqual(200, search.status_code)
+        knowledge = search.get_json()["data"]
+        self.assertEqual(
+            ["claim-power-input-range"],
+            knowledge["allowedClaimIds"],
+        )
+        self.assertEqual(
+            ["claim-power-input-range"],
+            [item["claimId"] for item in knowledge["results"]],
+        )
+
+    def test_attachment_is_stored_hashed_registered_and_listed(self):
+        created = self.client.post(
+            "/api/platform/case-runs",
+            json={
+                "caseId": "CASE-ROCKWELL-6300-002",
+                "idempotencyKey": key(),
+                "actor": self.actor,
+                "input": {"description": "Power LED不亮"},
+            },
+        ).get_json()["data"]
+        run_id = created["runId"]
+        content = b"field-evidence-voltage=11.6V"
+        uploaded = self.client.post(
+            f"/api/platform/case-runs/{run_id}/attachments",
+            data={
+                "actorId": "worker001",
+                "actorRole": "engineer",
+                "metadata": json.dumps(
+                    {"category": "measurement", "stepId": "step-power-measure"}
+                ),
+                "file": (io.BytesIO(content), "startup-voltage.txt"),
+            },
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(201, uploaded.status_code)
+        attachment = uploaded.get_json()["data"]
+        self.assertEqual(hashlib.sha256(content).hexdigest(), attachment["sha256"])
+        stored_file = (
+            self.database.parent / "attachments" / attachment["storageKey"]
+        )
+        self.assertEqual(content, stored_file.read_bytes())
+
+        listed = self.client.get(
+            f"/api/platform/case-runs/{run_id}/attachments?role=expert"
+        )
+        self.assertEqual(200, listed.status_code)
+        items = listed.get_json()["data"]["items"]
+        self.assertEqual(1, len(items))
+        self.assertEqual("startup-voltage.txt", items[0]["metadata"]["originalFilename"])
+        with sqlite3.connect(self.database) as db:
+            self.assertEqual(
+                1,
+                db.execute(
+                    "SELECT count(*) FROM case_run_attachments WHERE run_id=?",
+                    (run_id,),
+                ).fetchone()[0],
+            )
+            self.assertEqual(
+                1,
+                db.execute(
+                    """
+                    SELECT count(*) FROM case_run_events
+                    WHERE run_id=? AND event_type='attachment_added'
+                    """,
+                    (run_id,),
+                ).fetchone()[0],
+            )
+
+    def test_full_submission_writes_immutable_snapshots(self):
+        created = self.client.post(
+            "/api/platform/case-runs",
+            json={
+                "caseId": "CASE-ROCKWELL-6300-002",
+                "idempotencyKey": key(),
+                "actor": self.actor,
+                "input": {"description": "Power LED不亮，设备端11.6V"},
+            },
+        ).get_json()["data"]
+        run_id = created["runId"]
+
+        response = self.post_run(
+            run_id,
+            "intake/confirm",
+            1,
+            intakeFacts={"field-power-device-voltage": 11.6},
+        )
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(
+            200,
+            self.post_run(run_id, "diagnosis", 2).status_code,
+        )
+        self.assertEqual(
+            200,
+            self.post_run(run_id, "plan/confirm", 3).status_code,
+        )
+        self.assertEqual(
+            200,
+            self.post_run(run_id, "guide/start", 4).status_code,
+        )
+        first_step = self.post_run(
+            run_id,
+            "guide/steps/step-power-measure/complete",
+            5,
+            execution={
+                "checks": {"check-power-qualified-person": True},
+                "measurements": {"measurement-power-device-startup": 11.6},
+            },
+        )
+        self.assertEqual(200, first_step.status_code)
+        second_step = self.post_run(
+            run_id,
+            "guide/steps/step-power-terminal/complete",
+            6,
+            execution={
+                "checks": {"check-power-off-before-terminal": True},
+                "measurements": {},
+            },
+        )
+        self.assertEqual(200, second_step.status_code)
+        record = self.post_run(
+            run_id,
+            "records/generate",
+            7,
+            engineerResult={
+                "result-power-final-cause": "DC 端子松动",
+                "result-power-actual-resolution": "断电后重新紧固端子",
+                "result-power-recovery": "连续冷启动恢复正常",
+                "result-power-observation-minutes": 30,
+                "result-power-device-voltage-after": 24.1,
+                "result-power-startup-minimum-after": 23.8,
+            },
+        )
+        self.assertEqual(200, record.status_code)
+        self.assertEqual(
+            200,
+            self.post_run(run_id, "engineer-submit", 8).status_code,
+        )
+        self.assertEqual(
+            200,
+            self.post_run(
+                run_id,
+                "expert/review/start",
+                9,
+                actor=self.expert,
+            ).status_code,
+        )
+        rejection = self.post_run(
+            run_id,
+            "expert/review/decision",
+            10,
+            actor=self.expert,
+            decision="rejected",
+            expertNotes={"summary": "请补充恢复后的复测结果"},
+        )
+        self.assertEqual(200, rejection.status_code)
+        rework = self.post_run(
+            run_id,
+            "engineer-rework/start",
+            11,
+            reason="补充恢复复测",
+        )
+        self.assertEqual(200, rework.status_code)
+        revised_record = self.post_run(
+            run_id,
+            "records/generate",
+            12,
+            engineerResult={
+                "result-power-final-cause": "DC 端子松动",
+                "result-power-actual-resolution": "断电后重新紧固并完成复测",
+                "result-power-recovery": "连续三次冷启动恢复正常",
+                "result-power-observation-minutes": 45,
+                "result-power-device-voltage-after": 24.1,
+                "result-power-startup-minimum-after": 23.8,
+            },
+        )
+        self.assertEqual(200, revised_record.status_code)
+        self.assertEqual(
+            200,
+            self.post_run(run_id, "engineer-submit", 13).status_code,
+        )
+        self.assertEqual(
+            200,
+            self.post_run(
+                run_id,
+                "expert/review/start",
+                14,
+                actor=self.expert,
+            ).status_code,
+        )
+        decision = self.post_run(
+            run_id,
+            "expert/review/decision",
+            15,
+            actor=self.expert,
+            decision="approved",
+            expertNotes={"summary": "补充复测后材料完整"},
+        )
+        self.assertEqual(200, decision.status_code)
+
+        with sqlite3.connect(self.database) as db:
+            counts = {
+                table: db.execute(
+                    f"SELECT count(*) FROM {table} WHERE run_id=?",
+                    (run_id,),
+                ).fetchone()[0]
+                for table in (
+                    "job_card_snapshots",
+                    "engineer_submission_snapshots",
+                    "expert_review_snapshots",
+                )
+            }
+            reviews = db.execute(
+                """
+                SELECT reviewer_id,decision,verification_level
+                FROM expert_review_snapshots WHERE run_id=?
+                ORDER BY revision
+                """,
+                (run_id,),
+            ).fetchall()
+        self.assertEqual(
+            {
+                "job_card_snapshots": 2,
+                "engineer_submission_snapshots": 2,
+                "expert_review_snapshots": 2,
+            },
+            counts,
+        )
+        self.assertEqual(
+            [
+                ("expert001", "rejected", "synthetic_demo"),
+                ("expert001", "approved", "synthetic_demo"),
+            ],
+            reviews,
+        )
 
 
 if __name__ == "__main__":

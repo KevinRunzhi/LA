@@ -116,7 +116,7 @@ NFKC 与大小写规范化
 - 案例 claim 检索；
 - 本地受限目录附件存储。
 
-远程模型适配器在未配置时明确返回 `provider_not_configured`，不会用本地固定结果伪装远程调用成功。
+附件通过 multipart API 写入受限目录，生成 SHA-256 后登记到 `case_run_attachments`，数据库登记失败会补偿删除文件。远程模型适配器在注入客户端后执行真实调用并验证结果合同；未配置时明确返回 `provider_not_configured`。
 
 ## 7. 可信度
 
@@ -133,4 +133,4 @@ evidenceRefs
 
 ## 8. 与稳定演示的关系
 
-本分支不要求替换已录制视频。旧 `/api/demo`、`/api/admin` 和 React 演示路径继续保留；新增 `/api/platform` 作为可逐步接入的工程后端。这样既保持视频演示稳定，也让提交源码体现完整的平台演进方向。
+本分支不要求替换已录制视频。旧 `/api/demo`、`/api/admin` 和 React 展示路径继续保留；首页输入已通过 `CasePlatformSession` 真实调用 `/api/platform/case-routing` 和 `/api/platform/case-runs`，启动诊断时继续推进 intake 与 diagnosis。其余旧页面按兼容层逐步迁移，不影响录制版本的视觉与节奏。
