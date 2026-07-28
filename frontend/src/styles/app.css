@@ -3096,17 +3096,6 @@ h2 {
   overflow: auto;
 }
 
-.assistant-api-note {
-  border: 1px dashed #c8d6ea;
-  border-radius: 7px;
-  background: #fbfdff;
-  color: var(--color-muted);
-  padding: 7px 8px;
-  font-size: 12px;
-  line-height: 1.45;
-  margin-bottom: 10px;
-}
-
 .assistant-agent-process {
   border: 1px solid #d7e2ef;
   border-left: 3px solid var(--color-primary);
@@ -4394,8 +4383,7 @@ select:focus-visible {
 .settings-section,
 .settings-check,
 .assistant-chat,
-.assistant-message,
-.assistant-api-note {
+.assistant-message {
   color: var(--color-text);
   background: #141F29;
   border-color: #2D3E4A;
@@ -4507,12 +4495,6 @@ select:focus-visible {
   color: #CDEEF0;
   background: rgba(85, 184, 194, 0.11);
   border-color: rgba(85, 184, 194, 0.38);
-}
-
-.assistant-api-note {
-  color: #8496A4;
-  background: #0F1922;
-  border-style: dashed;
 }
 
 .node-map {
@@ -4755,8 +4737,7 @@ body {
 .settings-section,
 .settings-check,
 .assistant-chat,
-.assistant-message,
-.assistant-api-note {
+.assistant-message {
   background: #101B2F;
   border-color: #263B56;
 }
