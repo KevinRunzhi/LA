@@ -1,0 +1,482 @@
+openapi: 3.1.0
+info:
+  title: LA Industrial Computer Case Platform API
+  version: 1.0.0
+  description: Multi-case routing, CaseRun execution, expert review and knowledge lifecycle API.
+servers:
+  - url: http://127.0.0.1:8080
+paths:
+  /api/platform/cases:
+    get:
+      summary: List validated runnable case packages
+      responses:
+        "200":
+          description: Validated case summaries without hidden final answers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope"
+  /api/platform/case-routing:
+    post:
+      summary: Route submitted field facts to a supported case
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoutingRequest"
+      responses:
+        "200":
+          description: Deterministic routing decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoutingResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+  /api/platform/case-runs:
+    post:
+      summary: Create an isolated CaseRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/WriteContract"
+                - type: object
+                  required: [caseId, input]
+                  properties:
+                    caseId:
+                      type: string
+                      pattern: "^CASE-[A-Z0-9-]+$"
+                    input:
+                      type: object
+                      additionalProperties: true
+      responses:
+        "201":
+          description: Created run at revision 1
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/platform/case-runs/{runId}:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
+    get:
+      summary: Read a stage and role projected CaseRun
+      parameters:
+        - in: query
+          name: role
+          schema:
+            $ref: "#/components/schemas/UserRole"
+      responses:
+        "200":
+          description: Projected run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/platform/case-runs/{runId}/intake/confirm:
+    post:
+      summary: Confirm intake facts
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        $ref: "#/components/requestBodies/RevisionWrite"
+      responses:
+        "200":
+          description: Run advanced to intake_confirmed
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/platform/case-runs/{runId}/diagnosis:
+    post:
+      summary: Produce diagnosis through the configured provider
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        $ref: "#/components/requestBodies/RevisionWrite"
+      responses:
+        "200":
+          description: Diagnosis snapshot and diagnosed run
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "503":
+          description: Selected remote provider is not configured
+  /api/platform/case-runs/{runId}/plan/confirm:
+    post:
+      summary: Freeze the resolved maintenance plan
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        $ref: "#/components/requestBodies/RevisionWrite"
+      responses:
+        "200":
+          description: Resolved plan snapshot saved
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/platform/case-runs/{runId}/guide/start:
+    post:
+      summary: Start execution from the frozen plan
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        $ref: "#/components/requestBodies/RevisionWrite"
+      responses:
+        "200":
+          description: Run advanced to in_progress
+  /api/platform/case-runs/{runId}/guide/steps:
+    get:
+      summary: Read guide steps and execution state
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - in: query
+          name: role
+          schema:
+            $ref: "#/components/schemas/UserRole"
+      responses:
+        "200":
+          description: Frozen steps with execution state
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/platform/case-runs/{runId}/guide/steps/{stepId}/complete:
+    post:
+      summary: Complete one validated guide step
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+        - in: path
+          name: stepId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        $ref: "#/components/requestBodies/RevisionWrite"
+      responses:
+        "200":
+          description: Step execution saved once
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/platform/case-runs/{runId}/records/generate:
+    post:
+      summary: Generate a maintenance record snapshot
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        $ref: "#/components/requestBodies/RevisionWrite"
+      responses:
+        "200":
+          description: Case-specific result fields and job card contract
+  /api/platform/case-runs/{runId}/engineer-submit:
+    post:
+      summary: Freeze and submit the engineer result
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        $ref: "#/components/requestBodies/RevisionWrite"
+      responses:
+        "200":
+          description: Run advanced to engineer_submitted
+  /api/platform/case-runs/{runId}/expert/review/start:
+    post:
+      summary: Start expert review
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        $ref: "#/components/requestBodies/RevisionWrite"
+      responses:
+        "200":
+          description: Run advanced to expert_reviewing
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/platform/case-runs/{runId}/expert/review/decision:
+    post:
+      summary: Approve or reject an engineer submission
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        $ref: "#/components/requestBodies/RevisionWrite"
+      responses:
+        "200":
+          description: Immutable expert decision added to the run
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/platform/case-runs/{runId}/knowledge/publish:
+    post:
+      summary: Atomically publish knowledge and graph version delta
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        $ref: "#/components/requestBodies/RevisionWrite"
+      responses:
+        "200":
+          description: New immutable knowledge version and graph delta
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          description: Verification evidence or proposal is incomplete
+  /api/platform/knowledge/{knowledgeId}/sync:
+    post:
+      summary: Synchronize one knowledge item for one engineer
+      parameters:
+        - in: path
+          name: knowledgeId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [actor]
+              properties:
+                actor:
+                  $ref: "#/components/schemas/Actor"
+      responses:
+        "200":
+          description: Engineer local version updated
+  /api/platform/case-runs/{runId}/reset:
+    post:
+      summary: Reset one unpublished run without deleting shared assets
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        $ref: "#/components/requestBodies/RevisionWrite"
+      responses:
+        "200":
+          description: Target run returned to created
+        "409":
+          $ref: "#/components/responses/Conflict"
+components:
+  parameters:
+    RunId:
+      in: path
+      name: runId
+      required: true
+      schema:
+        type: string
+        pattern: "^RUN-[A-F0-9]{32}$"
+  requestBodies:
+    RevisionWrite:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RevisionWrite"
+  responses:
+    ValidationError:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    NotFound:
+      description: Case, run or step does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Conflict:
+      description: Revision, state or idempotency conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Forbidden:
+      description: Actor role is not permitted
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+  schemas:
+    UserRole:
+      type: string
+      enum: [engineer, expert, admin]
+    Actor:
+      type: object
+      additionalProperties: false
+      required: [id, role]
+      properties:
+        id:
+          type: string
+          minLength: 1
+        role:
+          $ref: "#/components/schemas/UserRole"
+    WriteContract:
+      type: object
+      required: [idempotencyKey, actor]
+      properties:
+        idempotencyKey:
+          type: string
+          format: uuid
+        actor:
+          $ref: "#/components/schemas/Actor"
+    RevisionWrite:
+      allOf:
+        - $ref: "#/components/schemas/WriteContract"
+        - type: object
+          required: [expectedRevision]
+          properties:
+            expectedRevision:
+              type: integer
+              minimum: 1
+    RoutingRequest:
+      type: object
+      additionalProperties: false
+      required: [description]
+      properties:
+        intakeSessionId:
+          type: string
+        description:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        equipment:
+          type: object
+          additionalProperties: true
+        alarms:
+          type: array
+          items:
+            type: string
+        confirmedTags:
+          type: array
+          items:
+            type: string
+        measurements:
+          type: object
+          additionalProperties: true
+        location:
+          type: object
+          additionalProperties: true
+    RouteCandidate:
+      type: object
+      required: [caseId, faultCode, score, matchedFacts, hardExcluded]
+      properties:
+        caseId:
+          type: string
+        faultCode:
+          type: string
+        score:
+          type: integer
+        matchedFacts:
+          type: array
+          items:
+            type: object
+        excludedFacts:
+          type: array
+          items:
+            type: object
+        negatedFacts:
+          type: array
+          items:
+            type: object
+        missingFacts:
+          type: array
+          items:
+            type: string
+        hardExcluded:
+          type: boolean
+    RoutingDecision:
+      type: object
+      required: [routeStatus, routingAlgorithmVersion, registryVersion, candidates]
+      properties:
+        routeStatus:
+          type: string
+          enum: [matched, ambiguous, insufficient, unsupported]
+        routingAlgorithmVersion:
+          type: string
+        registryVersion:
+          type: string
+        normalizedInput:
+          type: string
+        candidates:
+          type: array
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/RouteCandidate"
+        nextQuestion:
+          type: [string, "null"]
+        reason:
+          type: string
+    CaseRun:
+      type: object
+      required: [runId, caseId, packageVersion, packageHash, status, revision, payload]
+      properties:
+        runId:
+          type: string
+        caseId:
+          type: string
+        packageVersion:
+          type: string
+        packageHash:
+          type: string
+        status:
+          type: string
+          enum: [created, intake_confirmed, diagnosed, plan_confirmed, in_progress, engineer_submitted, expert_reviewing, approved, rejected, published, synced]
+        revision:
+          type: integer
+          minimum: 1
+        payload:
+          type: object
+          additionalProperties: true
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    SuccessEnvelope:
+      type: object
+      required: [ok, data]
+      properties:
+        ok:
+          type: boolean
+          const: true
+        data: {}
+    RunResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/CaseRun"
+    RoutingResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/RoutingDecision"
+    ErrorEnvelope:
+      type: object
+      required: [ok, error]
+      properties:
+        ok:
+          type: boolean
+          const: false
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true

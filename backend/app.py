@@ -7,8 +7,22 @@ from pathlib import Path
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
 try:
+    from .case_package import CasePackageRegistry
+    from .case_platform.api import create_platform_blueprint
+    from .case_platform.case_runs import CaseRunStore
+    from .case_platform.migrations import MigrationRunner
+    from .case_platform.knowledge import KnowledgeLifecycleService
+    from .case_platform.providers import RuleBasedDiagnosisProvider
+    from .case_platform.routing import DeterministicCaseRouter
     from .presentation_store import PresentationStore
 except ImportError:
+    from case_package import CasePackageRegistry
+    from case_platform.api import create_platform_blueprint
+    from case_platform.case_runs import CaseRunStore
+    from case_platform.migrations import MigrationRunner
+    from case_platform.knowledge import KnowledgeLifecycleService
+    from case_platform.providers import RuleBasedDiagnosisProvider
+    from case_platform.routing import DeterministicCaseRouter
     from presentation_store import PresentationStore
 
 
@@ -19,6 +33,7 @@ FRONTEND_DIST = REPOSITORY_DIR / "frontend" / "dist"
 PRESENTATION_DIR = DATA_DIR / "presentation"
 PRESENTATION_INITIAL_STATE_FILE = PRESENTATION_DIR / "initial_state.json"
 PRESENTATION_DB_FILE = PRESENTATION_DIR / "presentation.db"
+CASES_DIR = DATA_DIR / "cases"
 
 
 def load_json(name: str):
@@ -39,9 +54,13 @@ def api_error(error: str, message: str, status=400):
     return jsonify({"ok": False, "error": error, "message": message}), status
 
 
-def create_app() -> Flask:
+def create_app(database_path: Path | None = None) -> Flask:
     app = Flask(__name__)
 
+    case_registry = CasePackageRegistry(
+        CASES_DIR,
+        PRESENTATION_DIR / "manual_sources.json",
+    ).load()
     scenario = load_json("demo_scenario.json")
     guide_steps = load_json("guide_steps.json")
     knowledge_items = load_json("knowledge_items.json")
@@ -55,9 +74,23 @@ def create_app() -> Flask:
     presentation_graph = load_path(PRESENTATION_DIR / "graph_seed.json")
     industrial_computer_graph = load_path(PRESENTATION_DIR / "industrial_computer_graph.json")
     verification_scenario = load_path(PRESENTATION_DIR / "verification_scenario.json")
-    store = PresentationStore(PRESENTATION_DB_FILE)
+    active_database_path = database_path or PRESENTATION_DB_FILE
+    store = PresentationStore(active_database_path)
     initial_state = load_path(PRESENTATION_INITIAL_STATE_FILE)
     store.initialize(initial_state, presentation_case, presentation_knowledge, industrial_computer_graph)
+    MigrationRunner(active_database_path).migrate()
+    case_run_store = CaseRunStore(active_database_path)
+    knowledge_service = KnowledgeLifecycleService(active_database_path)
+    case_router = DeterministicCaseRouter(case_registry)
+    app.register_blueprint(
+        create_platform_blueprint(
+            case_registry,
+            case_run_store,
+            case_router,
+            RuleBasedDiagnosisProvider(),
+            knowledge_service,
+        )
+    )
 
     def load_presentation_state():
         return store.load_state()
