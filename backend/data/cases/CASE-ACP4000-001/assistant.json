@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.1.0",
+  "fallback": "请结合当前检修步骤核对设备状态和手册要求。",
+  "topics": [
+    {
+      "id": "topic-cooling-fan-wiring",
+      "label": "FAN1/FAN2 接线顺序",
+      "intents": ["怎么接", "先接哪个", "接线顺序", "fan1 fan2"],
+      "answer": "单风扇接 FAN1；双风扇依次接 FAN1、FAN2；更多风扇必须从 FAN1 连续接入，不得跳号。",
+      "allowedStepIds": ["step-cooling-safety", "step-cooling-filter-fan"],
+      "claimIds": ["claim-cooling-fan-threshold"]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "1.1.0",
+  "defaultDescription": "站控柜 A01 工控机出现 TEMP/FAN 告警，风扇声音异常，转速约 420 rpm，系统温度持续升高。",
+  "fields": [
+    {"id": "field-equipment-model", "label": "设备型号", "type": "text", "required": true, "routeFact": "equipment"},
+    {"id": "field-temp-fan-alarm", "label": "TEMP/FAN 告警", "type": "boolean", "required": true, "routeFact": "alarm"},
+    {"id": "field-fan-speed", "label": "风扇转速", "type": "number", "required": true, "unit": "rpm", "routeFact": "measurement"}
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://la.local/schemas/case-intake-1.1.json",
+  "title": "LA case intake module",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "defaultDescription", "fields"],
+  "properties": {
+    "schemaVersion": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "defaultDescription": {"type": "string", "minLength": 1, "maxLength": 1000},
+    "fields": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "type", "required", "routeFact"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^field-[a-z0-9-]{3,100}$"},
+          "label": {"type": "string", "minLength": 1, "maxLength": 100},
+          "type": {"type": "string", "enum": ["text", "number", "boolean", "select"]},
+          "required": {"type": "boolean"},
+          "unit": {"type": "string", "enum": ["V", "mV", "rpm", "°C", "min", "state"]},
+          "routeFact": {"type": "string", "enum": ["equipment", "alarm", "symptom", "measurement", "context", "none"]},
+          "options": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1, "maxLength": 100}
+          }
+        }
+      }
+    }
+  }
+}

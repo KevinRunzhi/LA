@@ -12,6 +12,7 @@ Thumbs.db
 *:Zone.Identifier
 *.log
 backend/data/presentation/*.db
+backend/data/presentation/backups/
 run/
 release/LA-stable-demo-*.tar.gz
 release/LA-stable-demo-*.tar.gz.sha256

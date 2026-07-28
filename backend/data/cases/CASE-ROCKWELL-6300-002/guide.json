@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.1.0",
+  "planTitle": "工控机供电异常检修预方案",
+  "steps": [
+    {
+      "id": "step-power-measure",
+      "title": "分段测量供电路径",
+      "description": "由具备资质的人员比较上游与设备端启动瞬间电压。",
+      "checks": [
+        {"id": "check-power-qualified-person", "label": "带电测量由具备资质人员执行", "required": true, "locked": true, "claimIds": ["claim-power-input-range"]}
+      ],
+      "measurements": [
+        {"id": "measurement-power-device-startup", "label": "设备端启动最低电压", "unit": "V", "required": true}
+      ],
+      "claimIds": ["claim-power-input-range", "claim-power-demo-measurements"],
+      "assistantTopicIds": ["topic-power-voltage-range"],
+      "completionCriteria": [
+        {"refId": "check-power-qualified-person", "condition": "已确认"},
+        {"refId": "measurement-power-device-startup", "condition": "已记录"}
+      ]
+    },
+    {
+      "id": "step-power-terminal",
+      "title": "断电检查 DC 端子",
+      "description": "正常关机并断开上游电源后检查极性、紧固和应力释放。",
+      "checks": [
+        {"id": "check-power-off-before-terminal", "label": "已断电并确认禁止带电拆装端子", "required": true, "locked": true, "claimIds": ["claim-power-input-range"]}
+      ],
+      "measurements": [],
+      "claimIds": ["claim-power-input-range"],
+      "assistantTopicIds": ["topic-power-connector-pins"],
+      "completionCriteria": [
+        {"refId": "check-power-off-before-terminal", "condition": "已确认"}
+      ]
+    }
+  ]
+}

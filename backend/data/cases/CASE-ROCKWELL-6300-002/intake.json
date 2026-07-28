@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "1.1.0",
+  "defaultDescription": "站控柜 B02 的 Rockwell 6300B 工控机 Power LED 不亮，24V 电源模块正常，但设备启动后掉电。",
+  "fields": [
+    {"id": "field-power-equipment-model", "label": "设备型号", "type": "text", "required": true, "routeFact": "equipment"},
+    {"id": "field-power-led", "label": "Power LED 状态", "type": "select", "required": true, "unit": "state", "routeFact": "alarm", "options": ["OFF", "绿色常亮", "绿色闪烁"]},
+    {"id": "field-power-upstream-voltage", "label": "上游启动瞬间电压", "type": "number", "required": true, "unit": "V", "routeFact": "measurement"},
+    {"id": "field-power-device-voltage", "label": "设备端启动最低电压", "type": "number", "required": true, "unit": "V", "routeFact": "measurement"}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.1.0",
+  "direction": "工控机 24V DC 供电路径异常",
+  "riskLevel": "high",
+  "summary": "上游 24V 正常但设备端启动电压低于 18V 下限，压降集中在中间供电路径，应优先检查 DC 端子和接线工艺。",
+  "evidence": [
+    {
+      "id": "evidence-power-undervoltage",
+      "label": "设备端启动电压低于官方工作下限",
+      "claimId": "claim-power-input-range",
+      "intakeFieldIds": ["field-power-upstream-voltage", "field-power-device-voltage"]
+    }
+  ],
+  "agents": [
+    {"id": "agent-power-path", "name": "供电路径分析 Agent", "role": "比较上游与设备端电压", "stageSummary": "定位启动压降所在路径。"},
+    {"id": "agent-power-safety", "name": "电气安全 Agent", "role": "核对带电测量与断电拆装边界", "stageSummary": "确认电气作业安全要求。"}
+  ]
+}

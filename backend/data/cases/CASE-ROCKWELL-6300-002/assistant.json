@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.1.0",
+  "fallback": "请结合当前供电检修步骤核对电压、端子和安全要求。",
+  "topics": [
+    {
+      "id": "topic-power-voltage-range",
+      "label": "输入电压工作范围",
+      "intents": ["为什么11.6v异常", "电压范围", "最低电压", "上游正常为什么不上电"],
+      "answer": "该型号官方输入范围为 18 至 32V DC。上游 24V 正常并不能证明设备端正常，应比较启动负载下各测点电压。",
+      "allowedStepIds": ["step-power-measure"],
+      "claimIds": ["claim-power-input-range"]
+    },
+    {
+      "id": "topic-power-connector-pins",
+      "label": "Power DC Connector 针脚",
+      "intents": ["pin1 pin2怎么接", "正负极怎么接", "端子怎么接"],
+      "answer": "必须先断电并按该型号手册核对：Pin 1 接 +24V，Pin 2 接 0V；不得凭线色自行换线。",
+      "allowedStepIds": ["step-power-terminal"],
+      "claimIds": ["claim-power-input-range"]
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://la.local/schemas/case-registry-1.1.json",
+  "title": "LA case registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "registryVersion", "routing", "items"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "registryVersion": {
+      "type": "string",
+      "pattern": "^1\\.\\d+$"
+    },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithmVersion", "minScore", "minMargin", "maxInputLength", "weights"],
+      "properties": {
+        "algorithmVersion": {"type": "string", "const": "1.0"},
+        "minScore": {"type": "integer", "minimum": 1, "maximum": 500},
+        "minMargin": {"type": "integer", "minimum": 0, "maximum": 500},
+        "maxInputLength": {"type": "integer", "minimum": 100, "maximum": 10000},
+        "weights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["equipmentExact", "equipmentGeneric", "alarm", "symptom", "measurement", "context", "exclusion"],
+          "properties": {
+            "equipmentExact": {"type": "integer", "minimum": 0, "maximum": 100},
+            "equipmentGeneric": {"type": "integer", "minimum": 0, "maximum": 100},
+            "alarm": {"type": "integer", "minimum": 0, "maximum": 100},
+            "symptom": {"type": "integer", "minimum": 0, "maximum": 100},
+            "measurement": {"type": "integer", "minimum": 0, "maximum": 100},
+            "context": {"type": "integer", "minimum": 0, "maximum": 100},
+            "exclusion": {"type": "integer", "minimum": -500, "maximum": -1}
+          }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "package", "mode", "faultCode", "matchRules"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^CASE-[A-Z0-9-]{3,64}$"},
+          "package": {"type": "string", "pattern": "^[A-Za-z0-9_-]+/manifest\\.json$"},
+          "mode": {"type": "string", "enum": ["interactive", "interactive_demo", "fixture"]},
+          "faultCode": {"type": "string", "pattern": "^[a-z0-9-]{3,80}$"},
+          "matchRules": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["equipmentExact", "equipmentGeneric", "alarms", "symptoms", "measurements", "contexts", "exclusions"],
+            "properties": {
+              "equipmentExact": {"$ref": "#/$defs/terms"},
+              "equipmentGeneric": {"$ref": "#/$defs/terms"},
+              "alarms": {"$ref": "#/$defs/terms"},
+              "symptoms": {"$ref": "#/$defs/terms"},
+              "measurements": {"$ref": "#/$defs/terms"},
+              "contexts": {"$ref": "#/$defs/terms"},
+              "exclusions": {"$ref": "#/$defs/terms"}
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "terms": {
+      "type": "array",
+      "maxItems": 50,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 80}
+    }
+  }
+}

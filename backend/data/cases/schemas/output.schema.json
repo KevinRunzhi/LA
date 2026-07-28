@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://la.local/schemas/case-output-1.1.json",
+  "title": "LA case output module",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "engineerResultFields", "jobCard"],
+  "properties": {
+    "schemaVersion": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "engineerResultFields": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "type", "required"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^result-[a-z0-9-]{3,100}$"},
+          "label": {"type": "string", "minLength": 1, "maxLength": 120},
+          "type": {"type": "string", "enum": ["text", "number", "boolean"]},
+          "required": {"type": "boolean"},
+          "unit": {"type": "string", "enum": ["V", "mV", "rpm", "°C", "min", "state"]}
+        }
+      }
+    },
+    "jobCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pageCount", "sections"],
+      "properties": {
+        "pageCount": {"type": "integer", "const": 2},
+        "sections": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "title", "page", "fieldIds"],
+            "properties": {
+              "id": {"type": "string", "pattern": "^job-section-[a-z0-9-]{3,100}$"},
+              "title": {"type": "string", "minLength": 1, "maxLength": 100},
+              "page": {"type": "integer", "minimum": 1, "maximum": 2},
+              "fieldIds": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {"type": "string", "pattern": "^result-[a-z0-9-]{3,100}$"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

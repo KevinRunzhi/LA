@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "1.1.0",
+  "packageVersion": "1.0.0",
+  "identity": {
+    "caseId": "CASE-ACP4000-001",
+    "faultCode": "industrial-computer-cooling",
+    "title": "站控柜 A01 工控机散热异常检修",
+    "shortTitle": "工控机散热异常",
+    "equipment": {
+      "category": "工业计算机",
+      "manufacturer": "Advantech",
+      "model": "ACP-4000 / IPC-610",
+      "role": "站控数据采集与业务软件运行终端"
+    },
+    "location": {
+      "site": "山东德州分输站",
+      "area": "控制中心",
+      "cabinet": "站控柜 A01"
+    }
+  },
+  "provenance": {
+    "defaultVerificationLevel": "synthetic_demo",
+    "reviewStatus": "reviewed",
+    "limitations": [
+      "运行数值为预设现场数据，尚未绑定真实原始测量记录",
+      "阶段 C 将完整迁移现有散热业务内容"
+    ]
+  },
+  "capabilities": ["intake", "diagnosis", "plan", "guide", "assistant", "record", "job_card", "expert_review", "knowledge", "graph"],
+  "claims": [
+    {
+      "claimId": "claim-cooling-fan-threshold",
+      "text": "风扇低于 500 rpm 时应检查风扇、滤网和接线。",
+      "sourceType": "official_manual",
+      "verificationStatus": "source_verified",
+      "reviewStatus": "reviewed",
+      "evidenceRefs": [
+        {
+          "documentId": "DOC-ADVANTECH-ACP4000-IPC610-UM-ED6",
+          "pages": [24],
+          "locator": "FAN connector and hardware monitor"
+        }
+      ]
+    },
+    {
+      "claimId": "claim-cooling-field-values",
+      "text": "本次运行使用 420 rpm 和温升数据作为预设现场输入。",
+      "sourceType": "synthetic_demo",
+      "verificationStatus": "internally_unverified",
+      "reviewStatus": "unreviewed",
+      "evidenceRefs": []
+    }
+  ],
+  "modules": {
+    "intake": "intake.json",
+    "diagnosis": "diagnosis.json",
+    "guide": "guide.json",
+    "assistant": "assistant.json",
+    "output": "output.json",
+    "feedbackAndGraph": "feedback-and-graph.json"
+  }
+}

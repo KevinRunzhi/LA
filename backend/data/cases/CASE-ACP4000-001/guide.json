@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.1.0",
+  "planTitle": "工控机散热异常检修预方案",
+  "steps": [
+    {
+      "id": "step-cooling-safety",
+      "title": "断电并落实防静电",
+      "description": "正常关机、断开电源并佩戴防静电手环。",
+      "checks": [
+        {"id": "check-cooling-power-off", "label": "设备已正常关机并断开电源", "required": true, "locked": true, "claimIds": ["claim-cooling-fan-threshold"]}
+      ],
+      "measurements": [],
+      "claimIds": ["claim-cooling-fan-threshold"],
+      "assistantTopicIds": ["topic-cooling-fan-wiring"],
+      "completionCriteria": [
+        {"refId": "check-cooling-power-off", "condition": "已确认"}
+      ]
+    },
+    {
+      "id": "step-cooling-filter-fan",
+      "title": "检查滤网、风扇和接线",
+      "description": "检查积尘、风扇状态及 FAN1/FAN2 连续接入顺序。",
+      "checks": [
+        {"id": "check-cooling-filter", "label": "滤网和风道已检查", "required": true, "locked": false, "claimIds": ["claim-cooling-fan-threshold"]}
+      ],
+      "measurements": [
+        {"id": "measurement-cooling-fan-speed", "label": "恢复后风扇转速", "unit": "rpm", "required": true}
+      ],
+      "claimIds": ["claim-cooling-fan-threshold", "claim-cooling-field-values"],
+      "assistantTopicIds": ["topic-cooling-fan-wiring"],
+      "completionCriteria": [
+        {"refId": "check-cooling-filter", "condition": "已确认"},
+        {"refId": "measurement-cooling-fan-speed", "condition": "已记录"}
+      ]
+    }
+  ]
+}

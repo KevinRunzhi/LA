@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.1.0",
+  "engineerResultFields": [
+    {"id": "result-final-cause", "label": "最终原因", "type": "text", "required": true},
+    {"id": "result-actual-resolution", "label": "实际处理", "type": "text", "required": true},
+    {"id": "result-recovery", "label": "恢复结果", "type": "text", "required": true},
+    {"id": "result-observation-minutes", "label": "观察时长", "type": "number", "required": true, "unit": "min"},
+    {"id": "result-fan-speed", "label": "恢复后风扇转速", "type": "number", "required": true, "unit": "rpm"}
+  ],
+  "jobCard": {
+    "pageCount": 2,
+    "sections": [
+      {"id": "job-section-cooling-diagnosis", "title": "故障与诊断摘要", "page": 1, "fieldIds": ["result-final-cause"]},
+      {"id": "job-section-cooling-result", "title": "处理与恢复", "page": 2, "fieldIds": ["result-actual-resolution", "result-recovery", "result-observation-minutes", "result-fan-speed"]}
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.1.0",
+  "knowledgeProposal": {
+    "knowledgeId": "KB-ROCKWELL-6300-POWER-001",
+    "title": "6300B-EW1 供电路径异常检修知识",
+    "verificationLevel": "synthetic_demo",
+    "summary": "结合官方输入范围与预设现场压降数据形成的供电检修候选知识。"
+  },
+  "graphProposal": {
+    "knowledgeId": "KB-ROCKWELL-6300-POWER-001",
+    "nodes": [
+      {"id": "node-power-input-range", "name": "18-32V DC 工作范围", "type": "threshold", "verificationLevel": "official_document"},
+      {"id": "node-power-startup-undervoltage", "name": "启动负载欠压", "type": "symptom", "verificationLevel": "synthetic_demo"},
+      {"id": "node-power-dc-terminal-loose", "name": "DC 端子松动", "type": "cause", "verificationLevel": "synthetic_demo"}
+    ],
+    "relations": [
+      {"id": "relation-power-undervoltage-below-range", "source": "node-power-startup-undervoltage", "relation": "低于", "target": "node-power-input-range", "verificationLevel": "synthetic_demo"},
+      {"id": "relation-power-terminal-causes-undervoltage", "source": "node-power-dc-terminal-loose", "relation": "导致", "target": "node-power-startup-undervoltage", "verificationLevel": "synthetic_demo"}
+    ]
+  }
+}

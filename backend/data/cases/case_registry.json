@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.1.0",
+  "registryVersion": "1.1",
+  "routing": {
+    "algorithmVersion": "1.0",
+    "minScore": 50,
+    "minMargin": 20,
+    "maxInputLength": 2000,
+    "weights": {
+      "equipmentExact": 50,
+      "equipmentGeneric": 25,
+      "alarm": 30,
+      "symptom": 10,
+      "measurement": 25,
+      "context": 5,
+      "exclusion": -100
+    }
+  },
+  "items": [
+    {
+      "id": "CASE-ACP4000-001",
+      "package": "CASE-ACP4000-001/manifest.json",
+      "mode": "interactive",
+      "faultCode": "industrial-computer-cooling",
+      "matchRules": {
+        "equipmentExact": ["acp-4000", "acp4000", "ipc-610", "ipc610"],
+        "equipmentGeneric": ["研华工控机", "工控机"],
+        "alarms": ["temp/fan", "temp fan", "风扇告警", "温度告警"],
+        "symptoms": ["温度升高", "温度高", "风扇低速", "风扇异响", "滤网积尘", "散热异常"],
+        "measurements": ["420rpm", "低于500rpm", "超过55℃", "超过70℃"],
+        "contexts": ["站控柜a01", "散热"],
+        "exclusions": ["power led不亮", "24v欠压", "无法上电"]
+      }
+    },
+    {
+      "id": "CASE-ROCKWELL-6300-002",
+      "package": "CASE-ROCKWELL-6300-002/manifest.json",
+      "mode": "interactive_demo",
+      "faultCode": "industrial-computer-power",
+      "matchRules": {
+        "equipmentExact": ["6300b-ew1", "6300b", "rockwell 6300b", "asem 6300b"],
+        "equipmentGeneric": ["rockwell工控机", "罗克韦尔工控机", "工控机"],
+        "alarms": ["power led off", "power led不亮", "电源灯不亮"],
+        "symptoms": ["无法上电", "上不了电", "启动掉电", "开机掉电", "反复重启", "供电异常"],
+        "measurements": ["11.6v", "11600mv", "低于18v", "24v正常设备端异常"],
+        "contexts": ["站控柜b02", "24v", "dc端子"],
+        "exclusions": ["temp/fan", "散热异常", "风扇低速"]
+      }
+    }
+  ]
+}

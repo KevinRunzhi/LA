@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "1.1.0",
+  "packageVersion": "1.0.0",
+  "identity": {
+    "caseId": "CASE-ROCKWELL-6300-002",
+    "faultCode": "industrial-computer-power",
+    "title": "站控柜 B02 工控机供电异常检修",
+    "shortTitle": "工控机供电异常",
+    "equipment": {
+      "category": "工业计算机",
+      "manufacturer": "Rockwell Automation",
+      "model": "ASEM 6300B-EW1",
+      "role": "站控数据采集与业务软件运行终端"
+    },
+    "location": {
+      "site": "某输气场站",
+      "area": "控制中心",
+      "cabinet": "站控柜 B02"
+    }
+  },
+  "provenance": {
+    "defaultVerificationLevel": "synthetic_demo",
+    "reviewStatus": "unreviewed",
+    "limitations": [
+      "现场测量数据为预设现场数据",
+      "阶段 D 将补全供电案例完整业务内容和视觉"
+    ]
+  },
+  "capabilities": ["intake", "diagnosis", "plan", "guide", "assistant", "record", "job_card", "expert_review", "knowledge", "graph"],
+  "claims": [
+    {
+      "claimId": "claim-power-input-range",
+      "text": "ASEM 6300B-EW1 的输入工作范围为 18 至 32V DC。",
+      "sourceType": "official_manual",
+      "verificationStatus": "source_verified",
+      "reviewStatus": "reviewed",
+      "evidenceRefs": [
+        {
+          "documentId": "DOC-ROCKWELL-6300-UM003B",
+          "pages": [37],
+          "locator": "Power input specification"
+        }
+      ]
+    },
+    {
+      "claimId": "claim-power-demo-measurements",
+      "text": "设备端启动最低 11.6V 与处理后 23.7V 为预设现场数据。",
+      "sourceType": "synthetic_demo",
+      "verificationStatus": "internally_unverified",
+      "reviewStatus": "unreviewed",
+      "evidenceRefs": []
+    }
+  ],
+  "modules": {
+    "intake": "intake.json",
+    "diagnosis": "diagnosis.json",
+    "guide": "guide.json",
+    "assistant": "assistant.json",
+    "output": "output.json",
+    "feedbackAndGraph": "feedback-and-graph.json"
+  }
+}

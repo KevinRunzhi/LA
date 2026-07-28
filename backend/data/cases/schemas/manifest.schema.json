@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://la.local/schemas/case-manifest-1.1.json",
+  "title": "LA case package manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "packageVersion", "identity", "provenance", "capabilities", "claims", "modules"],
+  "properties": {
+    "schemaVersion": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "packageVersion": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caseId", "faultCode", "title", "shortTitle", "equipment", "location"],
+      "properties": {
+        "caseId": {"type": "string", "pattern": "^CASE-[A-Z0-9-]{3,64}$"},
+        "faultCode": {"type": "string", "pattern": "^[a-z0-9-]{3,80}$"},
+        "title": {"type": "string", "minLength": 2, "maxLength": 120},
+        "shortTitle": {"type": "string", "minLength": 2, "maxLength": 40},
+        "equipment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["category", "manufacturer", "model", "role"],
+          "properties": {
+            "category": {"type": "string", "minLength": 1, "maxLength": 40},
+            "manufacturer": {"type": "string", "minLength": 1, "maxLength": 80},
+            "model": {"type": "string", "minLength": 1, "maxLength": 100},
+            "role": {"type": "string", "minLength": 1, "maxLength": 120}
+          }
+        },
+        "location": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["site", "area", "cabinet"],
+          "properties": {
+            "site": {"type": "string", "minLength": 1, "maxLength": 100},
+            "area": {"type": "string", "minLength": 1, "maxLength": 100},
+            "cabinet": {"type": "string", "minLength": 1, "maxLength": 100}
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["defaultVerificationLevel", "reviewStatus", "limitations"],
+      "properties": {
+        "defaultVerificationLevel": {
+          "type": "string",
+          "enum": ["official_document", "synthetic_demo", "field_evidence", "expert_confirmed", "verified_case"]
+        },
+        "reviewStatus": {"type": "string", "enum": ["unreviewed", "reviewed", "expert_reviewed"]},
+        "limitations": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"type": "string", "minLength": 1, "maxLength": 300}
+        }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["intake", "diagnosis", "plan", "guide", "assistant", "record", "job_card", "expert_review", "knowledge", "graph"]
+      }
+    },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claimId", "text", "sourceType", "verificationStatus", "reviewStatus", "evidenceRefs"],
+        "properties": {
+          "claimId": {"type": "string", "pattern": "^claim-[a-z0-9-]{3,100}$"},
+          "text": {"type": "string", "minLength": 1, "maxLength": 500},
+          "sourceType": {"type": "string", "enum": ["official_manual", "synthetic_demo", "field_evidence", "expert_rule"]},
+          "verificationStatus": {"type": "string", "enum": ["source_verified", "internally_unverified", "evidence_verified"]},
+          "reviewStatus": {"type": "string", "enum": ["unreviewed", "reviewed", "expert_reviewed"]},
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["documentId", "pages", "locator"],
+              "properties": {
+                "documentId": {"type": "string", "pattern": "^DOC-[A-Z0-9-]{3,100}$"},
+                "pages": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {"type": "integer", "minimum": 1, "maximum": 5000}
+                },
+                "locator": {"type": "string", "minLength": 1, "maxLength": 200}
+              }
+            }
+          }
+        }
+      }
+    },
+    "modules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intake", "diagnosis", "guide", "assistant", "output", "feedbackAndGraph"],
+      "properties": {
+        "intake": {"type": "string", "const": "intake.json"},
+        "diagnosis": {"type": "string", "const": "diagnosis.json"},
+        "guide": {"type": "string", "const": "guide.json"},
+        "assistant": {"type": "string", "const": "assistant.json"},
+        "output": {"type": "string", "const": "output.json"},
+        "feedbackAndGraph": {"type": "string", "const": "feedback-and-graph.json"}
+      }
+    }
+  }
+}

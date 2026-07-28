@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.1.0",
+  "engineerResultFields": [
+    {"id": "result-power-final-cause", "label": "最终原因", "type": "text", "required": true},
+    {"id": "result-power-actual-resolution", "label": "实际处理", "type": "text", "required": true},
+    {"id": "result-power-recovery", "label": "恢复结果", "type": "text", "required": true},
+    {"id": "result-power-observation-minutes", "label": "观察时长", "type": "number", "required": true, "unit": "min"},
+    {"id": "result-power-device-voltage-after", "label": "处理后设备端电压", "type": "number", "required": true, "unit": "V"},
+    {"id": "result-power-startup-minimum-after", "label": "处理后启动最低电压", "type": "number", "required": true, "unit": "V"}
+  ],
+  "jobCard": {
+    "pageCount": 2,
+    "sections": [
+      {"id": "job-section-power-diagnosis", "title": "故障与电压定位", "page": 1, "fieldIds": ["result-power-final-cause"]},
+      {"id": "job-section-power-result", "title": "处理与恢复", "page": 2, "fieldIds": ["result-power-actual-resolution", "result-power-recovery", "result-power-observation-minutes", "result-power-device-voltage-after", "result-power-startup-minimum-after"]}
+    ]
+  }
+}

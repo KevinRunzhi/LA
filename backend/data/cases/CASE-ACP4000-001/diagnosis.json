@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.1.0",
+  "direction": "工控机散热系统异常",
+  "riskLevel": "high",
+  "summary": "TEMP/FAN 告警与低转速共同指向风道、滤网、风扇或接线异常，需按安全步骤检查。",
+  "evidence": [
+    {
+      "id": "evidence-fan-low-speed",
+      "label": "风扇转速低于判据",
+      "claimId": "claim-cooling-fan-threshold",
+      "intakeFieldIds": ["field-temp-fan-alarm", "field-fan-speed"]
+    }
+  ],
+  "agents": [
+    {"id": "agent-cooling-analysis", "name": "散热诊断 Agent", "role": "判断散热故障方向", "stageSummary": "汇总告警、转速和温度证据。"},
+    {"id": "agent-cooling-safety", "name": "操作合规 Agent", "role": "检查断电和防静电要求", "stageSummary": "确认检修安全边界。"}
+  ]
+}

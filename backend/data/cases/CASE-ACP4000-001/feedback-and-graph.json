@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.1.0",
+  "knowledgeProposal": {
+    "knowledgeId": "KB-008",
+    "title": "工控机散热异常检修经验",
+    "verificationLevel": "synthetic_demo",
+    "summary": "结合官方判据和本次预设现场数据形成的散热检修候选知识。"
+  },
+  "graphProposal": {
+    "knowledgeId": "KB-008",
+    "nodes": [
+      {"id": "node-cooling-fan-low-speed", "name": "风扇低速", "type": "symptom", "verificationLevel": "official_document"},
+      {"id": "node-cooling-airflow-fault", "name": "散热路径异常", "type": "cause", "verificationLevel": "synthetic_demo"}
+    ],
+    "relations": [
+      {"id": "relation-cooling-low-speed-causes-airflow", "source": "node-cooling-fan-low-speed", "relation": "提示", "target": "node-cooling-airflow-fault", "verificationLevel": "synthetic_demo"}
+    ]
+  }
+}
