@@ -65,7 +65,10 @@ printf '已收录 %s 份登记检修手册。\n' "$manual_count"
 
 cp -a frontend/dist "$stage/frontend/"
 find "$stage/frontend/dist" -type f -name '*:Zone.Identifier' -delete
-cp -a deploy/. "$stage/deploy/"
+while IFS= read -r -d '' deploy_file; do
+  mkdir -p "$stage/$(dirname "$deploy_file")"
+  cp "$deploy_file" "$stage/$deploy_file"
+done < <(git ls-files -z 'deploy/**')
 cp Docs/loongarch-stable-demo-deployment-guide.md "$stage/DEPLOYMENT-GUIDE.md"
 cp Docs/competition-submission-deployment-guide.md "$stage/Docs/"
 cp Docs/competition-submission-operations-runbook.md "$stage/Docs/"
