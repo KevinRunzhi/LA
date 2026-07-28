@@ -1,8 +1,13 @@
 # 阶段 A：基线冻结与迁移准备 Spec
 
-> 状态：未开始
+> 状态：已完成（2026-07-26）
 > 前置依赖：无
 > 阶段结果：得到可比较、可迁移、可回滚的当前系统基线
+
+验收结果：
+
+- [`phase-a-baseline-report.md`](./phase-a-baseline-report.md)
+- [`phase-a-hardcoding-migration-matrix.md`](./phase-a-hardcoding-migration-matrix.md)
 
 ## 1. 目标
 

@@ -40,7 +40,7 @@
 
 | 阶段 | 文档 | 核心结果 | 前置依赖 |
 | --- | --- | --- | --- |
-| A | [`phase-a-baseline-and-migration-readiness-spec.md`](./phase-a-baseline-and-migration-readiness-spec.md) | 当前实现、数据库、散热链路和硬编码基线冻结 | 无 |
+| A | [`phase-a-baseline-and-migration-readiness-spec.md`](./phase-a-baseline-and-migration-readiness-spec.md) | 已完成：当前实现、数据库、散热链路和硬编码基线冻结 | 无 |
 | B | [`phase-b-case-platform-foundation-spec.md`](./phase-b-case-platform-foundation-spec.md) | Schema、加载器、路由、CaseRun、迁移器和 API 地基 | A |
 | C | [`phase-c-cooling-case-migration-spec.md`](./phase-c-cooling-case-migration-spec.md) | 散热案例迁入统一结构且视觉、交互和闭环不退化 | B |
 | D | [`phase-d-power-case-end-to-end-spec.md`](./phase-d-power-case-end-to-end-spec.md) | 供电案例从首页到检修记录完整可运行 | C |
