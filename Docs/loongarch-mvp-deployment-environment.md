@@ -6,10 +6,10 @@
 
 - 前端：React 18 + Vite 6 + lucide-react。
 - 后端：Python 3 + Flask 3。
-- 数据：JSON 预设演示数据。
+- 数据：模块化 JSON、SQLite 运行状态和本地附件。
 - 开发验证：Vite 以 Node 开发态运行，Flask 监听 `8080` 提供 API；每完成一个模块立即在龙芯验证。
 - 最终交付：可构建 `frontend/dist` 并由 Flask 托管，但不替代开发态验证。
-- 不使用：Docker、数据库、向量数据库、本地大模型推理、视频输入、语音播报、真实专家连线。
+- 不使用：Docker、外部数据库服务器、向量数据库、本地大模型推理。
 
 ## 1. 基础系统环境
 
@@ -186,8 +186,10 @@
 | 包名 | 版本 | 用途 |
 | --- | --- | --- |
 | `Flask` | `3.0.3` | 后端 Web 框架、API、静态文件托管 |
+| `gunicorn` | `23.0.0` | 生产 WSGI 服务 |
+| `jsonschema` | `4.23.0` | 案例包 Schema 校验 |
 
-### 6.2 解析后的完整 pip 包
+### 6.2 Flask 基础传递依赖参考
 
 以下来自当前后端虚拟环境 `pip freeze`：
 
@@ -201,7 +203,7 @@
 | `click` | `8.4.2` | Flask 命令行依赖 |
 | `blinker` | `1.9.0` | Flask 信号机制依赖 |
 
-如果需要准备离线 Python 包，至少准备上述 7 个包对应的 wheel 或源码包。
+上述列表只表示 Flask 基础依赖，不再作为完整离线清单。竞赛提交增强分支还包含 Gunicorn、jsonschema 及其传递依赖；离线准备必须以当前 `backend/requirements.txt` 在目标 `loongarch64` 环境解析得到的结果为准。
 
 
 
@@ -211,7 +213,7 @@
 | --- | --- | --- |
 | Docker | 龙芯平台当前不用 Docker | 不需要 |
 | Docker 镜像 | 项目没有 Docker 部署方案 | 不需要 |
-| 数据库安装包 | 当前使用 JSON 文件 | 不需要 |
+| 数据库安装包 | 使用 Python 内置 SQLite，不需要独立数据库服务 | 不需要 |
 | Neo4j / 图数据库 | 知识图谱目前前端静态展示 + JSON 数据 | 不需要 |
 | 向量数据库 | 当前未接真实 RAG | 不需要 |
 | 本地大模型权重 | 当前未接本地模型推理 | 不需要 |
@@ -236,4 +238,4 @@
 - npm 离线准备物：可联网 npm 源、npm 缓存包，或在龙芯/同架构环境生成的 `node_modules` 压缩包。
 - Python `3.10+`，推荐 `3.12.x`。
 - pip 和 venv。
-- `Flask==3.0.3` 及其 6 个传递依赖包。
+- `backend/requirements.txt` 中的 Flask、Gunicorn、jsonschema 及目标架构解析出的全部传递依赖。

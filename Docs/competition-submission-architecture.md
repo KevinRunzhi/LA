@@ -44,6 +44,20 @@ KnowledgeLifecycleService
 
 React 不再被设计为业务事实的最终存储；页面负责交互和动画，后端负责案例选择、状态、冲突和版本。
 
+部署调用链：
+
+```text
+Nginx（可选）
+  → Gunicorn gthread
+    → backend.wsgi application factory
+      → RuntimeSettings
+      → request-id / metrics / JSON access log
+      → Flask legacy + platform blueprints
+      → SQLite / CasePackage / attachment storage
+```
+
+龙芯正式演示采用原生 Linux 部署，不把 Docker 设为目标机前提。systemd 负责启动、重启和权限边界，Nginx 可选用于反向代理与静态缓存。
+
 ## 3. 案例加载
 
 加载顺序：
@@ -134,3 +148,14 @@ evidenceRefs
 ## 8. 与稳定演示的关系
 
 本分支不要求替换已录制视频。旧 `/api/demo`、`/api/admin` 和 React 展示路径继续保留；首页输入已通过 `CasePlatformSession` 真实调用 `/api/platform/case-routing` 和 `/api/platform/case-runs`，启动诊断时继续推进 intake 与 diagnosis。其余旧页面按兼容层逐步迁移，不影响录制版本的视觉与节奏。
+
+## 9. 运行保障
+
+- `/api/health/live` 只表示进程可响应；
+- `/api/health/ready` 检查数据库、迁移、案例注册表、附件目录和生产前端；
+- `/api/metrics` 提供低基数 Prometheus 文本指标；
+- 每个响应携带 `X-Request-ID`；
+- SQLite 备份使用 backup API，并附带完整性检查和 SHA-256；
+- preflight 在启动前加载真实案例并应用有序迁移。
+
+完整说明见 [`competition-submission-deployment-guide.md`](./competition-submission-deployment-guide.md)。

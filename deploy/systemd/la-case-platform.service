@@ -1,0 +1,37 @@
+[Unit]
+Description=LA Industrial Computer Maintenance Case Platform
+Documentation=file:///opt/la-case-platform/Docs/competition-submission-deployment-guide.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=la-platform
+Group=la-platform
+WorkingDirectory=/opt/la-case-platform
+EnvironmentFile=/etc/la-case-platform/platform.env
+ExecStartPre=/opt/la-case-platform/backend/.venv/bin/python -m compileall -q backend
+ExecStartPre=/opt/la-case-platform/backend/.venv/bin/python -m backend.runtime.preflight
+ExecStart=/opt/la-case-platform/backend/.venv/bin/gunicorn --config deploy/gunicorn.conf.py backend.wsgi:application
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGTERM
+TimeoutStopSec=45
+Restart=on-failure
+RestartSec=3
+
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+ReadWritePaths=/opt/la-case-platform/run /opt/la-case-platform/logs
+
+[Install]
+WantedBy=multi-user.target

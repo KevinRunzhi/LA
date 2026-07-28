@@ -29,10 +29,22 @@
 | 案例 claim 检索 | `implemented` | `assistant/search` API、`CatalogKnowledgeSearchProvider` | 按当前步骤允许 claim 裁剪并返回证据引用 |
 | 本地附件存储 | `implemented` | `attachments` API、`LocalAttachmentStore`、`case_run_attachments` | multipart 上传、20 MiB 限制、SHA-256、失败补偿删除和事件登记 |
 | Web 端平台会话 | `implemented` | `frontend/src/api/casePlatformClient.js`、`App.jsx` | 首页输入真实路由并创建 CaseRun，诊断入口推进 intake 与 diagnosis |
-| 远程诊断客户端 | `adapter_ready` | `RemoteModelDiagnosisProvider` | 注入客户端后真实调用并校验结果合同；未配置时明确失败 |
+| 远程诊断客户端 | `adapter_ready` | `JsonHttpDiagnosisClient`、`RemoteModelDiagnosisProvider` | 环境变量可切换真实 HTTP JSON 调用并校验结果合同；未配置时启动失败 |
 | 工业协议网关 | `adapter_ready` | `TelemetryProvider` Protocol | 需要部署侧具体实现 |
 | 向量知识检索 | `adapter_ready` | `KnowledgeSearchProvider` Protocol | 当前使用结构化 claim 检索 |
 | 对象存储 | `adapter_ready` | `AttachmentStore` Protocol | 当前使用本地持久化，可部署时替换为对象存储 |
+| 统一运行配置 | `implemented` | `backend/runtime/config.py` | 环境变量解析、路径解析、范围校验和去敏摘要 |
+| 运行能力清单 | `implemented` | `/api/platform/system/capabilities` | 返回当前提供方、持久化和知识闭环能力，不暴露密钥 |
+| 存活与就绪检查 | `implemented` | `/api/health/live`、`/api/health/ready` | 就绪检查数据库、迁移、案例、附件和前端 |
+| 请求追踪 | `implemented` | `backend/runtime/observability.py` | X-Request-ID、归一化路由和 JSON 访问日志 |
+| Prometheus 指标 | `implemented` | `/api/metrics` | 请求数、耗时、处理中请求和运行时长 |
+| WSGI 生产服务 | `implemented` | `backend/wsgi.py`、`deploy/gunicorn.conf.py` | 单 worker 多线程，保持旧演示确定性 |
+| systemd 服务 | `adapter_ready` | `deploy/systemd/la-case-platform.service` | 具备重启策略和系统级安全限制，待目标机安装 |
+| Nginx 反向代理 | `adapter_ready` | `deploy/nginx/la-case-platform.conf` | 静态缓存、上传限制和请求 ID，待目标机启用 |
+| 部署 preflight | `implemented` | `backend/runtime/preflight.py`、`preflight.sh` | 真实加载案例、执行迁移、检查完整性和写权限 |
+| SQLite 备份恢复 | `implemented` | `database_ops.py`、`backup.sh`、`restore.sh` | 在线一致性备份、SHA-256、完整性和恢复前快照 |
+| 工程命令 | `implemented` | `Makefile` | 安装、构建、测试、检查、运行和备份统一入口 |
+| 持续集成 | `implemented` | `.github/workflows/competition-platform-ci.yml` | Python 3.10/3.12、Node 20、构建、测试和 preflight |
 | 真实图像识别 | `planned` | 前端仍使用人工确认标签 | 当前不声称真实识别 |
 | 真实语音识别 | `planned` | 前端保留交互入口 | 当前不声称真实识别 |
 
@@ -45,3 +57,6 @@
 5. `backend/case_package.py`；
 6. `backend/openapi/case-platform.openapi.yaml`；
 7. `backend/test_case_platform.py`。
+8. `backend/runtime/`；
+9. `deploy/`；
+10. `.github/workflows/competition-platform-ci.yml`。

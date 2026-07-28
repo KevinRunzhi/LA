@@ -6,12 +6,12 @@
 
 部署目录：`/home/vmuser/project`
 
-运行方式：预构建 React 静态文件 + Flask API/静态托管 + SQLite 演示状态
+运行方式：预构建 React 静态文件 + Gunicorn/Flask API 与静态托管 + SQLite 演示状态
 服务端口：`8080`
 
 ## 1. 这份包是什么
 
-这是面向现场汇报的“方式 A：稳定演示模式”。前端已经在开发机使用 Node.js `20.19.4` 编译为普通 HTML、CSS 和 JavaScript；龙芯机器运行时只需要 Python/Flask。浏览器负责执行前端 JavaScript，Flask 同时提供页面、API 和演示状态存储。
+这是面向现场汇报的“方式 A：稳定演示模式”。前端已经在开发机使用 Node.js `20.19.4` 编译为普通 HTML、CSS 和 JavaScript；龙芯机器运行时只需要 Python 环境。浏览器负责执行前端 JavaScript，Gunicorn 承载 Flask；Flask 同时提供页面、API 和演示状态存储。
 
 包内不包含 `node_modules`、开发虚拟环境和开发机的 SQLite 数据库，但会包含 `manual_sources.json` 登记的全部厂商原始 PDF，并保持 `Info/` 下的相对路径。首次启动时，后端会根据 JSON 种子数据自动创建干净的 `backend/data/presentation/presentation.db`。
 
@@ -90,7 +90,7 @@ chmod +x deploy/loongarch/scripts/*.sh
 ./deploy/loongarch/scripts/install.sh
 ```
 
-安装脚本只在项目内部创建 `backend/.venv`，不会修改系统 Python。在线安装的后端直接依赖目前只有 Flask。
+安装脚本只在项目内部创建 `backend/.venv`，不会修改系统 Python。在线安装的后端直接依赖包括 Flask、Gunicorn 和案例 Schema 校验库。
 
 若提示 venv 不可用，先判断包管理器：
 
@@ -171,7 +171,7 @@ tail -f logs/la-mvp.log
 ./deploy/loongarch/scripts/stop.sh
 ```
 
-服务 PID 位于 `run/la-mvp.pid`。停止脚本只处理该 PID，不会批量终止其他 Python 进程。
+服务 PID 位于 `run/la-mvp.pid`，记录 Gunicorn master。停止脚本只处理该 PID，不会批量终止其他 Python 进程。
 
 ## 10. 数据备份、重置和恢复
 
@@ -253,6 +253,6 @@ mv <原来的project-backup目录> project
 ## 13. 方案边界
 
 - 这是单机、单进程、演示用途部署，不是生产集群方案；
-- Flask 自带服务器适合本次稳定演示，不用于公网高并发生产环境；
+- 稳定部署使用 Gunicorn；当前仍是单机演示架构，不用于公网高并发生产环境；
 - Node.js 不参与日常运行，但修改前端源码后必须重新构建发布包；
 - 真正的龙芯兼容性最终仍需在目标机器上完成浏览器主路径验收。

@@ -66,6 +66,35 @@ def create_platform_blueprint(
             }
         )
 
+    @blueprint.route("/system/capabilities", methods=["GET"])
+    def platform_capabilities():
+        return _ok(
+            {
+                "apiVersion": "1.0.0",
+                "registryVersion": registry.registry_version,
+                "runnableCaseCount": len(registry.runnable_items()),
+                "providers": {
+                    "diagnosis": diagnosis_provider.provider_id,
+                    "telemetry": telemetry_provider.provider_id,
+                    "knowledgeSearch": knowledge_search_provider.provider_id,
+                    "attachment": attachment_store.provider_id,
+                },
+                "persistence": {
+                    "engine": "sqlite",
+                    "revisionControl": True,
+                    "idempotency": True,
+                    "eventLog": True,
+                    "immutableSnapshots": True,
+                },
+                "knowledgeLifecycle": {
+                    "expertReview": True,
+                    "versionedKnowledge": True,
+                    "graphVersionDelta": True,
+                    "engineerSync": True,
+                },
+            }
+        )
+
     @blueprint.route("/case-routing", methods=["POST"])
     def route_case():
         payload = _json_body()

@@ -39,6 +39,10 @@ Python 3.10+
 - [`frontend/src/api/casePlatformClient.js`](./frontend/src/api/casePlatformClient.js)：Web 端平台 API 与 CaseRun 会话；
 - [`backend/openapi/case-platform.openapi.yaml`](./backend/openapi/case-platform.openapi.yaml)：OpenAPI 合同；
 - [`Docs/competition-submission-architecture.md`](./Docs/competition-submission-architecture.md)：架构和数据流。
+- [`backend/runtime/`](./backend/runtime/)：运行配置、观测、preflight 和数据库运维；
+- [`deploy/`](./deploy/)：Gunicorn、systemd、Nginx 和龙芯部署脚本；
+- [`Docs/competition-submission-deployment-guide.md`](./Docs/competition-submission-deployment-guide.md)：生产部署、备份、升级和回滚。
+- [`Docs/competition-submission-technical-architecture.md`](./Docs/competition-submission-technical-architecture.md)：前端、后端、数据、知识闭环和运行拓扑详解。
 
 ## WSL 开发启动
 
@@ -64,6 +68,7 @@ python app.py
 
 ```bash
 curl http://127.0.0.1:8080/api/health
+curl http://127.0.0.1:8080/api/health/ready
 ```
 
 案例平台检查：
@@ -75,6 +80,18 @@ curl -X POST http://127.0.0.1:8080/api/platform/case-routing \
   -H 'Content-Type: application/json' \
   -d '{"description":"Rockwell 6300B Power LED不亮，上游24V正常，设备端只有11.6V"}'
 ```
+
+## 工程化检查与生产运行
+
+```bash
+make install
+make check
+cp deploy/env/production.env.example run/platform.env
+set -a && source run/platform.env && set +a
+make run
+```
+
+生产入口使用 Gunicorn；龙芯稳定部署还提供 systemd、可选 Nginx、一致性 SQLite 备份恢复和部署 preflight。当前龙芯策略仍为原生 Linux 部署，不要求 Docker。
 
 ## 龙芯开发原则
 

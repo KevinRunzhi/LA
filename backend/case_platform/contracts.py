@@ -1,24 +1,29 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from enum import StrEnum
+from enum import Enum
 from typing import Any
 
 
-class UserRole(StrEnum):
+class StringEnum(str, Enum):
+    def __str__(self) -> str:
+        return self.value
+
+
+class UserRole(StringEnum):
     ENGINEER = "engineer"
     EXPERT = "expert"
     ADMIN = "admin"
 
 
-class RouteStatus(StrEnum):
+class RouteStatus(StringEnum):
     MATCHED = "matched"
     AMBIGUOUS = "ambiguous"
     INSUFFICIENT = "insufficient"
     UNSUPPORTED = "unsupported"
 
 
-class CaseRunStatus(StrEnum):
+class CaseRunStatus(StringEnum):
     CREATED = "created"
     INTAKE_CONFIRMED = "intake_confirmed"
     DIAGNOSED = "diagnosed"

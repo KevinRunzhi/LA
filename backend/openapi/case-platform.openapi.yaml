@@ -6,12 +6,46 @@ info:
 servers:
   - url: http://127.0.0.1:8080
 paths:
+  /api/health/live:
+    get:
+      summary: Process liveness probe
+      responses:
+        "200":
+          description: HTTP process is accepting requests
+  /api/health/ready:
+    get:
+      summary: Database, case registry, attachment and frontend readiness
+      responses:
+        "200":
+          description: All required runtime dependencies are ready
+        "503":
+          description: One or more required runtime dependencies are unavailable
+  /api/metrics:
+    get:
+      summary: Prometheus text metrics with normalized route labels
+      responses:
+        "200":
+          description: Service, uptime, in-flight, request and duration metrics
+          content:
+            text/plain:
+              schema:
+                type: string
   /api/platform/cases:
     get:
       summary: List validated runnable case packages
       responses:
         "200":
           description: Validated case summaries without hidden final answers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessEnvelope"
+  /api/platform/system/capabilities:
+    get:
+      summary: Describe active providers and implemented platform contracts
+      responses:
+        "200":
+          description: Runtime capability manifest without secrets
           content:
             application/json:
               schema:

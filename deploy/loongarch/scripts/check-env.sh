@@ -12,7 +12,7 @@ arch="$(uname -m)"
 if [[ "$arch" == "loongarch64" ]]; then ok "CPU 架构：$arch"; else warn "当前 CPU 架构为 $arch；正式演示机应为 loongarch64"; fi
 if [[ -r /etc/os-release ]]; then . /etc/os-release; ok "操作系统：${PRETTY_NAME:-${NAME:-未知}}"; else warn "无法读取 /etc/os-release"; fi
 
-for command_name in python3 curl tar; do
+for command_name in python3 curl tar sha256sum; do
   if command -v "$command_name" >/dev/null 2>&1; then ok "已安装 $command_name：$(command -v "$command_name")"; else fail "缺少命令：$command_name"; fi
 done
 
@@ -23,7 +23,16 @@ fi
 
 [[ -f "$APP_ROOT/frontend/dist/index.html" ]] && ok "前端预构建文件完整" || fail "缺少 frontend/dist/index.html"
 [[ -f "$APP_ROOT/backend/app.py" && -f "$APP_ROOT/backend/presentation_store.py" ]] && ok "后端程序文件完整" || fail "后端程序文件不完整"
+[[ -f "$APP_ROOT/backend/wsgi.py" && -f "$APP_ROOT/deploy/gunicorn.conf.py" ]] && ok "WSGI 与 Gunicorn 配置完整" || fail "生产服务配置不完整"
 [[ -d "$APP_ROOT/backend/data/presentation" ]] && ok "演示数据目录存在" || fail "缺少演示数据目录"
+[[ -f "$APP_ROOT/backend/data/cases/case_registry.json" ]] && ok "案例注册表存在" || fail "缺少案例注册表"
+
+available_kb="$(df -Pk "$APP_ROOT" | awk 'NR==2 {print $4}')"
+if [[ "$available_kb" =~ ^[0-9]+$ ]] && (( available_kb >= 262144 )); then
+  ok "可用磁盘空间不少于 256 MiB"
+else
+  warn "可用磁盘空间低于 256 MiB，附件和备份可能失败"
+fi
 
 if command -v ss >/dev/null 2>&1 && ss -lnt 2>/dev/null | awk '{print $4}' | grep -Eq '(^|:)8080$'; then warn "端口 8080 已被占用；启动前请按部署说明确认并停止旧服务"; else ok "端口 8080 当前未发现监听"; fi
 

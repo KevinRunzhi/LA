@@ -13,6 +13,14 @@
 - 当前数据：案例 JSON 和前端状态
 - Docker：不使用
 
+竞赛提交增强分支补充：
+
+- 生产 WSGI：Gunicorn `23.0.0`；
+- 生产进程：默认单 worker + 8 threads；
+- 数据：模块化 JSON + Python 内置 SQLite；
+- 进程管理：龙芯原生 systemd，可选 Nginx；
+- Docker 仍不作为龙芯部署前提。
+
 版本来源：项目根目录 `.nvmrc` 与 `frontend/package.json`。开发机、WSL、龙芯的功能验收统一使用 Node `20.19.4`，不能因为其他版本暂时能构建就改变基线。
 
 ## 2. 开发位置
@@ -44,6 +52,17 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
 ```
+
+竞赛提交增强分支的生产验收使用：
+
+```bash
+make install
+make build
+make check
+make run
+```
+
+开发态仍可使用 `python app.py`；稳定部署改由 Gunicorn 承载。
 
 浏览器访问 Vite 开发服务，API 由 Flask 提供。具体端口以 Vite 实际终端输出和前端 API 配置为准。
 

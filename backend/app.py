@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import sqlite3
+import uuid
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
+from werkzeug.middleware.proxy_fix import ProxyFix
 try:
     from .case_package import CasePackageRegistry
     from .case_platform.api import create_platform_blueprint
@@ -15,10 +18,14 @@ try:
     from .case_platform.providers import (
         CatalogKnowledgeSearchProvider,
         LocalAttachmentStore,
-        RuleBasedDiagnosisProvider,
-        SubmittedFactsTelemetryProvider,
     )
     from .case_platform.routing import DeterministicCaseRouter
+    from .runtime.config import RuntimeSettings
+    from .runtime.observability import install_observability
+    from .runtime.provider_factory import (
+        build_diagnosis_provider,
+        build_telemetry_provider,
+    )
     from .presentation_store import PresentationStore
 except ImportError:
     from case_package import CasePackageRegistry
@@ -29,17 +36,20 @@ except ImportError:
     from case_platform.providers import (
         CatalogKnowledgeSearchProvider,
         LocalAttachmentStore,
-        RuleBasedDiagnosisProvider,
-        SubmittedFactsTelemetryProvider,
     )
     from case_platform.routing import DeterministicCaseRouter
+    from runtime.config import RuntimeSettings
+    from runtime.observability import install_observability
+    from runtime.provider_factory import (
+        build_diagnosis_provider,
+        build_telemetry_provider,
+    )
     from presentation_store import PresentationStore
 
 
 BASE_DIR = Path(__file__).resolve().parent
 REPOSITORY_DIR = BASE_DIR.parent
 DATA_DIR = BASE_DIR / "data"
-FRONTEND_DIST = REPOSITORY_DIR / "frontend" / "dist"
 PRESENTATION_DIR = DATA_DIR / "presentation"
 PRESENTATION_INITIAL_STATE_FILE = PRESENTATION_DIR / "initial_state.json"
 PRESENTATION_DB_FILE = PRESENTATION_DIR / "presentation.db"
@@ -64,8 +74,23 @@ def api_error(error: str, message: str, status=400):
     return jsonify({"ok": False, "error": error, "message": message}), status
 
 
-def create_app(database_path: Path | None = None) -> Flask:
+def create_app(
+    database_path: Path | None = None,
+    runtime_settings: RuntimeSettings | None = None,
+) -> Flask:
     app = Flask(__name__)
+    settings = runtime_settings or RuntimeSettings.from_environment(REPOSITORY_DIR)
+    if database_path is not None:
+        settings = settings.with_database(database_path)
+    app.config["RUNTIME_SETTINGS"] = settings
+    app.config["MAX_CONTENT_LENGTH"] = settings.attachment_max_bytes + 1024 * 1024
+    if settings.trust_proxy_headers:
+        app.wsgi_app = ProxyFix(
+            app.wsgi_app,
+            x_for=1,
+            x_proto=1,
+            x_host=1,
+        )
 
     case_registry = CasePackageRegistry(
         CASES_DIR,
@@ -84,7 +109,7 @@ def create_app(database_path: Path | None = None) -> Flask:
     presentation_graph = load_path(PRESENTATION_DIR / "graph_seed.json")
     industrial_computer_graph = load_path(PRESENTATION_DIR / "industrial_computer_graph.json")
     verification_scenario = load_path(PRESENTATION_DIR / "verification_scenario.json")
-    active_database_path = database_path or PRESENTATION_DB_FILE
+    active_database_path = settings.database_path
     store = PresentationStore(active_database_path)
     initial_state = load_path(PRESENTATION_INITIAL_STATE_FILE)
     store.initialize(initial_state, presentation_case, presentation_knowledge, industrial_computer_graph)
@@ -97,12 +122,70 @@ def create_app(database_path: Path | None = None) -> Flask:
             case_registry,
             case_run_store,
             case_router,
-            RuleBasedDiagnosisProvider(),
+            build_diagnosis_provider(settings),
             knowledge_service,
-            SubmittedFactsTelemetryProvider(),
+            build_telemetry_provider(settings),
             CatalogKnowledgeSearchProvider(),
-            LocalAttachmentStore(active_database_path.parent / "attachments"),
+            LocalAttachmentStore(
+                settings.attachment_root,
+                max_bytes=settings.attachment_max_bytes,
+            ),
         )
+    )
+
+    def readiness_check():
+        checks: dict[str, object] = {}
+        ready = True
+        try:
+            with sqlite3.connect(active_database_path) as connection:
+                connection.execute("SELECT 1").fetchone()
+                migration_count = connection.execute(
+                    "SELECT count(*) FROM schema_migrations"
+                ).fetchone()[0]
+            checks["database"] = {
+                "status": "ok",
+                "migrationCount": migration_count,
+            }
+        except (OSError, sqlite3.Error) as exc:
+            ready = False
+            checks["database"] = {"status": "error", "reason": str(exc)}
+        runnable_cases = len(case_registry.runnable_items())
+        checks["caseRegistry"] = {
+            "status": "ok" if runnable_cases else "error",
+            "runnableCases": runnable_cases,
+            "loadErrors": len(case_registry.load_errors),
+        }
+        ready = ready and runnable_cases > 0
+        try:
+            settings.attachment_root.mkdir(parents=True, exist_ok=True)
+            probe = (
+                settings.attachment_root
+                / f".write-probe-{uuid.uuid4().hex}"
+            )
+            probe.write_bytes(b"ready")
+            probe.unlink()
+            checks["attachmentStorage"] = {"status": "ok"}
+        except OSError as exc:
+            ready = False
+            checks["attachmentStorage"] = {
+                "status": "error",
+                "reason": str(exc),
+            }
+        frontend_exists = (settings.frontend_dist / "index.html").is_file()
+        checks["frontend"] = {
+            "status": "ok" if frontend_exists else "missing",
+            "required": settings.readiness_requires_frontend,
+        }
+        if settings.readiness_requires_frontend and not frontend_exists:
+            ready = False
+        return ready, checks
+
+    install_observability(
+        app,
+        service_name=settings.service_name,
+        log_level=settings.log_level,
+        json_access_log=settings.json_access_log,
+        readiness_check=readiness_check,
     )
 
     def load_presentation_state():
@@ -113,14 +196,28 @@ def create_app(database_path: Path | None = None) -> Flask:
 
     @app.after_request
     def add_cors_headers(response):
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        origin = request.headers.get("Origin", "")
+        allowed = settings.cors_allowed_origins
+        if "*" in allowed:
+            response.headers["Access-Control-Allow-Origin"] = "*"
+        elif origin and origin in allowed:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers.add("Vary", "Origin")
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Content-Type, X-Request-ID"
+        )
         response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
         return response
 
     @app.route("/api/health", methods=["GET"])
     def health():
-        return jsonify({"status": "ok", "service": "la-mvp-backend"})
+        return jsonify(
+            {
+                "status": "ok",
+                "service": settings.service_name,
+                "environment": settings.environment,
+            }
+        )
 
     @app.route("/api/demo/scenario", methods=["GET"])
     def demo_scenario():
@@ -576,7 +673,7 @@ def create_app(database_path: Path | None = None) -> Flask:
     @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")
     def serve_frontend(path: str):
-        if not FRONTEND_DIST.exists():
+        if not settings.frontend_dist.exists():
             return jsonify(
                 {
                     "error": "frontend dist not found",
@@ -584,10 +681,10 @@ def create_app(database_path: Path | None = None) -> Flask:
                 }
             ), 404
 
-        requested = FRONTEND_DIST / path
+        requested = settings.frontend_dist / path
         if path and requested.is_file():
-            return send_from_directory(FRONTEND_DIST, path)
-        return send_from_directory(FRONTEND_DIST, "index.html")
+            return send_from_directory(settings.frontend_dist, path)
+        return send_from_directory(settings.frontend_dist, "index.html")
 
     return app
 
@@ -596,4 +693,9 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080, debug=False)
+    active_settings = app.config["RUNTIME_SETTINGS"]
+    app.run(
+        host=active_settings.host,
+        port=active_settings.port,
+        debug=False,
+    )
