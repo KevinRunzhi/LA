@@ -11,5 +11,9 @@
   "steps": ["确认影响范围", "检查物理链路", "检查地址和服务", "恢复通信验证"],
   "assistantTopics": ["网口指示", "地址配置", "连通性验证"],
   "outputFields": ["最终原因", "实际处理", "恢复结果", "连通性结果"],
-  "graphTypes": ["symptom", "component", "cause", "check", "action"]
+  "graphTypes": ["symptom", "component", "cause", "check", "action"],
+  "safetyChecks": ["变更前备份网络配置", "隔离错误广播风险"],
+  "forbiddenAutomaticFields": ["connectorPin", "threshold", "approvalStatus"],
+  "minSteps": 3,
+  "maxSteps": 8
 }

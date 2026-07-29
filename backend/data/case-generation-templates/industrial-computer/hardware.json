@@ -1,0 +1,19 @@
+{
+  "id": "industrial-computer.hardware",
+  "version": "1.0.0",
+  "faultDomain": "hardware",
+  "title": "工控机主板与硬件异常",
+  "keywords": ["主板故障", "无法自检", "内存告警", "扩展卡异常", "RTC 电池", "硬件异常"],
+  "exclusions": ["仅网络中断", "仅磁盘 SMART 告警", "TEMP/FAN"],
+  "requiredEvidence": ["alarm", "check", "procedure", "safety", "verification"],
+  "intakeFields": ["设备身份", "自检状态", "硬件告警", "最近硬件变更"],
+  "causeCategories": ["主板与底板", "内存", "扩展卡", "RTC 电池", "接口接触"],
+  "steps": ["安全隔离与静电防护", "记录自检和硬件告警", "检查板卡与接口", "最小化配置验证", "恢复装配与运行验证"],
+  "assistantTopics": ["自检代码", "板卡检查", "静电防护", "最小化配置"],
+  "outputFields": ["最终原因", "异常部件", "实际处理", "恢复结果", "观察时长"],
+  "graphTypes": ["symptom", "component", "cause", "check", "action", "evidence"],
+  "safetyChecks": ["断电隔离", "防静电保护", "板卡拆装记录"],
+  "forbiddenAutomaticFields": ["connectorPin", "threshold", "approvalStatus"],
+  "minSteps": 4,
+  "maxSteps": 8
+}

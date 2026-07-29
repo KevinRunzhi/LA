@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0.0",
+  "artifactSchemas": {
+    "source_snapshot": {"required": ["sources", "sourceCount"]},
+    "document_sections": {"required": ["sections", "sectionCount"]},
+    "evidence_catalog": {"required": ["evidence", "evidenceCount"]},
+    "unified_evidence_search": {"required": ["items", "providers", "searchRunId"]},
+    "evidence_catalog_final": {"required": ["evidence", "evidenceCount"]},
+    "domain_classification": {"required": ["primaryFaultDomain", "confidence", "templateRecommendation"]},
+    "case_outline": {"required": ["faultDomain", "title", "steps", "requiresExpertInput"]},
+    "module_candidate": {"required": []},
+    "routing_analysis": {"required": ["cases", "margin"]},
+    "graph_merge_candidates": {"required": ["baseGraphVersion", "mergeCandidates"]},
+    "assistant_test_set": {"required": ["tests", "coverage"]},
+    "diagnosis_reasoning": {"required": ["causeCandidates", "requestedTelemetry", "confidenceExplanation"]},
+    "output_guide_trace": {"required": ["fieldMappings", "pageCount"]},
+    "graph_claim_mapping": {"required": ["nodes", "relations"]},
+    "critic_report": {"required": ["issues", "passed"]},
+    "repair_report": {"required": ["attempt", "errors", "allowedModules", "patches", "modules"]},
+    "patch_plan": {"required": ["baseRevision", "patches"]}
+  }
+}

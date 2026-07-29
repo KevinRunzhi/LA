@@ -11,5 +11,9 @@
   "steps": ["安全隔离", "检查滤网和环境", "清洁风道与滤网", "恢复风量验证"],
   "assistantTopics": ["滤网拆装", "清洁方法", "更换周期"],
   "outputFields": ["最终原因", "清洁处理", "恢复结果", "滤网状态"],
-  "graphTypes": ["symptom", "component", "cause", "check", "action"]
+  "graphTypes": ["symptom", "component", "cause", "check", "action"],
+  "safetyChecks": ["断电清洁", "防止粉尘二次扩散"],
+  "forbiddenAutomaticFields": ["connectorPin", "threshold", "approvalStatus"],
+  "minSteps": 3,
+  "maxSteps": 8
 }

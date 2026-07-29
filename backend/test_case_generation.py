@@ -1,6 +1,9 @@
 import io
+import copy
 import tempfile
 import unittest
+import urllib.error
+from unittest import mock
 from pathlib import Path
 
 from reportlab.lib.pagesizes import A4
@@ -9,10 +12,16 @@ from reportlab.pdfgen import canvas
 from backend.case_authoring.registry import CompositeCasePackageRegistry
 from backend.case_authoring.service import CaseAuthoringService
 from backend.case_generation.orchestrator import CaseGenerationService
-from backend.case_generation.providers import StructuredLocalGenerationProvider
+from backend.case_generation.providers import (
+    RemoteJsonGenerationProvider,
+    StructuredLocalGenerationProvider,
+)
+from backend.case_platform.errors import PlatformError
 from backend.case_generation.templates import CaseGenerationTemplateRegistry
 from backend.case_package import CasePackageRegistry
 from backend.case_platform.migrations import MigrationRunner
+from backend.case_platform.routing import DeterministicCaseRouter
+from backend.case_platform.case_runs import CaseRunStore
 from backend.core_business.audit import AuditService
 from backend.core_business.graph import GovernedGraphService
 from backend.core_business.manuals import ManualKnowledgeService
@@ -41,6 +50,19 @@ class FlakyDocumentProvider(StructuredLocalGenerationProvider):
         if self.parse_attempts < 3:
             raise OSError("temporary provider failure")
         return super().parse_documents(chunks)
+
+
+class UnrepairableGuideProvider(StructuredLocalGenerationProvider):
+    def generate_module(self, module_name, template, draft, evidence, job_id):
+        module = super().generate_module(
+            module_name, template, draft, evidence, job_id
+        )
+        if module_name == "guide":
+            module["steps"][0]["assistantTopicIds"] = ["topic-reference-that-does-not-exist"]
+        return module
+
+    def repair_modules(self, template, draft, modules, errors, attempt):
+        return copy.deepcopy(modules)
 
 
 class CaseGenerationTest(unittest.TestCase):
@@ -155,6 +177,42 @@ class CaseGenerationTest(unittest.TestCase):
             "industrial-computer-storage",
             next_draft["modules"]["registry"]["faultCode"],
         )
+        admin = {"id": "admin-generation-review", "role": "admin"}
+        self.authoring.submit(draft["id"], next_draft["revision"], self.expert)
+        self.authoring.review(
+            draft["id"], "approved", "证据、步骤和模块引用已核对", admin
+        )
+        first_release = self.authoring.publish(draft["id"], "1.0.0", admin)
+        routed = DeterministicCaseRouter(self.authoring.registry).route(
+            {
+                "description": "工控机磁盘无法识别并出现 SMART 告警",
+                "equipment": "工控机",
+                "alarms": ["SMART 告警"],
+            }
+        )
+        self.assertEqual("CASE-STORAGE-GEN-003", routed.candidates[0].case_id)
+        run = CaseRunStore(self.database).create_run(
+            self.authoring.registry.get("CASE-STORAGE-GEN-003"),
+            "engineer-generation",
+            "7fdaef75-654f-4b81-9226-7a201ffba8bd",
+            {"description": "工控机磁盘无法识别并出现 SMART 告警"},
+        )
+        self.assertEqual("CASE-STORAGE-GEN-003", run.case_id)
+
+        rollback_draft = self.authoring.create_draft(
+            {"baseCaseId": "CASE-STORAGE-GEN-003"}, self.expert
+        )
+        validation = self.authoring.validate(rollback_draft["id"], self.expert)
+        self.assertEqual("passed", validation["status"])
+        self.authoring.submit(
+            rollback_draft["id"], rollback_draft["revision"], self.expert
+        )
+        self.authoring.review(
+            rollback_draft["id"], "approved", "历史版本回滚验收", admin
+        )
+        self.authoring.publish(rollback_draft["id"], "1.1.0", admin)
+        activated = self.authoring.activate(first_release["id"], admin)
+        self.assertEqual("active", activated["status"])
 
     def test_reject_outline_stops_generation(self):
         draft = self.authoring.create_draft(
@@ -228,6 +286,197 @@ class CaseGenerationTest(unittest.TestCase):
         metrics = self.generation.render_metrics()
         self.assertIn("case_generation_agent_runs_total", metrics)
         self.assertIn("case_generation_evidence_coverage_ratio", metrics)
+
+    def test_low_confidence_domain_pauses_until_expert_confirmation(self):
+        draft = self.authoring.create_draft({"baseCaseId": "CASE-ACP4000-001"}, self.expert)
+        job = self.generation.create_job(
+            {
+                "draftId": draft["id"],
+                "query": "无法归类的现场现象",
+                "sources": [{"type": "case", "resourceId": "CASE-ACP4000-001"}],
+            },
+            self.expert,
+        )
+        paused = self.generation.process_once(job["id"])
+        self.assertEqual("awaiting_outline_review", paused["status"])
+        self.assertEqual("awaiting_domain_review", paused["currentStage"])
+        confirmed = self.generation.confirm_domain(
+            job["id"], "industrial-computer.hardware", self.expert
+        )
+        self.assertEqual("planning", confirmed["status"])
+        outlined = self.generation.process_once(job["id"])
+        self.assertEqual("awaiting_outline_review", outlined["status"])
+        self.assertEqual("hardware", outlined["faultDomain"])
+
+    def test_cancelled_and_leased_jobs_are_not_processed(self):
+        draft = self.authoring.create_draft({"baseCaseId": "CASE-ACP4000-001"}, self.expert)
+        cancelled_job = self.generation.create_job(
+            {
+                "draftId": draft["id"],
+                "templateId": "industrial-computer.cooling",
+                "sources": [{"type": "case", "resourceId": "CASE-ACP4000-001"}],
+            },
+            self.expert,
+        )
+        self.generation.cancel(cancelled_job["id"], self.expert)
+        self.assertIsNone(self.generation.process_once(cancelled_job["id"]))
+        leased_job = self.generation.create_job(
+            {
+                "draftId": draft["id"],
+                "templateId": "industrial-computer.cooling",
+                "sources": [{"type": "case", "resourceId": "CASE-ACP4000-001"}],
+            },
+            self.expert,
+        )
+        with self.generation.transaction() as db:
+            db.execute(
+                "UPDATE case_generation_jobs SET lease_expires_at='2999-01-01T00:00:00+00:00' WHERE job_id=?",
+                (leased_job["id"],),
+            )
+        self.assertIsNone(self.generation.process_once(leased_job["id"]))
+        with self.generation.transaction() as db:
+            db.execute(
+                "UPDATE case_generation_jobs SET lease_expires_at='2000-01-01T00:00:00+00:00' WHERE job_id=?",
+                (leased_job["id"],),
+            )
+        self.assertEqual(
+            "awaiting_outline_review",
+            self.generation.process_once(leased_job["id"])["status"],
+        )
+
+    def test_patch_detects_manual_revision_change(self):
+        draft = self.authoring.create_draft({"baseCaseId": "CASE-ACP4000-001"}, self.expert)
+        job = self.generation.create_job(
+            {
+                "draftId": draft["id"],
+                "templateId": "industrial-computer.storage",
+                "sources": [{"type": "case", "resourceId": "CASE-ACP4000-001"}],
+            },
+            self.expert,
+        )
+        self.generation.process_once(job["id"])
+        self.generation.approve_outline(job["id"], self.expert)
+        generated = self.generation.process_once(job["id"])
+        patch = generated["patches"][0]
+        self.generation.decide_patch(patch["id"], "accepted", self.expert, [0])
+        current = self.authoring.get_draft(draft["id"])
+        module = current["modules"]["registry"]
+        module["mode"] = "recorded_demo"
+        self.authoring.update_module(
+            draft["id"], "registry", module, current["revision"], self.expert
+        )
+        with self.assertRaises(PlatformError) as captured:
+            self.generation.apply_patch(patch["id"], self.expert)
+        self.assertEqual("revision_conflict", captured.exception.code)
+
+    def test_partial_field_application_runs_final_validation_and_blocks_publish(self):
+        draft = self.authoring.create_draft({"baseCaseId": "CASE-ACP4000-001"}, self.expert)
+        job = self.generation.create_job(
+            {
+                "draftId": draft["id"],
+                "templateId": "industrial-computer.storage",
+                "sources": [{"type": "case", "resourceId": "CASE-ACP4000-001"}],
+            },
+            self.expert,
+        )
+        self.generation.process_once(job["id"])
+        self.generation.approve_outline(job["id"], self.expert)
+        generated = self.generation.process_once(job["id"])
+        registry_patch = next(
+            item for item in generated["patches"] if item["moduleName"] == "registry"
+        )
+        self.generation.decide_patch(
+            registry_patch["id"], "accepted", self.expert, [0]
+        )
+        self.generation.apply_patch(registry_patch["id"], self.expert)
+        for patch in generated["patches"]:
+            if patch["id"] != registry_patch["id"]:
+                self.generation.decide_patch(patch["id"], "rejected", self.expert)
+        finalized = self.generation.get_job(job["id"])
+        final_checks = [
+            item for item in finalized["evaluations"]
+            if item["ruleId"] == "post_patch_case_validation"
+        ]
+        self.assertEqual(1, len(final_checks))
+        if finalized["status"] == "failed":
+            self.assertEqual("post_patch_validation_failed", finalized["failureCode"])
+        with self.assertRaises(PlatformError):
+            self.authoring.publish(draft["id"], "9.9.9", self.expert)
+
+    def test_unchanged_repair_error_stops_and_never_modifies_draft(self):
+        self.generation.provider = UnrepairableGuideProvider()
+        draft = self.authoring.create_draft({"baseCaseId": "CASE-ACP4000-001"}, self.expert)
+        initial_revision = draft["revision"]
+        job = self.generation.create_job(
+            {
+                "draftId": draft["id"],
+                "templateId": "industrial-computer.storage",
+                "sources": [{"type": "case", "resourceId": "CASE-ACP4000-001"}],
+            },
+            self.expert,
+        )
+        self.generation.process_once(job["id"])
+        self.generation.approve_outline(job["id"], self.expert)
+        failed = self.generation.process_once(job["id"])
+        self.assertEqual("failed", failed["status"])
+        repairs = [
+            item for item in failed["agentRuns"]
+            if item["agentType"] == "targeted_repair"
+        ]
+        self.assertGreaterEqual(len(repairs), 1)
+        self.assertLessEqual(len(repairs), 3)
+        self.assertEqual(
+            initial_revision,
+            self.authoring.get_draft(draft["id"])["revision"],
+        )
+        self.assertEqual([], failed["patches"])
+
+
+class ProviderBoundaryTest(unittest.TestCase):
+    def test_document_contract_preserves_page_negation_and_units(self):
+        provider = StructuredLocalGenerationProvider()
+        parsed = provider.parse_documents([
+            {
+                "documentId": "DOC-1",
+                "chunkId": "CHK-1",
+                "pageNumber": 24,
+                "title": "Fan Connector",
+                "text": "Fan Connector\n不得在转速低于 900 rpm 时直接更换接线。\nPage 24",
+            }
+        ])
+        evidence = provider.extract_evidence(parsed["sections"])["evidence"]
+        self.assertTrue(evidence)
+        self.assertEqual([24], evidence[0]["pages"])
+        self.assertEqual("negative", evidence[0]["polarity"])
+        self.assertIn("900 rpm", evidence[0]["quantities"])
+
+    def test_remote_provider_rejects_invalid_json_and_timeout(self):
+        provider = RemoteJsonGenerationProvider(
+            "http://provider.invalid/generate", "structured-model", timeout_seconds=1
+        )
+        response = mock.MagicMock()
+        response.__enter__.return_value.read.return_value = b"not-json"
+        with mock.patch("urllib.request.urlopen", return_value=response):
+            with self.assertRaises(ValueError):
+                provider.parse_documents([])
+        with mock.patch(
+            "urllib.request.urlopen",
+            side_effect=urllib.error.URLError("timeout"),
+        ):
+            with self.assertRaises(OSError):
+                provider.parse_documents([])
+        valid = mock.MagicMock()
+        valid.__enter__.return_value.read.return_value = (
+            b'{"output":{"sections":[],"sectionCount":0},'
+            b'"usage":{"inputTokens":12,"outputTokens":4}}'
+        )
+        with mock.patch("urllib.request.urlopen", return_value=valid):
+            result = provider.parse_documents([])
+        self.assertEqual(0, result["sectionCount"])
+        self.assertEqual(12, provider.consume_usage()["inputTokens"])
+        with mock.patch("urllib.request.urlopen", side_effect=TimeoutError("slow")):
+            with self.assertRaises(TimeoutError):
+                provider.parse_documents([])
 
 
 if __name__ == "__main__":

@@ -11,5 +11,9 @@
   "steps": ["安全隔离", "测量外部供电", "检查端子与电源模块", "恢复启动验证"],
   "assistantTopics": ["电压测量", "端子顺序", "启动掉电"],
   "outputFields": ["最终原因", "实际处理", "恢复结果", "输入电压", "观察时长"],
-  "graphTypes": ["symptom", "component", "cause", "measure", "action"]
+  "graphTypes": ["symptom", "component", "cause", "measure", "action"],
+  "safetyChecks": ["断电验电", "使用合规测量工具"],
+  "forbiddenAutomaticFields": ["connectorPin", "threshold", "approvalStatus"],
+  "minSteps": 3,
+  "maxSteps": 8
 }

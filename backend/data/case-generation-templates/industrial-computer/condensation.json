@@ -11,5 +11,9 @@
   "steps": ["断电与防护", "检查凝露和腐蚀", "干燥与环境恢复", "绝缘确认后上电验证"],
   "assistantTopics": ["凝露判断", "干燥要求", "何时可以上电"],
   "outputFields": ["最终原因", "干燥处理", "恢复结果", "温湿度记录"],
-  "graphTypes": ["symptom", "environment", "cause", "check", "action"]
+  "graphTypes": ["symptom", "environment", "cause", "check", "action"],
+  "safetyChecks": ["凝露未消除前禁止上电", "确认环境恢复稳定"],
+  "forbiddenAutomaticFields": ["connectorPin", "threshold", "approvalStatus"],
+  "minSteps": 3,
+  "maxSteps": 8
 }

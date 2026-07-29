@@ -11,5 +11,9 @@
   "steps": ["保护现场与数据", "检查识别和日志", "检查接口与供电", "备份更换与恢复验证"],
   "assistantTopics": ["SMART 状态", "磁盘接口", "备份与更换"],
   "outputFields": ["最终原因", "实际处理", "恢复结果", "磁盘状态", "数据备份结果"],
-  "graphTypes": ["symptom", "component", "cause", "check", "action"]
+  "graphTypes": ["symptom", "component", "cause", "check", "action"],
+  "safetyChecks": ["保护现场数据", "断电后检查接口"],
+  "forbiddenAutomaticFields": ["connectorPin", "threshold", "approvalStatus"],
+  "minSteps": 3,
+  "maxSteps": 8
 }

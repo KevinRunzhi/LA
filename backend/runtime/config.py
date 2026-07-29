@@ -82,6 +82,12 @@ class RuntimeSettings:
     remote_model_base_url: str
     remote_model_name: str
     remote_model_api_key: str
+    case_generation_provider: str
+    case_generation_remote_url: str
+    case_generation_remote_model: str
+    case_generation_remote_api_key: str
+    case_generation_timeout_seconds: int
+    case_generation_max_response_bytes: int
     telemetry_provider: str
     auth_mode: str
     session_ttl_seconds: int
@@ -129,6 +135,28 @@ class RuntimeSettings:
         ):
             raise ConfigurationError(
                 "remote-http 诊断需要 REMOTE_MODEL_BASE_URL 和 REMOTE_MODEL_NAME"
+            )
+        case_generation_provider = values.get(
+            "CASE_GENERATION_PROVIDER",
+            "structured-local",
+        ).strip()
+        if case_generation_provider not in {"structured-local", "remote-json"}:
+            raise ConfigurationError(
+                "CASE_GENERATION_PROVIDER 必须是 structured-local 或 remote-json"
+            )
+        case_generation_remote_url = values.get(
+            "CASE_GENERATION_REMOTE_URL",
+            "",
+        ).strip()
+        case_generation_remote_model = values.get(
+            "CASE_GENERATION_REMOTE_MODEL",
+            "",
+        ).strip()
+        if case_generation_provider == "remote-json" and (
+            not case_generation_remote_url or not case_generation_remote_model
+        ):
+            raise ConfigurationError(
+                "remote-json 生成需要 CASE_GENERATION_REMOTE_URL 和 CASE_GENERATION_REMOTE_MODEL"
             )
         telemetry_provider = values.get(
             "TELEMETRY_PROVIDER",
@@ -212,6 +240,27 @@ class RuntimeSettings:
             remote_model_base_url=remote_model_base_url,
             remote_model_name=remote_model_name,
             remote_model_api_key=remote_model_api_key,
+            case_generation_provider=case_generation_provider,
+            case_generation_remote_url=case_generation_remote_url,
+            case_generation_remote_model=case_generation_remote_model,
+            case_generation_remote_api_key=values.get(
+                "CASE_GENERATION_REMOTE_API_KEY",
+                "",
+            ).strip(),
+            case_generation_timeout_seconds=_integer(
+                values,
+                "CASE_GENERATION_TIMEOUT_SECONDS",
+                45,
+                minimum=1,
+                maximum=300,
+            ),
+            case_generation_max_response_bytes=_integer(
+                values,
+                "CASE_GENERATION_MAX_RESPONSE_BYTES",
+                1_000_000,
+                minimum=1024,
+                maximum=10_000_000,
+            ),
             telemetry_provider=telemetry_provider,
             auth_mode=auth_mode,
             session_ttl_seconds=_integer(
@@ -297,6 +346,12 @@ class RuntimeSettings:
             "trustProxyHeaders": self.trust_proxy_headers,
             "corsAllowedOrigins": list(self.cors_allowed_origins),
             "diagnosisProvider": self.diagnosis_provider,
+            "caseGenerationProvider": self.case_generation_provider,
+            "caseGenerationRemoteConfigured": bool(
+                self.case_generation_remote_url and self.case_generation_remote_model
+            ),
+            "caseGenerationTimeoutSeconds": self.case_generation_timeout_seconds,
+            "caseGenerationMaxResponseBytes": self.case_generation_max_response_bytes,
             "telemetryProvider": self.telemetry_provider,
             "authMode": self.auth_mode,
             "sessionTtlSeconds": self.session_ttl_seconds,

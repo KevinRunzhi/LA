@@ -15,6 +15,7 @@ class CaseGenerationTemplateRegistry:
         "id", "version", "faultDomain", "title", "keywords", "exclusions",
         "requiredEvidence", "intakeFields", "causeCategories", "steps",
         "assistantTopics", "outputFields", "graphTypes",
+        "safetyChecks", "forbiddenAutomaticFields", "minSteps", "maxSteps",
     }
 
     def __init__(self, root: Path):
@@ -28,7 +29,9 @@ class CaseGenerationTemplateRegistry:
         if registry.get("schemaVersion") != "1.0.0":
             raise PlatformError("generation_template_invalid", "生成模板注册表版本无效", 500)
         contracts = registry.get("contracts")
-        if not isinstance(contracts, dict) or set(contracts) != {"agent", "relations", "safety"}:
+        if not isinstance(contracts, dict) or set(contracts) != {
+            "agent", "schemas", "relations", "safety"
+        }:
             raise PlatformError("generation_template_invalid", "生成模板公共合同不完整", 500)
         self.contracts = {
             name: self._read(self._safe(path))
@@ -41,13 +44,21 @@ class CaseGenerationTemplateRegistry:
             if template.get("id") != item["id"] or template.get("version") != item["version"]:
                 raise PlatformError("generation_template_invalid", "生成模板身份不一致", 500)
             missing = self.REQUIRED_TEMPLATE_FIELDS - set(template)
-            arrays = self.REQUIRED_TEMPLATE_FIELDS - {"id", "version", "faultDomain", "title"}
+            arrays = self.REQUIRED_TEMPLATE_FIELDS - {
+                "id", "version", "faultDomain", "title", "minSteps", "maxSteps"
+            }
             if missing or any(not isinstance(template.get(name), list) or not template[name] for name in arrays):
                 raise PlatformError(
                     "generation_template_invalid",
                     f"生成模板 {item['id']} 缺少必需字段或非空列表",
                     500,
                 )
+            if not (
+                isinstance(template["minSteps"], int)
+                and isinstance(template["maxSteps"], int)
+                and 1 <= template["minSteps"] <= template["maxSteps"] <= 30
+            ):
+                raise PlatformError("generation_template_invalid", "生成模板步骤范围无效", 500)
             templates[item["id"]] = template
         if not templates:
             raise PlatformError("generation_template_empty", "没有可用案例生成模板", 500)
@@ -82,6 +93,23 @@ class CaseGenerationTemplateRegistry:
         }
         selected = max(scores, key=scores.get)
         return self.get(selected), scores
+
+    def validate_artifact(self, artifact_type: str, content: dict[str, Any]) -> None:
+        schemas = self.contracts["schemas"].get("artifactSchemas") or {}
+        schema = schemas.get(artifact_type)
+        if schema is None:
+            raise PlatformError(
+                "agent_output_schema_failed",
+                f"未注册 Agent artifact Schema：{artifact_type}",
+                500,
+            )
+        missing = set(schema.get("required") or []) - set(content)
+        if missing:
+            raise PlatformError(
+                "agent_output_schema_failed",
+                f"{artifact_type} 缺少字段：{sorted(missing)}",
+                422,
+            )
 
     def _safe(self, relative: str) -> Path:
         value = Path(relative)

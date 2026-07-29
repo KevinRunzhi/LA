@@ -138,7 +138,7 @@ class MigrationAndCaseRunTest(unittest.TestCase):
             db.execute("CREATE TABLE legacy_state (id INTEGER PRIMARY KEY, value TEXT)")
             db.execute("INSERT INTO legacy_state VALUES (1, 'keep-me')")
         self.runner = MigrationRunner(self.database, self.backups)
-        self.assertEqual(["001", "002", "003", "004", "005", "006"], self.runner.migrate())
+        self.assertEqual(["001", "002", "003", "004", "005", "006", "007"], self.runner.migrate())
         self.store = CaseRunStore(self.database)
         self.registry = registry()
 
@@ -150,7 +150,7 @@ class MigrationAndCaseRunTest(unittest.TestCase):
                 db.execute("SELECT value FROM legacy_state WHERE id=1").fetchone()[0],
             )
             self.assertEqual(
-                6,
+                7,
                 db.execute("SELECT count(*) FROM schema_migrations").fetchone()[0],
             )
         self.assertEqual(1, len(list(self.backups.glob("*.db"))))
@@ -191,7 +191,7 @@ class MigrationAndCaseRunTest(unittest.TestCase):
             database,
             Path(self.temporary.name) / "v2-backups",
         )
-        self.assertEqual(["002", "003", "004", "005", "006"], upgraded.migrate())
+        self.assertEqual(["002", "003", "004", "005", "006", "007"], upgraded.migrate())
         with sqlite3.connect(database) as db:
             row = db.execute(
                 """

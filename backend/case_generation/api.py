@@ -34,6 +34,10 @@ def create_case_generation_blueprint(
             "items": templates.list(),
         })
 
+    @blueprint.get("/sources")
+    def available_sources():
+        return _ok(service.available_sources(_actor(identity)))
+
     @blueprint.get("/jobs")
     def list_jobs():
         actor = _actor(identity)
@@ -42,20 +46,23 @@ def create_case_generation_blueprint(
     @blueprint.post("/jobs")
     def create_job():
         actor = _actor(identity)
-        return _ok(service.create_job(_json(), actor), 201)
+        return _ok(
+            service.create_job(
+                _json(),
+                actor,
+                request.headers.get("X-Request-ID") or None,
+            ),
+            201,
+        )
 
     @blueprint.get("/jobs/<job_id>")
     def get_job(job_id):
-        _actor(identity)
+        service.assert_job_access(job_id, _actor(identity))
         return _ok(service.get_job(job_id))
 
     @blueprint.post("/jobs/<job_id>/run")
     def run_job(job_id):
-        _actor(identity)
-        result = service.process_once(job_id)
-        if result is None:
-            raise PlatformError("generation_job_not_runnable", "当前任务无需 worker 处理", 409)
-        return _ok(result)
+        return _ok(service.request_run(job_id, _actor(identity)), 202)
 
     @blueprint.post("/jobs/<job_id>/cancel")
     def cancel_job(job_id):
@@ -65,6 +72,17 @@ def create_case_generation_blueprint(
     def approve_outline(job_id):
         return _ok(service.approve_outline(job_id, _actor(identity)))
 
+    @blueprint.post("/jobs/<job_id>/domain/confirm")
+    def confirm_domain(job_id):
+        payload = _json()
+        return _ok(
+            service.confirm_domain(
+                job_id,
+                str(payload.get("templateId") or ""),
+                _actor(identity),
+            )
+        )
+
     @blueprint.post("/jobs/<job_id>/outline/reject")
     def reject_outline(job_id):
         payload = _json()
@@ -72,22 +90,32 @@ def create_case_generation_blueprint(
 
     @blueprint.get("/jobs/<job_id>/artifacts")
     def artifacts(job_id):
-        _actor(identity)
+        service.assert_job_access(job_id, _actor(identity))
         return _ok({"items": service.get_artifacts(job_id)})
 
     @blueprint.get("/jobs/<job_id>/agent-runs")
     def agent_runs(job_id):
-        _actor(identity)
+        service.assert_job_access(job_id, _actor(identity))
         return _ok({"items": service.get_agent_runs(job_id)})
 
     @blueprint.get("/jobs/<job_id>/patches")
     def patches(job_id):
-        _actor(identity)
+        service.assert_job_access(job_id, _actor(identity))
         return _ok({"items": service.get_patches(job_id)})
 
     @blueprint.post("/patches/<patch_id>/accept")
     def accept_patch(patch_id):
-        return _ok(service.decide_patch(patch_id, "accepted", _actor(identity)))
+        payload = request.get_json(silent=True) or {}
+        if not isinstance(payload, dict):
+            raise PlatformError("validation_error", "请求体必须是 JSON 对象", 422)
+        return _ok(
+            service.decide_patch(
+                patch_id,
+                "accepted",
+                _actor(identity),
+                payload.get("operationIndexes"),
+            )
+        )
 
     @blueprint.post("/patches/<patch_id>/reject")
     def reject_patch(patch_id):

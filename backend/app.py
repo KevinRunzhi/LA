@@ -16,6 +16,7 @@ try:
     from .case_authoring.service import CaseAuthoringService
     from .case_generation.api import create_case_generation_blueprint
     from .case_generation.orchestrator import CaseGenerationService
+    from .case_generation.providers import build_case_generation_provider
     from .case_generation.templates import CaseGenerationTemplateRegistry
     from .case_platform.api import create_platform_blueprint
     from .case_platform.case_runs import CaseRunStore
@@ -51,6 +52,7 @@ except ImportError:
     from case_authoring.service import CaseAuthoringService
     from case_generation.api import create_case_generation_blueprint
     from case_generation.orchestrator import CaseGenerationService
+    from case_generation.providers import build_case_generation_provider
     from case_generation.templates import CaseGenerationTemplateRegistry
     from case_platform.api import create_platform_blueprint
     from case_platform.case_runs import CaseRunStore
@@ -265,6 +267,8 @@ def create_app(
         graph=graph_service,
         templates=generation_templates,
         audit=audit_service,
+        provider=build_case_generation_provider(settings),
+        search_service=unified_search_service,
     )
     app.register_blueprint(
         create_case_generation_blueprint(

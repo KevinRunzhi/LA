@@ -49,7 +49,7 @@ class CoreBusinessServiceTest(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.database = self.root / "platform.db"
         self.assertEqual(
-            ["001", "002", "003", "004", "005", "006"],
+            ["001", "002", "003", "004", "005", "006", "007"],
             MigrationRunner(self.database).migrate(),
         )
         self.audit = AuditService(self.database)

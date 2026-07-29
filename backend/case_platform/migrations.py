@@ -805,6 +805,17 @@ CASE_GENERATION_MIGRATION = Migration(
     ),
 )
 
+CASE_GENERATION_FIELD_PATCH_MIGRATION = Migration(
+    version="007",
+    name="case generation field patch selection",
+    statements=(
+        """
+        ALTER TABLE case_generation_patches
+        ADD COLUMN selected_operations_json TEXT
+        """,
+    ),
+)
+
 DEFAULT_MIGRATIONS = (
     CASE_PLATFORM_MIGRATION,
     ENGINEER_SNAPSHOT_HISTORY_MIGRATION,
@@ -812,6 +823,7 @@ DEFAULT_MIGRATIONS = (
     PLATFORM_OPERATIONS_MIGRATION,
     CASE_AUTHORING_MIGRATION,
     CASE_GENERATION_MIGRATION,
+    CASE_GENERATION_FIELD_PATCH_MIGRATION,
 )
 
 

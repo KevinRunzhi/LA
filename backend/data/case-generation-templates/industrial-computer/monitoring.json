@@ -11,5 +11,9 @@
   "steps": ["确认告警表现", "检查本地指示", "检查通信与复位", "模拟告警验证"],
   "assistantTopics": ["指示灯含义", "蜂鸣器检查", "告警复位"],
   "outputFields": ["最终原因", "实际处理", "恢复结果", "告警验证结果"],
-  "graphTypes": ["symptom", "component", "cause", "check", "action"]
+  "graphTypes": ["symptom", "component", "cause", "check", "action"],
+  "safetyChecks": ["先核实真实设备状态", "禁止直接屏蔽持续告警"],
+  "forbiddenAutomaticFields": ["connectorPin", "threshold", "approvalStatus"],
+  "minSteps": 3,
+  "maxSteps": 8
 }
