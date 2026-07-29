@@ -13,6 +13,8 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { identityApi } from "../api/identityClient";
+import { loadPlatformSession } from "../api/platformTransport";
 import { presentationApi } from "./presentationApi";
 import "./user-management.css";
 
@@ -39,7 +41,24 @@ const emptyUser = {
   organization: "国家管网集团山东德州分输站 · 设备技术组",
   specialty: "工控机与站控系统",
   status: "active",
+  password: "",
 };
+
+function fromPlatformUser(item) {
+  const profile = item.profile || {};
+  return {
+    ...emptyUser,
+    id: item.id,
+    account: item.account,
+    name: item.displayName,
+    role: item.role,
+    status: item.status,
+    site: profile.site || "",
+    team: profile.team || "",
+    organization: profile.organization || "",
+    specialty: profile.specialty || "",
+  };
+}
 
 function normalizeUsers(items) {
   const accountFallbacks = ["worker001", "wangong", "zhaoshifu", "guojianjun", "chenzhiqiang", "expert001", "zhouqiming", "sunjian"];
@@ -69,6 +88,8 @@ function roleLabel(role) {
 }
 
 export default function AdminUserPortal({ onLogout }) {
+  const session = useMemo(loadPlatformSession, []);
+  const usesPlatformApi = session?.user?.role === "admin";
   const [users, setUsers] = useState(() => readStoredUsers() || fallbackUsers);
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
@@ -77,6 +98,21 @@ export default function AdminUserPortal({ onLogout }) {
   const [loading, setLoading] = useState(!readStoredUsers());
 
   useEffect(() => {
+    if (usesPlatformApi) {
+      let active = true;
+      setLoading(true);
+      identityApi.listUsers({ pageSize: 100 })
+        .then((result) => active && setUsers(
+          result.items
+            .filter((item) => item.role !== "admin")
+            .map(fromPlatformUser),
+        ))
+        .catch((error) => active && showNotice(
+          `${error.message}${error.requestId ? ` · ${error.requestId}` : ""}`,
+        ))
+        .finally(() => active && setLoading(false));
+      return () => { active = false; };
+    }
     if (readStoredUsers()) {
       setLoading(false);
       return undefined;
@@ -99,7 +135,7 @@ export default function AdminUserPortal({ onLogout }) {
       })
       .finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, []);
+  }, [usesPlatformApi]);
 
   function persist(nextUsers) {
     setUsers(nextUsers);
@@ -119,7 +155,16 @@ export default function AdminUserPortal({ onLogout }) {
     return `${prefix}-${String(maxId + 1).padStart(3, "0")}`;
   }
 
-  function saveUser(form) {
+  async function reloadPlatformUsers() {
+    const result = await identityApi.listUsers({ pageSize: 100 });
+    setUsers(
+      result.items
+        .filter((item) => item.role !== "admin")
+        .map(fromPlatformUser),
+    );
+  }
+
+  async function saveUser(form) {
     const duplicate = users.some((item) => item.account.toLowerCase() === form.account.trim().toLowerCase() && item.id !== form.id);
     if (duplicate) return "登录账号已存在，请更换账号。";
 
@@ -134,16 +179,66 @@ export default function AdminUserPortal({ onLogout }) {
       specialty: form.specialty.trim(),
     };
     const exists = users.some((item) => item.id === normalized.id);
+    if (usesPlatformApi) {
+      const profile = normalized.role === "expert"
+        ? { organization: normalized.organization, specialty: normalized.specialty }
+        : { site: normalized.site, team: normalized.team };
+      if (exists) {
+        await identityApi.updateUser(normalized.id, {
+          displayName: normalized.name,
+          role: normalized.role,
+          status: normalized.status,
+          profile,
+        });
+      } else {
+        await identityApi.createUser({
+          account: normalized.account,
+          displayName: normalized.name,
+          role: normalized.role,
+          password: normalized.password,
+          profile,
+        });
+      }
+      await reloadPlatformUsers();
+      setEditor(null);
+      showNotice(exists ? `已更新 ${normalized.name} 的账号资料` : `已新增${roleLabel(normalized.role)} ${normalized.name}`);
+      return "";
+    }
     persist(exists ? users.map((item) => item.id === normalized.id ? normalized : item) : [normalized, ...users]);
     setEditor(null);
     showNotice(exists ? `已更新 ${normalized.name} 的账号资料` : `已新增${roleLabel(normalized.role)} ${normalized.name}`);
     return "";
   }
 
-  function toggleUser(user) {
+  async function toggleUser(user) {
     const nextStatus = user.status === "active" ? "disabled" : "active";
-    persist(users.map((item) => item.id === user.id ? { ...item, status: nextStatus } : item));
+    if (usesPlatformApi) {
+      try {
+        await identityApi.updateUser(user.id, { status: nextStatus });
+        await reloadPlatformUsers();
+      } catch (error) {
+        showNotice(`${error.message}${error.requestId ? ` · ${error.requestId}` : ""}`);
+        return;
+      }
+    } else {
+      persist(users.map((item) => item.id === user.id ? { ...item, status: nextStatus } : item));
+    }
     showNotice(`${user.name} 已${nextStatus === "active" ? "启用" : "停用"}`);
+  }
+
+  async function resetPassword(user) {
+    if (!usesPlatformApi) {
+      showNotice(`${user.account} 的演示密码已重置为 123456`);
+      return;
+    }
+    const nextPassword = window.prompt(`请输入 ${user.account} 的新密码（至少 10 位，需含大小写字母和数字）`);
+    if (!nextPassword) return;
+    try {
+      await identityApi.resetPassword(user.id, nextPassword);
+      showNotice(`${user.account} 的密码已重置，旧会话已经失效`);
+    } catch (error) {
+      showNotice(`${error.message}${error.requestId ? ` · ${error.requestId}` : ""}`);
+    }
   }
 
   const stats = useMemo(() => ({
@@ -175,7 +270,7 @@ export default function AdminUserPortal({ onLogout }) {
       <main className="user-admin-main">
         {notice && <div className="user-admin-toast" role="status"><Check size={15} />{notice}</div>}
         <header className="user-admin-head">
-          <div><span>ACCOUNT & ORGANIZATION</span><h1>用户与角色管理</h1><p>维护工程师和专家的演示账号、组织归属与启停状态。</p></div>
+          <div><span>ACCOUNT & ORGANIZATION</span><h1>用户与角色管理</h1><p>{usesPlatformApi ? "维护平台工程师和专家账号，修改会立即写入业务数据库。" : "维护工程师和专家的演示账号、组织归属与启停状态。"}</p></div>
           <button className="user-admin-primary" onClick={() => setEditor({ ...emptyUser })}><Plus size={16} />新增用户</button>
         </header>
 
@@ -202,11 +297,11 @@ export default function AdminUserPortal({ onLogout }) {
                 <div className="user-admin-person"><i>{user.name.slice(0, 1)}</i><span><strong>{user.name}</strong><small>{user.id}</small></span></div>
                 <code>{user.account}</code>
                 <div className="user-admin-role"><em className={user.role}>{roleLabel(user.role)}</em><span><strong>{user.role === "expert" ? user.organization : user.site}</strong><small>{user.role === "expert" ? user.specialty : user.team}</small></span></div>
-                <span className={`user-admin-status ${user.status}`}><i />{user.status === "active" ? "正常" : "已停用"}</span>
+                <span className={`user-admin-status ${user.status}`}><i />{user.status === "active" ? "正常" : user.status === "locked" ? "临时锁定" : "已停用"}</span>
                 <div className="user-admin-actions">
                   <button onClick={() => setEditor({ ...user })} title={`编辑 ${user.name}`}><Pencil size={14} /></button>
-                  <button onClick={() => { showNotice(`${user.account} 的演示密码已重置为 123456`); }} title={`重置 ${user.name} 的演示密码`}><KeyRound size={14} /></button>
-                  <button className={user.status === "active" ? "danger" : "success"} onClick={() => toggleUser(user)}>{user.status === "active" ? "停用" : "启用"}</button>
+                  <button onClick={() => resetPassword(user)} title={`重置 ${user.name} 的密码`}><KeyRound size={14} /></button>
+                  <button className={user.status === "active" ? "danger" : "success"} disabled={user.status === "locked"} title={user.status === "locked" ? "请先重置密码解除锁定" : ""} onClick={() => toggleUser(user)}>{user.status === "active" ? "停用" : user.status === "locked" ? "已锁定" : "启用"}</button>
                 </div>
               </article>
             ))}
@@ -215,12 +310,12 @@ export default function AdminUserPortal({ onLogout }) {
         </section>
       </main>
 
-      {editor && <UserEditor user={editor} onClose={() => setEditor(null)} onSave={saveUser} />}
+      {editor && <UserEditor user={editor} requiresPassword={usesPlatformApi} onClose={() => setEditor(null)} onSave={saveUser} />}
     </div>
   );
 }
 
-function UserEditor({ user, onClose, onSave }) {
+function UserEditor({ user, requiresPassword, onClose, onSave }) {
   const [form, setForm] = useState(user);
   const [error, setError] = useState("");
   const editing = Boolean(user.id);
@@ -230,14 +325,22 @@ function UserEditor({ user, onClose, onSave }) {
     setError("");
   }
 
-  function submit(event) {
+  async function submit(event) {
     event.preventDefault();
     if (!form.name.trim() || !form.account.trim()) {
       setError("请填写姓名和登录账号。");
       return;
     }
-    const nextError = onSave(form);
-    if (nextError) setError(nextError);
+    if (!editing && requiresPassword && !form.password) {
+      setError("请设置初始密码。");
+      return;
+    }
+    try {
+      const nextError = await onSave(form);
+      if (nextError) setError(nextError);
+    } catch (nextError) {
+      setError(`${nextError.message}${nextError.requestId ? ` · ${nextError.requestId}` : ""}`);
+    }
   }
 
   return (
@@ -249,7 +352,8 @@ function UserEditor({ user, onClose, onSave }) {
           <label><span>姓名 <em>必填</em></span><input value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="如：陈志强" autoFocus /></label>
           <label><span>登录账号 <em>必填</em></span><input value={form.account} onChange={(event) => update("account", event.target.value)} placeholder="如：chenzhiqiang" /></label>
           <label><span>角色</span><select value={form.role} onChange={(event) => update("role", event.target.value)}><option value="engineer">工程师</option><option value="expert">专家</option></select></label>
-          <label><span>账号状态</span><select value={form.status} onChange={(event) => update("status", event.target.value)}><option value="active">正常</option><option value="disabled">停用</option></select></label>
+          <label><span>账号状态</span><select value={form.status} onChange={(event) => update("status", event.target.value)}><option value="active">正常</option><option value="disabled">停用</option>{form.status === "locked" && <option value="locked" disabled>临时锁定</option>}</select></label>
+          {!editing && requiresPassword && <label className="wide"><span>初始密码 <em>必填</em></span><input type="password" value={form.password} onChange={(event) => update("password", event.target.value)} autoComplete="new-password" placeholder="至少 10 位，含大小写字母和数字" /></label>}
           {form.role === "engineer" ? <>
             <label className="wide"><span>所属场站</span><input value={form.site} onChange={(event) => update("site", event.target.value)} /></label>
             <label className="wide"><span>班组</span><input value={form.team} onChange={(event) => update("team", event.target.value)} /></label>

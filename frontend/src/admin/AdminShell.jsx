@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Cpu, ExternalLink, FileCheck2, FileText, GitBranch, History, Loader2, Network, Plus, RefreshCcw, Save, Search, Send, Settings, ShieldCheck, Sparkles, Trash2, UserRound, Users, Wrench, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Cpu, Database, ExternalLink, FileCheck2, FileText, GitBranch, History, Loader2, Network, Plus, RefreshCcw, Save, Search, Send, Settings, ShieldCheck, Sparkles, Trash2, UserRound, Users, Wrench, X } from "lucide-react";
 import { presentationApi } from "./presentationApi";
 import IndustrialKnowledgeGraphPage from "./knowledge-graph/IndustrialKnowledgeGraphPage";
+import PlatformDataCenter from "./platform-data/PlatformDataCenter";
 import "./admin.css";
 import "./portal.css";
 
@@ -59,7 +60,7 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
   const [graphKnowledgeId, setGraphKnowledgeId] = useState(null);
   const [expertProfile, setExpertProfile] = useState(loadExpertProfile);
   const adminNavItems = portalRole === "expert"
-    ? [["workbench","专家工作台",FileCheck2],["history","全部案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","知识图谱",Network],["settings","专家设置",Settings]]
+    ? [["workbench","专家工作台",FileCheck2],["history","全部案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","知识图谱",Network],["platform-data","平台数据",Database],["settings","专家设置",Settings]]
     : [["workbench","我的案例",FileCheck2],["history","历史案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","知识图谱",Network]];
 
   async function loadAll(nextPage) {
@@ -142,6 +143,7 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
         onVerify={() => setPage("verify")}
       />}
       {page === "settings" && portalRole === "expert" && <ExpertSettingsPage profile={expertProfile} onSave={saveExpertProfile} onReset={() => setConfirmReset(true)} resetDisabled={busy} />}
+      {page === "platform-data" && portalRole === "expert" && <PlatformDataCenter />}
       {page === "people" && <PeoplePage users={users} />}
       </section>
       {confirmReset && <div className="presentation-reset-backdrop"><section><RefreshCcw size={24}/><span>录制状态重置</span><h2>恢复案例与知识初始状态？</h2><p>将恢复 CASE-ACP4000-001 待工程师确认、KB-008 V1.0 和发布前图谱。历史展示数据不会变化。</p><div><button className="admin-secondary" onClick={() => setConfirmReset(false)}>取消</button><button className="admin-primary" onClick={async () => { setConfirmReset(false); await action(presentationApi.reset, "演示已恢复：案例待确认，知识 V1.0", "workbench"); }}>确认重置</button></div></section></div>}
