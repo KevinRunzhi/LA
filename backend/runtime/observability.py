@@ -99,6 +99,7 @@ def install_observability(
     log_level: str,
     json_access_log: bool,
     readiness_check: Callable[[], tuple[bool, dict[str, object]]],
+    additional_metrics: Callable[[], str] | None = None,
 ) -> ServiceMetrics:
     metrics = ServiceMetrics()
     logger = logging.getLogger("la.access")
@@ -165,8 +166,11 @@ def install_observability(
 
     @app.get("/api/metrics")
     def service_metrics():
+        body = metrics.render(service_name)
+        if additional_metrics is not None:
+            body += additional_metrics()
         return Response(
-            metrics.render(service_name),
+            body,
             content_type="text/plain; version=0.0.4; charset=utf-8",
         )
 

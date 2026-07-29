@@ -637,12 +637,181 @@ CASE_AUTHORING_MIGRATION = Migration(
     ),
 )
 
+CASE_GENERATION_MIGRATION = Migration(
+    version="006",
+    name="document driven multi agent case generation",
+    statements=(
+        """
+        CREATE TABLE case_generation_jobs (
+            job_id TEXT PRIMARY KEY,
+            draft_id TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN
+                ('created','snapshotting','parsing_documents','extracting_evidence',
+                 'classifying_domain','planning','awaiting_outline_review',
+                 'generating_modules','criticizing','validating','repairing',
+                 'awaiting_patch_review','partially_applied','applied',
+                 'completed','failed','cancelled')),
+            current_stage TEXT NOT NULL,
+            progress INTEGER NOT NULL DEFAULT 0 CHECK(progress BETWEEN 0 AND 100),
+            fault_domain TEXT,
+            template_id TEXT,
+            template_version TEXT,
+            outline_status TEXT NOT NULL DEFAULT 'pending' CHECK(outline_status IN
+                ('pending','awaiting_review','approved','rejected')),
+            outline_artifact_id TEXT,
+            options_json TEXT NOT NULL,
+            cancel_requested INTEGER NOT NULL DEFAULT 0 CHECK(cancel_requested IN (0,1)),
+            lease_expires_at TEXT,
+            attempt INTEGER NOT NULL DEFAULT 0,
+            failure_code TEXT,
+            failure_summary TEXT,
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            started_at TEXT,
+            completed_at TEXT,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(draft_id) REFERENCES case_authoring_drafts(draft_id)
+                ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE case_generation_sources (
+            source_id TEXT PRIMARY KEY,
+            job_id TEXT NOT NULL,
+            source_type TEXT NOT NULL CHECK(source_type IN
+                ('manual','case','graph','field')),
+            resource_id TEXT NOT NULL,
+            version TEXT,
+            content_sha256 TEXT,
+            snapshot_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(job_id,source_type,resource_id),
+            FOREIGN KEY(job_id) REFERENCES case_generation_jobs(job_id)
+                ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE TABLE case_generation_agent_runs (
+            agent_run_id TEXT PRIMARY KEY,
+            job_id TEXT NOT NULL,
+            agent_type TEXT NOT NULL,
+            agent_version TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            template_id TEXT,
+            template_version TEXT,
+            attempt INTEGER NOT NULL,
+            status TEXT NOT NULL CHECK(status IN
+                ('pending','running','completed','failed','cancelled')),
+            input_artifact_ids_json TEXT NOT NULL,
+            evidence_ids_json TEXT NOT NULL,
+            input_sha256 TEXT,
+            output_artifact_id TEXT,
+            output_sha256 TEXT,
+            warnings_json TEXT NOT NULL,
+            requires_expert_input_json TEXT NOT NULL,
+            usage_json TEXT,
+            duration_ms INTEGER,
+            error_code TEXT,
+            error_message TEXT,
+            started_at TEXT NOT NULL,
+            completed_at TEXT,
+            FOREIGN KEY(job_id) REFERENCES case_generation_jobs(job_id)
+                ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE TABLE case_generation_artifacts (
+            artifact_id TEXT PRIMARY KEY,
+            job_id TEXT NOT NULL,
+            agent_run_id TEXT,
+            artifact_type TEXT NOT NULL,
+            module_name TEXT,
+            content_json TEXT NOT NULL,
+            content_sha256 TEXT NOT NULL,
+            schema_status TEXT NOT NULL CHECK(schema_status IN
+                ('not_checked','passed','failed')),
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(job_id) REFERENCES case_generation_jobs(job_id)
+                ON DELETE CASCADE,
+            FOREIGN KEY(agent_run_id) REFERENCES case_generation_agent_runs(agent_run_id)
+                ON DELETE SET NULL
+        )
+        """,
+        """
+        CREATE TABLE case_generation_evidence_links (
+            link_id TEXT PRIMARY KEY,
+            artifact_id TEXT NOT NULL,
+            module_name TEXT NOT NULL,
+            json_pointer TEXT NOT NULL,
+            evidence_id TEXT NOT NULL,
+            confidence REAL NOT NULL CHECK(confidence BETWEEN 0 AND 1),
+            review_status TEXT NOT NULL CHECK(review_status IN
+                ('pending','accepted','rejected')),
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(artifact_id) REFERENCES case_generation_artifacts(artifact_id)
+                ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE TABLE case_generation_patches (
+            patch_id TEXT PRIMARY KEY,
+            job_id TEXT NOT NULL,
+            draft_id TEXT NOT NULL,
+            module_name TEXT NOT NULL,
+            base_revision INTEGER NOT NULL,
+            base_content_sha256 TEXT NOT NULL,
+            candidate_artifact_id TEXT NOT NULL,
+            operations_json TEXT NOT NULL,
+            evidence_links_json TEXT NOT NULL,
+            risk TEXT NOT NULL CHECK(risk IN ('low','medium','high')),
+            status TEXT NOT NULL CHECK(status IN
+                ('proposed','accepted','rejected','applied','conflicted')),
+            applied_revision INTEGER,
+            decided_by TEXT,
+            decided_at TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(job_id) REFERENCES case_generation_jobs(job_id)
+                ON DELETE CASCADE,
+            FOREIGN KEY(draft_id) REFERENCES case_authoring_drafts(draft_id)
+                ON DELETE RESTRICT,
+            FOREIGN KEY(candidate_artifact_id) REFERENCES case_generation_artifacts(artifact_id)
+                ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE case_generation_evaluations (
+            evaluation_id TEXT PRIMARY KEY,
+            job_id TEXT NOT NULL,
+            artifact_id TEXT,
+            evaluator_type TEXT NOT NULL,
+            rule_id TEXT NOT NULL,
+            severity TEXT NOT NULL CHECK(severity IN ('info','warning','error')),
+            passed INTEGER NOT NULL CHECK(passed IN (0,1)),
+            details_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(job_id) REFERENCES case_generation_jobs(job_id)
+                ON DELETE CASCADE,
+            FOREIGN KEY(artifact_id) REFERENCES case_generation_artifacts(artifact_id)
+                ON DELETE CASCADE
+        )
+        """,
+        "CREATE INDEX idx_generation_jobs_claim ON case_generation_jobs(status,lease_expires_at,updated_at)",
+        "CREATE INDEX idx_generation_sources_job ON case_generation_sources(job_id,source_type)",
+        "CREATE INDEX idx_generation_runs_job ON case_generation_agent_runs(job_id,started_at)",
+        "CREATE INDEX idx_generation_artifacts_job ON case_generation_artifacts(job_id,artifact_type)",
+        "CREATE INDEX idx_generation_patches_job ON case_generation_patches(job_id,status,module_name)",
+        "CREATE INDEX idx_generation_evaluations_job ON case_generation_evaluations(job_id,severity)",
+    ),
+)
+
 DEFAULT_MIGRATIONS = (
     CASE_PLATFORM_MIGRATION,
     ENGINEER_SNAPSHOT_HISTORY_MIGRATION,
     CORE_BUSINESS_MIGRATION,
     PLATFORM_OPERATIONS_MIGRATION,
     CASE_AUTHORING_MIGRATION,
+    CASE_GENERATION_MIGRATION,
 )
 
 
@@ -811,6 +980,15 @@ class MigrationRunner:
             "case_authoring_events",
             "case_agent_suggestions",
         }
+        generation_required = {
+            "case_generation_jobs",
+            "case_generation_sources",
+            "case_generation_agent_runs",
+            "case_generation_artifacts",
+            "case_generation_evidence_links",
+            "case_generation_patches",
+            "case_generation_evaluations",
+        }
         tables = {
             row[0]
             for row in connection.execute(
@@ -823,6 +1001,8 @@ class MigrationRunner:
             required.update(operations_required)
         if tables & authoring_required:
             required.update(authoring_required)
+        if tables & generation_required:
+            required.update(generation_required)
         missing = sorted(required - tables)
         if missing:
             raise PlatformError(

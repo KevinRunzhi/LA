@@ -1,0 +1,15 @@
+{
+  "id": "industrial-computer.power",
+  "version": "1.0.0",
+  "faultDomain": "power",
+  "title": "工控机供电与启动异常",
+  "keywords": ["无法上电", "电源灯不亮", "启动掉电", "反复重启", "24V 欠压"],
+  "exclusions": ["TEMP/FAN", "风扇低速"],
+  "requiredEvidence": ["alarm", "measurement", "procedure", "safety"],
+  "intakeFields": ["设备型号", "电源指示状态", "输入电压"],
+  "causeCategories": ["外部供电", "电源模块", "配电接线", "负载短路"],
+  "steps": ["安全隔离", "测量外部供电", "检查端子与电源模块", "恢复启动验证"],
+  "assistantTopics": ["电压测量", "端子顺序", "启动掉电"],
+  "outputFields": ["最终原因", "实际处理", "恢复结果", "输入电压", "观察时长"],
+  "graphTypes": ["symptom", "component", "cause", "measure", "action"]
+}

@@ -14,6 +14,9 @@ try:
     from .case_authoring.api import create_case_authoring_blueprint
     from .case_authoring.registry import CompositeCasePackageRegistry
     from .case_authoring.service import CaseAuthoringService
+    from .case_generation.api import create_case_generation_blueprint
+    from .case_generation.orchestrator import CaseGenerationService
+    from .case_generation.templates import CaseGenerationTemplateRegistry
     from .case_platform.api import create_platform_blueprint
     from .case_platform.case_runs import CaseRunStore
     from .case_platform.errors import PlatformError
@@ -46,6 +49,9 @@ except ImportError:
     from case_authoring.api import create_case_authoring_blueprint
     from case_authoring.registry import CompositeCasePackageRegistry
     from case_authoring.service import CaseAuthoringService
+    from case_generation.api import create_case_generation_blueprint
+    from case_generation.orchestrator import CaseGenerationService
+    from case_generation.templates import CaseGenerationTemplateRegistry
     from case_platform.api import create_platform_blueprint
     from case_platform.case_runs import CaseRunStore
     from case_platform.errors import PlatformError
@@ -82,6 +88,7 @@ PRESENTATION_DIR = DATA_DIR / "presentation"
 PRESENTATION_INITIAL_STATE_FILE = PRESENTATION_DIR / "initial_state.json"
 PRESENTATION_DB_FILE = PRESENTATION_DIR / "presentation.db"
 CASES_DIR = DATA_DIR / "cases"
+CASE_GENERATION_TEMPLATES_DIR = DATA_DIR / "case-generation-templates"
 
 
 def load_json(name: str):
@@ -248,6 +255,24 @@ def create_app(
             case_authoring_service,
         )
     )
+    generation_templates = CaseGenerationTemplateRegistry(
+        CASE_GENERATION_TEMPLATES_DIR
+    ).load()
+    case_generation_service = CaseGenerationService(
+        active_database_path,
+        authoring=case_authoring_service,
+        manuals=manual_service,
+        graph=graph_service,
+        templates=generation_templates,
+        audit=audit_service,
+    )
+    app.register_blueprint(
+        create_case_generation_blueprint(
+            identity_service,
+            case_generation_service,
+            generation_templates,
+        )
+    )
     app.extensions["la_services"] = {
         "identity": identity_service,
         "manuals": manual_service,
@@ -257,6 +282,7 @@ def create_app(
         "search": unified_search_service,
         "operations": operations_service,
         "caseAuthoring": case_authoring_service,
+        "caseGeneration": case_generation_service,
     }
 
     @app.before_request
@@ -379,6 +405,7 @@ def create_app(
         log_level=settings.log_level,
         json_access_log=settings.json_access_log,
         readiness_check=readiness_check,
+        additional_metrics=case_generation_service.render_metrics,
     )
 
     def load_presentation_state():

@@ -1,0 +1,15 @@
+{
+  "id": "industrial-computer.monitoring",
+  "version": "1.0.0",
+  "faultDomain": "monitoring",
+  "title": "工控机监控告警异常",
+  "keywords": ["告警失效", "蜂鸣器无声", "指示灯异常", "远程监控中断", "持续报警"],
+  "exclusions": ["无法上电", "网络中断"],
+  "requiredEvidence": ["alarm", "check", "procedure", "verification"],
+  "intakeFields": ["设备型号", "告警表现", "监控通道"],
+  "causeCategories": ["指示部件", "蜂鸣器回路", "监控总线", "复位接口"],
+  "steps": ["确认告警表现", "检查本地指示", "检查通信与复位", "模拟告警验证"],
+  "assistantTopics": ["指示灯含义", "蜂鸣器检查", "告警复位"],
+  "outputFields": ["最终原因", "实际处理", "恢复结果", "告警验证结果"],
+  "graphTypes": ["symptom", "component", "cause", "check", "action"]
+}

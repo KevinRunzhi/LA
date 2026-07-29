@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "1.0.0",
+  "moduleOrder": ["registry", "manifest", "intake", "diagnosis", "guide", "assistant", "output", "feedbackAndGraph"],
+  "agentVersion": "1.0.0",
+  "repairLimit": 3,
+  "moduleParallelism": 3,
+  "forbiddenAutomaticFields": ["password", "token", "approvalStatus", "publishedAt"],
+  "evidenceRequiredTypes": ["threshold", "connector", "safety"]
+}

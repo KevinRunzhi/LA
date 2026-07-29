@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: LA Industrial Computer Case Platform API
-  version: 1.3.0
-  description: Multi-case execution, identity, indexed manuals, governed graph, work-order, case authoring and platform operations API.
+  version: 1.4.0
+  description: Multi-case execution, identity, indexed manuals, governed graph, work-order, case authoring, document-driven multi-agent generation and platform operations API.
 servers:
   - url: http://127.0.0.1:8080
 paths:
@@ -967,6 +967,136 @@ paths:
       security: [{BearerAuth: []}]
       responses:
         "200": {description: Activated historical release}
+  /api/platform/case-generation/templates:
+    get:
+      tags: [CaseGeneration]
+      summary: List versioned industrial-computer generation templates
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Template registry and fault-domain templates}
+  /api/platform/case-generation/jobs:
+    get:
+      tags: [CaseGeneration]
+      summary: List generation jobs visible to the expert or administrator
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Persistent job summaries}
+    post:
+      tags: [CaseGeneration]
+      summary: Create a generation job from immutable manual, case, graph and field snapshots
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGenerationJob"
+      responses:
+        "201": {description: Queued generation job}
+        "422": {$ref: "#/components/responses/ValidationError"}
+  /api/platform/case-generation/jobs/{jobId}:
+    get:
+      tags: [CaseGeneration]
+      summary: Read job state, agent timeline and patch decisions
+      security: [{BearerAuth: []}]
+      parameters:
+        - $ref: "#/components/parameters/GenerationJobId"
+      responses:
+        "200": {description: Generation job projection}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/platform/case-generation/jobs/{jobId}/run:
+    post:
+      tags: [CaseGeneration]
+      summary: Claim and execute the next resumable generation phase
+      security: [{BearerAuth: []}]
+      parameters:
+        - $ref: "#/components/parameters/GenerationJobId"
+      responses:
+        "200": {description: Job after outline or module generation}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /api/platform/case-generation/jobs/{jobId}/cancel:
+    post:
+      tags: [CaseGeneration]
+      summary: Cancel a non-final generation job and preserve its audit trail
+      security: [{BearerAuth: []}]
+      parameters:
+        - $ref: "#/components/parameters/GenerationJobId"
+      responses:
+        "200": {description: Cancelled or already-final job}
+  /api/platform/case-generation/jobs/{jobId}/outline/approve:
+    post:
+      tags: [CaseGeneration]
+      summary: Approve the generated outline before eight-module generation
+      security: [{BearerAuth: []}]
+      parameters:
+        - $ref: "#/components/parameters/GenerationJobId"
+      responses:
+        "200": {description: Outline approved and generation queued}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /api/platform/case-generation/jobs/{jobId}/outline/reject:
+    post:
+      tags: [CaseGeneration]
+      summary: Reject the generated outline with expert notes
+      security: [{BearerAuth: []}]
+      parameters:
+        - $ref: "#/components/parameters/GenerationJobId"
+      responses:
+        "200": {description: Job stopped with review decision}
+  /api/platform/case-generation/jobs/{jobId}/artifacts:
+    get:
+      tags: [CaseGeneration]
+      summary: Read hash-addressed outlines, evidence catalogs, module candidates and reports
+      security: [{BearerAuth: []}]
+      parameters:
+        - $ref: "#/components/parameters/GenerationJobId"
+      responses:
+        "200": {description: Immutable generation artifacts}
+  /api/platform/case-generation/jobs/{jobId}/agent-runs:
+    get:
+      tags: [CaseGeneration]
+      summary: Read provider, version, inputs, outputs, timing and failures for every agent
+      security: [{BearerAuth: []}]
+      parameters:
+        - $ref: "#/components/parameters/GenerationJobId"
+      responses:
+        "200": {description: Auditable agent-run timeline}
+  /api/platform/case-generation/jobs/{jobId}/patches:
+    get:
+      tags: [CaseGeneration]
+      summary: List reviewable module replacement patches and evidence links
+      security: [{BearerAuth: []}]
+      parameters:
+        - $ref: "#/components/parameters/GenerationJobId"
+      responses:
+        "200": {description: Proposed, accepted, rejected, applied or conflicted patches}
+  /api/platform/case-generation/patches/{patchId}/accept:
+    post:
+      tags: [CaseGeneration]
+      summary: Record expert acceptance without mutating the draft
+      security: [{BearerAuth: []}]
+      parameters:
+        - $ref: "#/components/parameters/GenerationPatchId"
+      responses:
+        "200": {description: Accepted patch}
+  /api/platform/case-generation/patches/{patchId}/reject:
+    post:
+      tags: [CaseGeneration]
+      summary: Record expert rejection without mutating the draft
+      security: [{BearerAuth: []}]
+      parameters:
+        - $ref: "#/components/parameters/GenerationPatchId"
+      responses:
+        "200": {description: Rejected patch}
+  /api/platform/case-generation/patches/{patchId}/apply:
+    post:
+      tags: [CaseGeneration]
+      summary: Apply an accepted patch with module-hash conflict protection
+      security: [{BearerAuth: []}]
+      parameters:
+        - $ref: "#/components/parameters/GenerationPatchId"
+      responses:
+        "200": {description: Applied patch and resulting draft revision}
+        "409": {$ref: "#/components/responses/Conflict"}
 components:
   securitySchemes:
     BearerAuth:
@@ -1006,6 +1136,20 @@ components:
       name: documentId
       required: true
       schema: {type: string}
+    GenerationJobId:
+      in: path
+      name: jobId
+      required: true
+      schema:
+        type: string
+        pattern: "^CGJ-[A-F0-9]{32}$"
+    GenerationPatchId:
+      in: path
+      name: patchId
+      required: true
+      schema:
+        type: string
+        pattern: "^CGP-[A-F0-9]{32}$"
   requestBodies:
     RevisionWrite:
       required: true
@@ -1045,6 +1189,27 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
   schemas:
+    CreateGenerationJob:
+      type: object
+      additionalProperties: false
+      required: [draftId, templateId, sources]
+      properties:
+        draftId: {type: string}
+        templateId: {type: string}
+        query: {type: string, maxLength: 500}
+        sources:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [type, resourceId]
+            properties:
+              type: {type: string, enum: [manual, case, graph, field]}
+              resourceId: {type: string}
+        options:
+          type: object
+          additionalProperties: true
     CreateUser:
       type: object
       additionalProperties: false

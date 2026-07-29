@@ -97,6 +97,13 @@ def run_preflight(
                 "case_releases",
                 "case_authoring_events",
                 "case_agent_suggestions",
+                "case_generation_jobs",
+                "case_generation_sources",
+                "case_generation_agent_runs",
+                "case_generation_artifacts",
+                "case_generation_evidence_links",
+                "case_generation_patches",
+                "case_generation_evaluations",
             }
             missing_core_tables = sorted(required_core_tables - tables)
             fts5 = "ENABLE_FTS5" in {

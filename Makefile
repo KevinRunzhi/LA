@@ -8,7 +8,7 @@ VENV_GUNICORN := $(VENV)/bin/gunicorn
 APP_PORT ?= 8080
 
 .PHONY: help install install-backend install-frontend build test test-backend \
-	check check-python check-shell preflight run backup integrity ingestion-once case-validate clean-runtime
+	check check-python check-shell preflight run backup integrity ingestion-once case-validate generation-once clean-runtime
 
 help:
 	@printf '%s\n' \
@@ -22,7 +22,8 @@ help:
 	  '  make backup        Create an integrity-checked SQLite backup' \
 	  '  make integrity     Run database and runtime asset integrity checks' \
 	  '  make ingestion-once Process one pending manual ingestion item' \
-	  '  make case-validate DRAFT=<id> Validate one governed case draft'
+	  '  make case-validate DRAFT=<id> Validate one governed case draft' \
+	  '  make generation-once Process one multi-agent generation stage'
 
 install: install-backend install-frontend
 
@@ -77,6 +78,9 @@ ingestion-once:
 case-validate:
 	@test -n "$(DRAFT)" || (echo 'DRAFT is required' >&2; exit 2)
 	$(VENV_PYTHON) -m backend.case_authoring_cli validate "$(DRAFT)"
+
+generation-once:
+	$(VENV_PYTHON) -m backend.case_generation_worker --once
 
 clean-runtime:
 	@printf 'Runtime cleanup is intentionally not automatic. Review run/ manually.\n'

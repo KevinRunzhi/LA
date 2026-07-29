@@ -1,0 +1,15 @@
+{
+  "id": "industrial-computer.dust-filter",
+  "version": "1.0.0",
+  "faultDomain": "dust-filter",
+  "title": "工控机粉尘与滤网异常",
+  "keywords": ["粉尘堵塞", "滤网积尘", "风道堵塞", "灰尘严重", "散热下降"],
+  "exclusions": ["电源灯不亮", "磁盘无法识别"],
+  "requiredEvidence": ["symptom", "procedure", "safety", "verification"],
+  "intakeFields": ["设备型号", "滤网状态", "环境粉尘"],
+  "causeCategories": ["滤网维护不足", "环境粉尘", "风道积尘", "机柜密封"],
+  "steps": ["安全隔离", "检查滤网和环境", "清洁风道与滤网", "恢复风量验证"],
+  "assistantTopics": ["滤网拆装", "清洁方法", "更换周期"],
+  "outputFields": ["最终原因", "清洁处理", "恢复结果", "滤网状态"],
+  "graphTypes": ["symptom", "component", "cause", "check", "action"]
+}

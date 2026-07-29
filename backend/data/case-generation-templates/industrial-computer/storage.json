@@ -1,0 +1,15 @@
+{
+  "id": "industrial-computer.storage",
+  "version": "1.0.0",
+  "faultDomain": "storage",
+  "title": "工控机存储异常",
+  "keywords": ["硬盘告警", "磁盘无法识别", "SMART 告警", "系统启动失败", "存储异常"],
+  "exclusions": ["电源灯不亮", "TEMP/FAN"],
+  "requiredEvidence": ["alarm", "check", "procedure", "recovery"],
+  "intakeFields": ["设备型号", "磁盘识别状态", "启动状态"],
+  "causeCategories": ["磁盘介质", "数据线或接口", "磁盘供电", "启动配置"],
+  "steps": ["保护现场与数据", "检查识别和日志", "检查接口与供电", "备份更换与恢复验证"],
+  "assistantTopics": ["SMART 状态", "磁盘接口", "备份与更换"],
+  "outputFields": ["最终原因", "实际处理", "恢复结果", "磁盘状态", "数据备份结果"],
+  "graphTypes": ["symptom", "component", "cause", "check", "action"]
+}

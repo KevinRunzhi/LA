@@ -1,0 +1,15 @@
+{
+  "id": "industrial-computer.cooling",
+  "version": "1.0.0",
+  "faultDomain": "cooling",
+  "title": "工控机散热异常",
+  "keywords": ["温度告警", "风扇低速", "风扇异响", "散热异常", "TEMP/FAN"],
+  "exclusions": ["无法上电", "电源灯不亮"],
+  "requiredEvidence": ["symptom", "measurement", "procedure", "safety"],
+  "intakeFields": ["设备型号", "温度/风扇告警", "风扇转速"],
+  "causeCategories": ["风道堵塞", "风扇故障", "接线异常", "温控配置"],
+  "steps": ["安全隔离", "检查滤网与风道", "检查风扇和接线", "恢复与温升验证"],
+  "assistantTopics": ["接线顺序", "转速判断", "滤网清理"],
+  "outputFields": ["最终原因", "实际处理", "恢复结果", "观察时长", "恢复后转速"],
+  "graphTypes": ["symptom", "component", "cause", "check", "action"]
+}

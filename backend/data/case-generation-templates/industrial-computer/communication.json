@@ -1,0 +1,15 @@
+{
+  "id": "industrial-computer.communication",
+  "version": "1.0.0",
+  "faultDomain": "communication",
+  "title": "工控机通信接口异常",
+  "keywords": ["网络中断", "通信失败", "网口不亮", "数据不上送", "接口异常"],
+  "exclusions": ["无法上电", "硬盘告警"],
+  "requiredEvidence": ["symptom", "check", "procedure", "verification"],
+  "intakeFields": ["设备型号", "接口状态", "通信对象"],
+  "causeCategories": ["网线与端口", "地址配置", "驱动服务", "上联设备"],
+  "steps": ["确认影响范围", "检查物理链路", "检查地址和服务", "恢复通信验证"],
+  "assistantTopics": ["网口指示", "地址配置", "连通性验证"],
+  "outputFields": ["最终原因", "实际处理", "恢复结果", "连通性结果"],
+  "graphTypes": ["symptom", "component", "cause", "check", "action"]
+}

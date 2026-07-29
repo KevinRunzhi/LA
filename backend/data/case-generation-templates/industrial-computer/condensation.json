@@ -1,0 +1,15 @@
+{
+  "id": "industrial-computer.condensation",
+  "version": "1.0.0",
+  "faultDomain": "condensation",
+  "title": "工控机温差凝露异常",
+  "keywords": ["温差凝露", "机内潮湿", "水汽", "低温启动", "腐蚀"],
+  "exclusions": ["粉尘堵塞", "磁盘告警"],
+  "requiredEvidence": ["symptom", "measurement", "safety", "recovery"],
+  "intakeFields": ["设备型号", "环境温湿度", "凝露位置"],
+  "causeCategories": ["温差变化", "湿度过高", "密封通风", "低温直接上电"],
+  "steps": ["断电与防护", "检查凝露和腐蚀", "干燥与环境恢复", "绝缘确认后上电验证"],
+  "assistantTopics": ["凝露判断", "干燥要求", "何时可以上电"],
+  "outputFields": ["最终原因", "干燥处理", "恢复结果", "温湿度记录"],
+  "graphTypes": ["symptom", "environment", "cause", "check", "action"]
+}

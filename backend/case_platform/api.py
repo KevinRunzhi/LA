@@ -70,7 +70,7 @@ def create_platform_blueprint(
     def platform_capabilities():
         return _ok(
             {
-                "apiVersion": "1.3.0",
+                "apiVersion": "1.4.0",
                 "registryVersion": registry.registry_version,
                 "runnableCaseCount": len(registry.runnable_items()),
                 "providers": {
@@ -118,6 +118,18 @@ def create_platform_blueprint(
                     "runtimeRegistryRefresh": True,
                     "historicalActivation": True,
                     "agentEvidenceSuggestions": True,
+                },
+                "caseGeneration": {
+                    "documentSourceSnapshots": True,
+                    "domainTemplates": True,
+                    "persistentAgentRuns": True,
+                    "evidenceArtifacts": True,
+                    "outlineApproval": True,
+                    "eightModuleGeneration": True,
+                    "deterministicValidation": True,
+                    "boundedRepair": 3,
+                    "selectiveJsonPatches": True,
+                    "workerExecution": True,
                 },
             }
         )

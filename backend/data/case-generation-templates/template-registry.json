@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0.0",
+  "registryVersion": "1.0",
+  "contracts": {
+    "agent": "common/agent-contracts.json",
+    "relations": "common/relation-vocabulary.json",
+    "safety": "common/safety-policy.json"
+  },
+  "items": [
+    {"id": "industrial-computer.cooling", "version": "1.0.0", "file": "industrial-computer/cooling.json"},
+    {"id": "industrial-computer.power", "version": "1.0.0", "file": "industrial-computer/power.json"},
+    {"id": "industrial-computer.storage", "version": "1.0.0", "file": "industrial-computer/storage.json"},
+    {"id": "industrial-computer.communication", "version": "1.0.0", "file": "industrial-computer/communication.json"},
+    {"id": "industrial-computer.monitoring", "version": "1.0.0", "file": "industrial-computer/monitoring.json"},
+    {"id": "industrial-computer.dust-filter", "version": "1.0.0", "file": "industrial-computer/dust-filter.json"},
+    {"id": "industrial-computer.condensation", "version": "1.0.0", "file": "industrial-computer/condensation.json"}
+  ]
+}
