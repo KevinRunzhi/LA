@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Cp
 import { presentationApi } from "./presentationApi";
 import IndustrialKnowledgeGraphPage from "./knowledge-graph/IndustrialKnowledgeGraphPage";
 import PlatformDataCenter from "./platform-data/PlatformDataCenter";
+import CaseAuthoringCenter from "./case-authoring/CaseAuthoringCenter";
 import "./admin.css";
 import "./portal.css";
 
@@ -60,7 +61,7 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
   const [graphKnowledgeId, setGraphKnowledgeId] = useState(null);
   const [expertProfile, setExpertProfile] = useState(loadExpertProfile);
   const adminNavItems = portalRole === "expert"
-    ? [["workbench","专家工作台",FileCheck2],["history","全部案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","知识图谱",Network],["platform-data","平台数据",Database],["settings","专家设置",Settings]]
+    ? [["workbench","专家工作台",FileCheck2],["history","全部案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","知识图谱",Network],["case-authoring","案例发布",GitBranch],["platform-data","平台数据",Database],["settings","专家设置",Settings]]
     : [["workbench","我的案例",FileCheck2],["history","历史案例",History],["knowledge","检修知识库",BookOpen],["knowledge-graph","知识图谱",Network]];
 
   async function loadAll(nextPage) {
@@ -120,7 +121,7 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
       </aside>
       <section className="admin-main-area">
       {(notice || error) && <div className={`admin-toast ${error ? "error" : "success"}`}>{error ? <AlertTriangle size={14}/> : <Check size={14}/>} {error || notice}</div>}
-      {page !== "expert-review" && page !== "settings" && <CaseFlowGuide page={page} state={state} portalRole={portalRole} onBack={page !== "workbench" ? () => setPage("workbench") : null} />}
+      {!["expert-review","settings","platform-data","case-authoring"].includes(page) && <CaseFlowGuide page={page} state={state} portalRole={portalRole} onBack={page !== "workbench" ? () => setPage("workbench") : null} />}
       {page === "workbench" && portalRole === "engineer" && <EngineerCaseHome state={state} data={fullCase} sync={engineerSync} busy={busy} onSync={() => action(presentationApi.engineerSyncLatest, "本地知识已同步到最新版本", "knowledge-graph")} onEngineer={() => setPage("engineer-confirm")} onKnowledge={() => setPage("knowledge-result")} onExit={onExitToWorkbench} onLogout={onLogout} />}
       {page === "workbench" && portalRole === "expert" && <Workbench state={state} cases={cases} pending={pending} archived={archived} knowledgeCount={knowledge.length} role={state.activeRole} onEngineer={() => setPage("engineer-confirm")} onReview={() => setPage("expert-review")} onKnowledge={() => setPage("knowledge-result")} onCase={(item) => { setSelectedCase(item); setPage("case-detail"); }} />}
       {page === "engineer-confirm" && <EngineerConfirmation data={fullCase} state={state} busy={busy} onBack={() => setPage("workbench")} onSubmit={(result) => action(() => presentationApi.submitCase(CASE_ID, result), `案例 ${CASE_ID} 已提交专家审核`, "submit-success")} />}
@@ -144,6 +145,7 @@ export default function AdminShell({ portalRole = "engineer", initialPage = "wor
       />}
       {page === "settings" && portalRole === "expert" && <ExpertSettingsPage profile={expertProfile} onSave={saveExpertProfile} onReset={() => setConfirmReset(true)} resetDisabled={busy} />}
       {page === "platform-data" && portalRole === "expert" && <PlatformDataCenter />}
+      {page === "case-authoring" && portalRole === "expert" && <CaseAuthoringCenter />}
       {page === "people" && <PeoplePage users={users} />}
       </section>
       {confirmReset && <div className="presentation-reset-backdrop"><section><RefreshCcw size={24}/><span>录制状态重置</span><h2>恢复案例与知识初始状态？</h2><p>将恢复 CASE-ACP4000-001 待工程师确认、KB-008 V1.0 和发布前图谱。历史展示数据不会变化。</p><div><button className="admin-secondary" onClick={() => setConfirmReset(false)}>取消</button><button className="admin-primary" onClick={async () => { setConfirmReset(false); await action(presentationApi.reset, "演示已恢复：案例待确认，知识 V1.0", "workbench"); }}>确认重置</button></div></section></div>}
