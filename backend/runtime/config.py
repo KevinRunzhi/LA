@@ -92,6 +92,8 @@ class RuntimeSettings:
     manual_storage_root: Path
     manual_max_bytes: int
     job_card_storage_root: Path
+    export_storage_root: Path
+    platform_backup_root: Path
     service_name: str = "la-industrial-case-platform"
 
     @classmethod
@@ -249,6 +251,14 @@ class RuntimeSettings:
                 root,
                 values.get("LA_JOB_CARD_STORAGE_ROOT", "run/job-cards"),
             ),
+            export_storage_root=_path(
+                root,
+                values.get("LA_EXPORT_STORAGE_ROOT", "run/exports"),
+            ),
+            platform_backup_root=_path(
+                root,
+                values.get("LA_PLATFORM_BACKUP_ROOT", "run/platform-backups"),
+            ),
         )
 
     def with_database(self, database_path: Path) -> "RuntimeSettings":
@@ -259,6 +269,8 @@ class RuntimeSettings:
             attachment_root=database.parent / "attachments",
             manual_storage_root=database.parent / "manuals",
             job_card_storage_root=database.parent / "job-cards",
+            export_storage_root=database.parent / "exports",
+            platform_backup_root=database.parent / "platform-backups",
             environment="test",
             readiness_requires_frontend=False,
         )
@@ -285,5 +297,7 @@ class RuntimeSettings:
             "manualStorageRoot": str(self.manual_storage_root),
             "manualMaxBytes": self.manual_max_bytes,
             "jobCardStorageRoot": str(self.job_card_storage_root),
+            "exportStorageRoot": str(self.export_storage_root),
+            "platformBackupRoot": str(self.platform_backup_root),
             "bootstrapAdminConfigured": bool(self.bootstrap_admin_account),
         }

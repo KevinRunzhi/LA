@@ -412,10 +412,119 @@ CORE_BUSINESS_MIGRATION = Migration(
     ),
 )
 
+PLATFORM_OPERATIONS_MIGRATION = Migration(
+    version="004",
+    name="durable ingestion search traces and data operations",
+    statements=(
+        """
+        CREATE TABLE knowledge_ingestion_jobs (
+            job_id TEXT PRIMARY KEY,
+            source_root TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN
+                ('pending','running','completed','completed_with_errors','cancelled')),
+            options_json TEXT NOT NULL,
+            discovered_count INTEGER NOT NULL DEFAULT 0,
+            imported_count INTEGER NOT NULL DEFAULT 0,
+            skipped_count INTEGER NOT NULL DEFAULT 0,
+            failed_count INTEGER NOT NULL DEFAULT 0,
+            cancel_requested INTEGER NOT NULL DEFAULT 0 CHECK(cancel_requested IN (0,1)),
+            error_summary TEXT,
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            started_at TEXT,
+            completed_at TEXT,
+            updated_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE knowledge_ingestion_items (
+            item_id TEXT PRIMARY KEY,
+            job_id TEXT NOT NULL,
+            relative_path TEXT NOT NULL,
+            file_sha256 TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN
+                ('pending','running','imported','skipped','failed','cancelled')),
+            document_id TEXT,
+            attempt INTEGER NOT NULL DEFAULT 0,
+            lease_expires_at TEXT,
+            error_code TEXT,
+            error_message TEXT,
+            started_at TEXT,
+            completed_at TEXT,
+            updated_at TEXT NOT NULL,
+            UNIQUE(job_id, relative_path),
+            FOREIGN KEY(job_id) REFERENCES knowledge_ingestion_jobs(job_id)
+                ON DELETE CASCADE,
+            FOREIGN KEY(document_id) REFERENCES manual_documents(document_id)
+                ON DELETE SET NULL
+        )
+        """,
+        """
+        CREATE TABLE knowledge_search_runs (
+            search_run_id TEXT PRIMARY KEY,
+            request_id TEXT,
+            actor_id TEXT NOT NULL,
+            actor_role TEXT NOT NULL,
+            query_hash TEXT NOT NULL,
+            scope_json TEXT NOT NULL,
+            provider_stats_json TEXT NOT NULL,
+            result_ids_json TEXT NOT NULL,
+            duration_ms INTEGER NOT NULL CHECK(duration_ms >= 0),
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE data_integrity_runs (
+            run_id TEXT PRIMARY KEY,
+            status TEXT NOT NULL CHECK(status IN ('running','passed','warning','failed')),
+            checked_by TEXT NOT NULL,
+            summary_json TEXT NOT NULL,
+            started_at TEXT NOT NULL,
+            completed_at TEXT
+        )
+        """,
+        """
+        CREATE TABLE data_integrity_findings (
+            finding_id TEXT PRIMARY KEY,
+            run_id TEXT NOT NULL,
+            severity TEXT NOT NULL CHECK(severity IN ('info','warning','error')),
+            category TEXT NOT NULL,
+            resource_id TEXT,
+            code TEXT NOT NULL,
+            message TEXT NOT NULL,
+            details_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(run_id) REFERENCES data_integrity_runs(run_id)
+                ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE TABLE audit_exports (
+            export_id TEXT PRIMARY KEY,
+            format TEXT NOT NULL CHECK(format IN ('csv','jsonl')),
+            filter_json TEXT NOT NULL,
+            record_count INTEGER NOT NULL CHECK(record_count >= 0),
+            storage_key TEXT NOT NULL UNIQUE,
+            file_sha256 TEXT NOT NULL,
+            byte_count INTEGER NOT NULL CHECK(byte_count >= 0),
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """,
+        "CREATE INDEX idx_ingestion_jobs_status ON knowledge_ingestion_jobs(status,created_at)",
+        "CREATE INDEX idx_ingestion_items_claim ON knowledge_ingestion_items(status,lease_expires_at,updated_at)",
+        "CREATE INDEX idx_search_runs_actor ON knowledge_search_runs(actor_id,created_at DESC)",
+        "CREATE INDEX idx_integrity_runs_started ON data_integrity_runs(started_at DESC)",
+        "CREATE INDEX idx_integrity_findings_run ON data_integrity_findings(run_id,severity)",
+        "CREATE INDEX idx_audit_exports_created ON audit_exports(created_at DESC)",
+    ),
+)
+
 DEFAULT_MIGRATIONS = (
     CASE_PLATFORM_MIGRATION,
     ENGINEER_SNAPSHOT_HISTORY_MIGRATION,
     CORE_BUSINESS_MIGRATION,
+    PLATFORM_OPERATIONS_MIGRATION,
 )
 
 
@@ -567,6 +676,14 @@ class MigrationRunner:
             "maintenance_work_orders",
             "job_card_documents",
         }
+        operations_required = {
+            "knowledge_ingestion_jobs",
+            "knowledge_ingestion_items",
+            "knowledge_search_runs",
+            "data_integrity_runs",
+            "data_integrity_findings",
+            "audit_exports",
+        }
         tables = {
             row[0]
             for row in connection.execute(
@@ -575,6 +692,8 @@ class MigrationRunner:
         }
         if tables & core_required:
             required.update(core_required)
+        if tables & operations_required:
+            required.update(operations_required)
         missing = sorted(required - tables)
         if missing:
             raise PlatformError(

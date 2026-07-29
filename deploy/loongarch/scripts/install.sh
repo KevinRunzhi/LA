@@ -13,6 +13,8 @@ mkdir -p \
   "$APP_ROOT/run/attachments" \
   "$APP_ROOT/run/manuals" \
   "$APP_ROOT/run/job-cards" \
+  "$APP_ROOT/run/exports" \
+  "$APP_ROOT/run/platform-backups" \
   "$APP_ROOT/run/backups" \
   "$APP_ROOT/logs"
 if [[ ! -f "$APP_ROOT/run/platform.env" ]]; then

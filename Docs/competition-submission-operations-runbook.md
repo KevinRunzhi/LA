@@ -19,11 +19,13 @@ ready 检查数据库迁移与 FTS5、案例注册表、附件/手册/作业卡�
 3. `healthcheck.sh` 通过；
 4. `/api/platform/cases` 至少包含散热和供电案例；
 5. 首页输入散热描述能创建 CaseRun；
-6. `run/attachments`、`run/manuals`、`run/job-cards` 和数据库目录可写；
+6. `run/attachments`、`run/manuals`、`run/job-cards`、`run/exports`、`run/platform-backups` 和数据库目录可写；
 7. 最近一次数据库备份及 `.sha256` 同时存在；
 8. 浏览器刷新后关键 SQLite 状态仍存在。
 9. `LA_AUTH_MODE=enforced` 时管理员可以登录，未登录业务请求返回 401；
 10. 图谱当前版本存在，手册检索能返回页码证据，PDF 下载通过摘要校验。
+11. `python -m backend.operations_cli integrity` 返回 `passed` 或已确认的 warning；
+12. 批量入库时 `la-knowledge-ingestion-worker` 处于 active。
 
 ## 3. 告警分级
 
@@ -48,7 +50,27 @@ PY
 
 不要在未备份时手工修改 `case_runs`、身份、手册索引、图谱版本、工单或快照表。数据库恢复走 `restore.sh`；原始手册、附件和 PDF 目录也需由部署侧文件备份策略保护。
 
-## 5. 请求追踪
+完整运行资产备份使用：
+
+```bash
+backend/.venv/bin/python -m backend.operations_cli backup
+```
+
+归档写入 `LA_PLATFORM_BACKUP_ROOT`，包含在线一致性 SQLite 副本、附件、手册、作业卡及逐文件摘要 manifest。
+
+## 5. 批量手册入库
+
+由专家或管理员通过平台数据中心创建任务后，worker 持续处理：
+
+```bash
+systemctl status la-knowledge-ingestion-worker
+journalctl -u la-knowledge-ingestion-worker -n 100 --no-pager
+backend/.venv/bin/python -m backend.ingestion_worker --once
+```
+
+任务只扫描配置的 `Info/` 白名单目录。不要为了入库扩大到任意绝对目录；失败项目通过 retry API 重排，最多处理三次。
+
+## 6. 请求追踪
 
 每个响应包含 `X-Request-ID`。调用方可以主动传入：
 
@@ -60,7 +82,7 @@ curl -i \
 
 JSON 访问日志会记录 requestId、方法、归一化路由、状态和耗时，不记录 API Key、请求正文或附件内容。
 
-## 6. 指标解释
+## 7. 指标解释
 
 ```text
 la_service_info
@@ -72,7 +94,7 @@ la_http_request_duration_seconds_total
 
 路由使用 Flask rule，例如 `/api/platform/case-runs/<run_id>`，不会把每个运行 ID 作为新标签。
 
-## 7. 安全事件
+## 8. 安全事件
 
 - 若环境文件或 Token 泄露：停止相关外部适配器、轮换凭据、检查日志；
 - 若登录令牌泄露：管理员重置该用户密码或停用账号，旧 token version 会立即失效；

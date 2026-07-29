@@ -38,6 +38,14 @@
 | 全量图谱版本 | `implemented` | `graph_versions` | 不可变快照、SHA-256、局部子图和版本 diff |
 | 检修工单 | `implemented` | `backend/core_business/work_orders.py` | CaseRun 绑定、唯一编号、状态机和 revision 乐观锁 |
 | 服务端 PDF 作业卡 | `implemented` | `backend/core_business/pdf.py` | 固化 CaseRun 数据、中文 PDF、多版本、hash 校验和下载 |
+| 平台数据中心 | `implemented` | `frontend/src/admin/platform-data/` | 有平台会话时读取真实手册、图谱、工单、入库与巡检接口；无会话兼容录制入口 |
+| 持久化资料批量入库 | `implemented` | `backend/platform_ops/ingestion.py`、`ingestion_worker.py` | 白名单目录、PDF 发现、SHA-256 去重、租约领取、失败重试和任务统计 |
+| 多来源统一证据检索 | `implemented` | `backend/platform_ops/search.py` | 统一编排手册、案例 claim、图谱和现场运行，按来源配额去重排序 |
+| 检索过程追溯 | `implemented` | `knowledge_search_runs` | 保存 query hash、scope、来源统计、结果 ID、耗时和调用者 |
+| 运行数据一致性巡检 | `implemented` | `backend/platform_ops/operations.py` | SQLite、外键、FTS、图谱摘要和运行资产文件/hash 检查 |
+| 审计导出 | `implemented` | `operations.py`、`operations_cli.py` | 过滤后导出 CSV/JSONL，秘密字段去敏，保存 SHA-256 并校验下载 |
+| 完整运行资产备份 | `implemented` | `operations_cli.py backup` | SQLite 在线副本、附件/手册/作业卡、manifest 和 tar.gz 归档 |
+| 资料入库 worker | `adapter_ready` | `deploy/systemd/la-knowledge-ingestion-worker.service` | SQLite 持久队列，目标机安装后作为独立 systemd 服务持续消费 |
 | 远程诊断客户端 | `adapter_ready` | `JsonHttpDiagnosisClient`、`RemoteModelDiagnosisProvider` | 环境变量可切换真实 HTTP JSON 调用并校验结果合同；未配置时启动失败 |
 | 工业协议网关 | `adapter_ready` | `TelemetryProvider` Protocol | 需要部署侧具体实现 |
 | 向量知识检索 | `adapter_ready` | `KnowledgeSearchProvider` Protocol | 当前使用结构化 claim 检索 |
@@ -71,3 +79,5 @@
 10. `.github/workflows/competition-platform-ci.yml`。
 11. `backend/core_business/`；
 12. `backend/test_core_business.py`。
+13. `backend/platform_ops/`；
+14. `backend/test_platform_ops.py`。

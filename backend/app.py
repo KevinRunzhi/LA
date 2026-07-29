@@ -33,6 +33,10 @@ try:
     from .core_business.graph import GovernedGraphService
     from .core_business.manuals import ManualKnowledgeService
     from .core_business.work_orders import WorkOrderService
+    from .platform_ops.api import create_platform_operations_blueprint
+    from .platform_ops.ingestion import IngestionService
+    from .platform_ops.operations import PlatformOperationsService
+    from .platform_ops.search import UnifiedKnowledgeSearchService
     from .presentation_store import PresentationStore
 except ImportError:
     from case_package import CasePackageRegistry
@@ -58,6 +62,10 @@ except ImportError:
     from core_business.graph import GovernedGraphService
     from core_business.manuals import ManualKnowledgeService
     from core_business.work_orders import WorkOrderService
+    from platform_ops.api import create_platform_operations_blueprint
+    from platform_ops.ingestion import IngestionService
+    from platform_ops.operations import PlatformOperationsService
+    from platform_ops.search import UnifiedKnowledgeSearchService
     from presentation_store import PresentationStore
 
 
@@ -181,6 +189,44 @@ def create_app(
             work_order_service,
         )
     )
+    ingestion_service = IngestionService(
+        active_database_path,
+        [REPOSITORY_DIR / "Info"],
+        manual_service,
+        audit_service,
+    )
+    unified_search_service = UnifiedKnowledgeSearchService(
+        active_database_path,
+        manual_service,
+        graph_service,
+        case_registry,
+    )
+    operations_service = PlatformOperationsService(
+        active_database_path,
+        attachment_root=settings.attachment_root,
+        manual_root=settings.manual_storage_root,
+        job_card_root=settings.job_card_storage_root,
+        export_root=settings.export_storage_root,
+        backup_root=settings.platform_backup_root,
+        audit=audit_service,
+    )
+    app.register_blueprint(
+        create_platform_operations_blueprint(
+            identity_service,
+            ingestion_service,
+            unified_search_service,
+            operations_service,
+        )
+    )
+    app.extensions["la_services"] = {
+        "identity": identity_service,
+        "manuals": manual_service,
+        "graph": graph_service,
+        "workOrders": work_order_service,
+        "ingestion": ingestion_service,
+        "search": unified_search_service,
+        "operations": operations_service,
+    }
 
     @app.before_request
     def enforce_platform_identity():
@@ -269,6 +315,8 @@ def create_app(
                 ("attachments", settings.attachment_root),
                 ("manuals", settings.manual_storage_root),
                 ("jobCards", settings.job_card_storage_root),
+                ("exports", settings.export_storage_root),
+                ("platformBackups", settings.platform_backup_root),
             ):
                 root.mkdir(parents=True, exist_ok=True)
                 probe = root / f".write-probe-{uuid.uuid4().hex}"

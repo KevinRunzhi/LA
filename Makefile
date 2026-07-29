@@ -8,7 +8,7 @@ VENV_GUNICORN := $(VENV)/bin/gunicorn
 APP_PORT ?= 8080
 
 .PHONY: help install install-backend install-frontend build test test-backend \
-	check check-python check-shell preflight run backup clean-runtime
+	check check-python check-shell preflight run backup integrity ingestion-once clean-runtime
 
 help:
 	@printf '%s\n' \
@@ -19,7 +19,9 @@ help:
 	  '  make check         Compile Python, test shell, run tests and build' \
 	  '  make preflight     Validate deploy configuration and runtime assets' \
 	  '  make run           Start the production WSGI service with Gunicorn' \
-	  '  make backup        Create an integrity-checked SQLite backup'
+	  '  make backup        Create an integrity-checked SQLite backup' \
+	  '  make integrity     Run database and runtime asset integrity checks' \
+	  '  make ingestion-once Process one pending manual ingestion item'
 
 install: install-backend install-frontend
 
@@ -64,6 +66,12 @@ run:
 
 backup:
 	bash deploy/loongarch/scripts/backup.sh
+
+integrity:
+	$(VENV_PYTHON) -m backend.operations_cli integrity
+
+ingestion-once:
+	$(VENV_PYTHON) -m backend.ingestion_worker --once
 
 clean-runtime:
 	@printf 'Runtime cleanup is intentionally not automatic. Review run/ manually.\n'

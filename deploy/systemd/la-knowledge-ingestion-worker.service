@@ -1,0 +1,25 @@
+[Unit]
+Description=LA Manual Knowledge Ingestion Worker
+After=la-case-platform.service
+Requires=la-case-platform.service
+
+[Service]
+Type=simple
+User=la-platform
+Group=la-platform
+WorkingDirectory=/opt/la-case-platform
+EnvironmentFile=/etc/la-case-platform/platform.env
+ExecStart=/opt/la-case-platform/backend/.venv/bin/python -m backend.ingestion_worker
+Restart=on-failure
+RestartSec=5
+
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/la-case-platform/run /opt/la-case-platform/logs
+
+[Install]
+WantedBy=multi-user.target

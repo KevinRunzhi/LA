@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: LA Industrial Computer Case Platform API
-  version: 1.1.0
-  description: Multi-case execution, identity, indexed manuals, governed graph and work-order API.
+  version: 1.2.0
+  description: Multi-case execution, identity, indexed manuals, governed graph, work-order and platform operations API.
 servers:
   - url: http://127.0.0.1:8080
 paths:
@@ -734,6 +734,147 @@ paths:
           content:
             application/pdf:
               schema: {type: string, format: binary}
+  /api/platform/ingestion/jobs:
+    get:
+      tags: [KnowledgeOperations]
+      summary: List durable manual-ingestion jobs
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Jobs and aggregate item counts}
+    post:
+      tags: [KnowledgeOperations]
+      summary: Discover PDFs under an allowed root and persist an ingestion job
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sourceRoot: {type: string, default: Info}
+                dryRun: {type: boolean, default: false}
+      responses:
+        "201": {description: Persisted job and discovered items}
+        "403": {description: Source root is outside the configured allowlist}
+        "422": {$ref: "#/components/responses/ValidationError"}
+  /api/platform/ingestion/jobs/{jobId}:
+    get:
+      tags: [KnowledgeOperations]
+      summary: Read one ingestion job and its durable items
+      security: [{BearerAuth: []}]
+      parameters:
+        - {in: path, name: jobId, required: true, schema: {type: string}}
+      responses:
+        "200": {description: Job, item state and failure details}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/platform/ingestion/jobs/{jobId}/retry:
+    post:
+      tags: [KnowledgeOperations]
+      summary: Requeue retryable failed items
+      security: [{BearerAuth: []}]
+      parameters:
+        - {in: path, name: jobId, required: true, schema: {type: string}}
+      responses:
+        "200": {description: Updated job}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /api/platform/ingestion/jobs/{jobId}/cancel:
+    post:
+      tags: [KnowledgeOperations]
+      summary: Cancel pending ingestion work
+      security: [{BearerAuth: []}]
+      parameters:
+        - {in: path, name: jobId, required: true, schema: {type: string}}
+      responses:
+        "200": {description: Cancelled or already final job}
+  /api/platform/knowledge/search:
+    post:
+      tags: [KnowledgeOperations]
+      summary: Search and rank evidence across manuals, cases, graph and field runs
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: {type: string, maxLength: 300}
+                scope: {type: object, additionalProperties: true}
+                limit: {type: integer, minimum: 1, maximum: 30, default: 12}
+      responses:
+        "200": {description: Ranked evidence and provider diagnostics}
+        "422": {$ref: "#/components/responses/ValidationError"}
+  /api/platform/knowledge/search-runs:
+    get:
+      tags: [KnowledgeOperations]
+      summary: List persisted knowledge-search traces visible to the actor
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Search run summaries without raw credentials}
+  /api/platform/knowledge/search-runs/{searchRunId}:
+    get:
+      tags: [KnowledgeOperations]
+      summary: Read one persisted search trace
+      security: [{BearerAuth: []}]
+      parameters:
+        - {in: path, name: searchRunId, required: true, schema: {type: string}}
+      responses:
+        "200": {description: Query hash, scope, provider statistics and result IDs}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/platform/operations/integrity-runs:
+    get:
+      tags: [PlatformOperations]
+      summary: List database and runtime-asset integrity runs
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Integrity run summaries}
+    post:
+      tags: [PlatformOperations]
+      summary: Execute and persist a data-integrity run
+      security: [{BearerAuth: []}]
+      responses:
+        "201": {description: Completed run and findings}
+  /api/platform/operations/integrity-runs/{runId}:
+    get:
+      tags: [PlatformOperations]
+      summary: Read one integrity run and its findings
+      security: [{BearerAuth: []}]
+      parameters:
+        - {in: path, name: runId, required: true, schema: {type: string}}
+      responses:
+        "200": {description: Run summary and findings}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/platform/operations/audit-exports:
+    post:
+      tags: [PlatformOperations]
+      summary: Export filtered redacted audit events as CSV or JSONL
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                format: {type: string, enum: [csv, jsonl], default: csv}
+                filters: {type: object, additionalProperties: true}
+      responses:
+        "201": {description: Export metadata, count and SHA-256}
+  /api/platform/operations/audit-exports/{exportId}/download:
+    get:
+      tags: [PlatformOperations]
+      summary: Verify SHA-256 and download a redacted audit export
+      security: [{BearerAuth: []}]
+      parameters:
+        - {in: path, name: exportId, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: Verified CSV or JSONL export
+          content:
+            text/csv: {schema: {type: string}}
+            application/x-ndjson: {schema: {type: string}}
 components:
   securitySchemes:
     BearerAuth:

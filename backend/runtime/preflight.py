@@ -84,6 +84,12 @@ def run_preflight(
                 "graph_versions",
                 "maintenance_work_orders",
                 "job_card_documents",
+                "knowledge_ingestion_jobs",
+                "knowledge_ingestion_items",
+                "knowledge_search_runs",
+                "data_integrity_runs",
+                "data_integrity_findings",
+                "audit_exports",
             }
             missing_core_tables = sorted(required_core_tables - tables)
             fts5 = "ENABLE_FTS5" in {
@@ -129,6 +135,8 @@ def run_preflight(
         ("attachments", settings.attachment_root),
         ("manuals", settings.manual_storage_root),
         ("jobCards", settings.job_card_storage_root),
+        ("exports", settings.export_storage_root),
+        ("platformBackups", settings.platform_backup_root),
     ):
         try:
             root.mkdir(parents=True, exist_ok=True)

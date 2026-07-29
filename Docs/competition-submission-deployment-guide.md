@@ -24,6 +24,8 @@
 │   ├── attachments/
 │   ├── manuals/
 │   ├── job-cards/
+│   ├── exports/
+│   ├── platform-backups/
 │   └── backups/
 └── logs/
 ```
@@ -77,6 +79,8 @@ curl -fsS http://127.0.0.1:8080/api/metrics
 | `LA_MANUAL_STORAGE_ROOT` | `run/manuals` | 原始 PDF 手册目录 |
 | `LA_MANUAL_MAX_BYTES` | `52428800` | 单手册上限 |
 | `LA_JOB_CARD_STORAGE_ROOT` | `run/job-cards` | 不可变 PDF 作业卡目录 |
+| `LA_EXPORT_STORAGE_ROOT` | `run/exports` | 经过滤和去敏的审计导出目录 |
+| `LA_PLATFORM_BACKUP_ROOT` | `run/platform-backups` | SQLite 与运行资产整包备份目录 |
 | `FRONTEND_DIST_PATH` | `frontend/dist` | React 构建目录 |
 | `READINESS_REQUIRES_FRONTEND` | 生产为 `true` | ready 是否要求首页存在 |
 | `TRUST_PROXY_HEADERS` | `false` | 只在可信 Nginx 前置时启用 |
@@ -115,12 +119,17 @@ sudo chown -R root:root /opt/la-case-platform
 sudo mkdir -p /opt/la-case-platform/run /opt/la-case-platform/logs
 sudo chown -R la-platform:la-platform /opt/la-case-platform/run /opt/la-case-platform/logs
 sudo cp deploy/systemd/la-case-platform.service /etc/systemd/system/
+sudo cp deploy/systemd/la-knowledge-ingestion-worker.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now la-case-platform
+sudo systemctl enable --now la-knowledge-ingestion-worker
 sudo systemctl status la-case-platform
+sudo systemctl status la-knowledge-ingestion-worker
 ```
 
 unit 使用 `NoNewPrivileges`、`ProtectSystem=strict`、`PrivateTmp` 等限制，并只授权写入 `run/` 和 `logs/`。
+
+HTTP 服务负责创建入库任务，worker 从 SQLite 持久队列领取 PDF。单机默认只运行一个 worker；进程重启后，过期租约对应的项目会重新进入领取流程。
 
 ## 7. Nginx（可选）
 
@@ -155,6 +164,19 @@ bash deploy/loongarch/scripts/backup.sh
 ```
 
 脚本调用 Python `sqlite3.Connection.backup()`，随后执行 `PRAGMA integrity_check` 并生成 `.sha256`。
+
+包含 SQLite、附件、原始手册和作业卡 PDF 的完整资产归档：
+
+```bash
+backend/.venv/bin/python -m backend.operations_cli backup
+```
+
+数据一致性巡检与审计导出：
+
+```bash
+backend/.venv/bin/python -m backend.operations_cli integrity
+backend/.venv/bin/python -m backend.operations_cli audit-export --format csv
+```
 
 恢复必须先停止服务：
 
