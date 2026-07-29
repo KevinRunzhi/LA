@@ -132,6 +132,28 @@ sudo systemctl status la-knowledge-ingestion-worker
 sudo systemctl status la-case-generation-worker
 ```
 
+案例生成 HTTP API 只创建任务、确认领域/大纲和审核 Patch，不在 Web 请求线程中
+执行 Agent。开发机至少同时启动一个 worker：
+
+```bash
+backend/.venv/bin/python -m backend.case_generation_worker
+```
+
+默认 `CASE_GENERATION_PROVIDER=structured-local`，无需凭据。若部署兼容的结构化
+JSON 服务，可在仅部署机可读的环境文件中设置：
+
+```text
+CASE_GENERATION_PROVIDER=remote-json
+CASE_GENERATION_REMOTE_URL=https://provider.example/generate
+CASE_GENERATION_REMOTE_MODEL=structured-model
+CASE_GENERATION_REMOTE_API_KEY=...
+CASE_GENERATION_TIMEOUT_SECONDS=45
+CASE_GENERATION_MAX_RESPONSE_BYTES=1000000
+```
+
+远程 Key 不写入数据库、artifact、日志或作品仓库。切换 Provider 后，已经创建的
+任务不会静默换用新 Provider；必须使用匹配配置的 worker，或由用户新建任务。
+
 unit 使用 `NoNewPrivileges`、`ProtectSystem=strict`、`PrivateTmp` 等限制，并只授权写入 `run/` 和 `logs/`。
 
 HTTP 服务负责创建入库任务，worker 从 SQLite 持久队列领取 PDF。单机默认只运行一个 worker；进程重启后，过期租约对应的项目会重新进入领取流程。

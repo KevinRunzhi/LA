@@ -59,7 +59,7 @@
 | 生成内容专家闸门 | `implemented` | outline 与 patch API、案例发布中心 | 大纲先确认，八模块逐项接受/拒绝，应用时执行模块 hash 冲突保护 |
 | 生成过程可审计 | `implemented` | agent runs、artifacts、evaluations、audit events | 保存 provider、Agent 版本、输入输出 artifact、hash、耗时和失败信息 |
 | 案例生成工作台 | `implemented` | `CaseGenerationWizard.jsx` | 选择资料、查看动态进度、确认大纲、检查执行轨迹并选择性应用模块 |
-| 外部生成模型 | `adapter_ready` | `CaseGenerationProvider` Protocol | 默认结构化本地提供方保证离线可重复；外部提供方需遵循相同 JSON 合同 |
+| 外部生成模型 | `implemented` | `RemoteJsonGenerationProvider` | HTTP JSON、结构化响应、超时/重试/大小限制和 data delimiter；默认仍使用离线 local provider |
 | 远程诊断客户端 | `adapter_ready` | `JsonHttpDiagnosisClient`、`RemoteModelDiagnosisProvider` | 环境变量可切换真实 HTTP JSON 调用并校验结果合同；未配置时启动失败 |
 | 工业协议网关 | `adapter_ready` | `TelemetryProvider` Protocol | 需要部署侧具体实现 |
 | 向量知识检索 | `adapter_ready` | `KnowledgeSearchProvider` Protocol | 当前使用结构化 claim 检索 |

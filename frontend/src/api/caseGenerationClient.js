@@ -2,6 +2,7 @@ import { jsonBody, platformRequest } from "./platformTransport";
 
 export const caseGenerationApi = {
   templates: () => platformRequest("/case-generation/templates"),
+  sources: () => platformRequest("/case-generation/sources"),
   jobs: (limit = 100) => platformRequest(`/case-generation/jobs?limit=${limit}`),
   createJob: (input) => platformRequest("/case-generation/jobs", {
     method: "POST",
@@ -18,6 +19,10 @@ export const caseGenerationApi = {
     `/case-generation/jobs/${encodeURIComponent(jobId)}/outline/approve`,
     { method: "POST" },
   ),
+  confirmDomain: (jobId, templateId) => platformRequest(
+    `/case-generation/jobs/${encodeURIComponent(jobId)}/domain/confirm`,
+    { method: "POST", body: jsonBody({ templateId }) },
+  ),
   rejectOutline: (jobId, notes = "") => platformRequest(
     `/case-generation/jobs/${encodeURIComponent(jobId)}/outline/reject`,
     { method: "POST", body: jsonBody({ notes }) },
@@ -31,9 +36,12 @@ export const caseGenerationApi = {
   patches: (jobId) => platformRequest(
     `/case-generation/jobs/${encodeURIComponent(jobId)}/patches`,
   ),
-  acceptPatch: (patchId) => platformRequest(
+  acceptPatch: (patchId, operationIndexes = null) => platformRequest(
     `/case-generation/patches/${encodeURIComponent(patchId)}/accept`,
-    { method: "POST" },
+    {
+      method: "POST",
+      body: jsonBody(operationIndexes ? { operationIndexes } : {}),
+    },
   ),
   rejectPatch: (patchId) => platformRequest(
     `/case-generation/patches/${encodeURIComponent(patchId)}/reject`,

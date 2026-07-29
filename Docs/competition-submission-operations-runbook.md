@@ -130,6 +130,9 @@ journalctl -u la-case-generation-worker -n 100 --no-pager
 backend/.venv/bin/python -m backend.case_generation_worker --once
 ```
 
+Web API 的 `run` 操作只登记执行请求并返回 `202`；若任务长期停留在 `created`，
+首先检查 generation worker，而不是延长 Gunicorn 请求超时。
+
 任务分为两个明确的人机边界：
 
 1. worker 固化来源、解析资料、提取证据、识别领域并生成大纲，随后停在 `awaiting_outline_review`；
