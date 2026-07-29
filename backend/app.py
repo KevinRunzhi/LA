@@ -11,6 +11,9 @@ from flask import Flask, g, jsonify, request, send_file, send_from_directory
 from werkzeug.middleware.proxy_fix import ProxyFix
 try:
     from .case_package import CasePackageRegistry
+    from .case_authoring.api import create_case_authoring_blueprint
+    from .case_authoring.registry import CompositeCasePackageRegistry
+    from .case_authoring.service import CaseAuthoringService
     from .case_platform.api import create_platform_blueprint
     from .case_platform.case_runs import CaseRunStore
     from .case_platform.errors import PlatformError
@@ -40,6 +43,9 @@ try:
     from .presentation_store import PresentationStore
 except ImportError:
     from case_package import CasePackageRegistry
+    from case_authoring.api import create_case_authoring_blueprint
+    from case_authoring.registry import CompositeCasePackageRegistry
+    from case_authoring.service import CaseAuthoringService
     from case_platform.api import create_platform_blueprint
     from case_platform.case_runs import CaseRunStore
     from case_platform.errors import PlatformError
@@ -114,9 +120,15 @@ def create_app(
             x_host=1,
         )
 
-    case_registry = CasePackageRegistry(
+    bundled_case_registry = CasePackageRegistry(
         CASES_DIR,
         PRESENTATION_DIR / "manual_sources.json",
+    ).load()
+    case_registry = CompositeCasePackageRegistry(
+        bundled_case_registry,
+        settings.case_authoring_root / "active",
+        shared_sources_file=PRESENTATION_DIR / "manual_sources.json",
+        schemas_dir=CASES_DIR / "schemas",
     ).load()
     scenario = load_json("demo_scenario.json")
     guide_steps = load_json("guide_steps.json")
@@ -210,12 +222,30 @@ def create_app(
         backup_root=settings.platform_backup_root,
         audit=audit_service,
     )
+    operations_service.asset_roots["case-authoring"] = settings.case_authoring_root
     app.register_blueprint(
         create_platform_operations_blueprint(
             identity_service,
             ingestion_service,
             unified_search_service,
             operations_service,
+        )
+    )
+    case_authoring_service = CaseAuthoringService(
+        active_database_path,
+        bundled_registry=bundled_case_registry,
+        composite_registry=case_registry,
+        shared_sources_file=PRESENTATION_DIR / "manual_sources.json",
+        schemas_dir=CASES_DIR / "schemas",
+        release_root=settings.case_authoring_root / "releases",
+        active_root=settings.case_authoring_root / "active",
+        audit=audit_service,
+        search_service=unified_search_service,
+    )
+    app.register_blueprint(
+        create_case_authoring_blueprint(
+            identity_service,
+            case_authoring_service,
         )
     )
     app.extensions["la_services"] = {
@@ -226,6 +256,7 @@ def create_app(
         "ingestion": ingestion_service,
         "search": unified_search_service,
         "operations": operations_service,
+        "caseAuthoring": case_authoring_service,
     }
 
     @app.before_request
@@ -317,6 +348,7 @@ def create_app(
                 ("jobCards", settings.job_card_storage_root),
                 ("exports", settings.export_storage_root),
                 ("platformBackups", settings.platform_backup_root),
+                ("caseAuthoring", settings.case_authoring_root),
             ):
                 root.mkdir(parents=True, exist_ok=True)
                 probe = root / f".write-probe-{uuid.uuid4().hex}"

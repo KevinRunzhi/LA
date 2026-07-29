@@ -57,9 +57,14 @@ class LoadedCasePackage:
 
 
 class CasePackageRegistry:
-    def __init__(self, cases_dir: Path, shared_sources_file: Path | None = None):
+    def __init__(
+        self,
+        cases_dir: Path,
+        shared_sources_file: Path | None = None,
+        schemas_dir: Path | None = None,
+    ):
         self.cases_dir = cases_dir.resolve()
-        self.schemas_dir = self.cases_dir / "schemas"
+        self.schemas_dir = (schemas_dir or (self.cases_dir / "schemas")).resolve()
         self.registry_file = self.cases_dir / "case_registry.json"
         self.shared_sources_file = shared_sources_file
         self._schema_cache: dict[str, dict[str, Any]] = {}

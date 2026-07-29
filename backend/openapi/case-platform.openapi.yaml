@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: LA Industrial Computer Case Platform API
-  version: 1.2.0
-  description: Multi-case execution, identity, indexed manuals, governed graph, work-order and platform operations API.
+  version: 1.3.0
+  description: Multi-case execution, identity, indexed manuals, governed graph, work-order, case authoring and platform operations API.
 servers:
   - url: http://127.0.0.1:8080
 paths:
@@ -875,6 +875,98 @@ paths:
           content:
             text/csv: {schema: {type: string}}
             application/x-ndjson: {schema: {type: string}}
+  /api/platform/case-authoring/catalog:
+    get:
+      tags: [CaseAuthoring]
+      summary: List bundled and active runtime Agent case packages
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Agent contract, registry version and case catalog}
+  /api/platform/case-authoring/drafts:
+    get:
+      tags: [CaseAuthoring]
+      summary: List governed case drafts
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Draft summaries and revisions}
+    post:
+      tags: [CaseAuthoring]
+      summary: Clone a published case into an editable eight-module draft
+      security: [{BearerAuth: []}]
+      responses:
+        "201": {description: Created draft with registry, manifest and six Agent modules}
+  /api/platform/case-authoring/drafts/{draftId}:
+    get:
+      tags: [CaseAuthoring]
+      summary: Read draft modules, latest validation and review history
+      security: [{BearerAuth: []}]
+      parameters:
+        - {in: path, name: draftId, required: true, schema: {type: string}}
+      responses:
+        "200": {description: Complete governed draft}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/platform/case-authoring/drafts/{draftId}/modules/{module}:
+    patch:
+      tags: [CaseAuthoring]
+      summary: Update one module using optimistic revision control
+      security: [{BearerAuth: []}]
+      parameters:
+        - {in: path, name: draftId, required: true, schema: {type: string}}
+        - {in: path, name: module, required: true, schema: {type: string}}
+      responses:
+        "200": {description: Updated draft and incremented revision}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /api/platform/case-authoring/drafts/{draftId}/validate:
+    post:
+      tags: [CaseAuthoring]
+      summary: Compile and validate the draft with the production package loader
+      security: [{BearerAuth: []}]
+      responses:
+        "201": {description: Persisted validation errors, warnings and package hash}
+  /api/platform/case-authoring/drafts/{draftId}/submit:
+    post:
+      tags: [CaseAuthoring]
+      summary: Submit a currently validated revision for expert review
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Draft ready for review}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /api/platform/case-authoring/drafts/{draftId}/review:
+    post:
+      tags: [CaseAuthoring]
+      summary: Approve or reject a validated case draft
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Persisted review decision}
+  /api/platform/case-authoring/drafts/{draftId}/publish:
+    post:
+      tags: [CaseAuthoring]
+      summary: Compile an approved draft into an immutable active Agent package
+      security: [{BearerAuth: []}]
+      responses:
+        "201": {description: Active immutable release and refreshed registry}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /api/platform/case-authoring/drafts/{draftId}/suggestions:
+    post:
+      tags: [CaseAuthoring]
+      summary: Persist an evidence-backed Agent authoring suggestion
+      security: [{BearerAuth: []}]
+      responses:
+        "201": {description: Suggested action and normalized evidence}
+  /api/platform/case-authoring/releases:
+    get:
+      tags: [CaseAuthoring]
+      summary: List immutable case releases
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Active, superseded and disabled releases}
+  /api/platform/case-authoring/releases/{releaseId}/activate:
+    post:
+      tags: [CaseAuthoring]
+      summary: Activate a historical release and rebuild the runtime registry
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Activated historical release}
 components:
   securitySchemes:
     BearerAuth:

@@ -46,6 +46,12 @@
 | 审计导出 | `implemented` | `operations.py`、`operations_cli.py` | 过滤后导出 CSV/JSONL，秘密字段去敏，保存 SHA-256 并校验下载 |
 | 完整运行资产备份 | `implemented` | `operations_cli.py backup` | SQLite 在线副本、附件/手册/作业卡、manifest 和 tar.gz 归档 |
 | 资料入库 worker | `adapter_ready` | `deploy/systemd/la-knowledge-ingestion-worker.service` | SQLite 持久队列，目标机安装后作为独立 systemd 服务持续消费 |
+| 案例八模块草稿 | `implemented` | `backend/case_authoring/service.py` | registry、manifest 与六个 Agent 模块按 revision 持久化 |
+| 案例生产校验 | `implemented` | `CaseAuthoringService.validate` | 复用生产 CasePackageRegistry 执行 Schema、跨模块引用和摘要校验 |
+| 案例审核与发布 | `implemented` | `backend/case_authoring/` | 校验后提交、专家批准/驳回、不可变 release、历史版本激活 |
+| Agent 动态案例源 | `implemented` | `case_authoring/registry.py` | 内置案例与运行时发布包合并，运行时同 ID 版本优先 |
+| 案例发布管理页面 | `implemented` | `frontend/src/admin/case-authoring/` | 克隆、八模块编辑、校验、提交、审核、发布、回滚和证据建议 |
+| Agent 编制证据建议 | `implemented` | `case_agent_suggestions`、统一证据检索 | 保存建议和 EvidenceItem，不绕过专家审核自动发布 |
 | 远程诊断客户端 | `adapter_ready` | `JsonHttpDiagnosisClient`、`RemoteModelDiagnosisProvider` | 环境变量可切换真实 HTTP JSON 调用并校验结果合同；未配置时启动失败 |
 | 工业协议网关 | `adapter_ready` | `TelemetryProvider` Protocol | 需要部署侧具体实现 |
 | 向量知识检索 | `adapter_ready` | `KnowledgeSearchProvider` Protocol | 当前使用结构化 claim 检索 |
@@ -81,3 +87,5 @@
 12. `backend/test_core_business.py`。
 13. `backend/platform_ops/`；
 14. `backend/test_platform_ops.py`。
+15. `backend/case_authoring/`；
+16. `backend/test_case_authoring.py`。

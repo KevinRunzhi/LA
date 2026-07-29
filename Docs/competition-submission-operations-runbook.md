@@ -19,13 +19,14 @@ ready 检查数据库迁移与 FTS5、案例注册表、附件/手册/作业卡�
 3. `healthcheck.sh` 通过；
 4. `/api/platform/cases` 至少包含散热和供电案例；
 5. 首页输入散热描述能创建 CaseRun；
-6. `run/attachments`、`run/manuals`、`run/job-cards`、`run/exports`、`run/platform-backups` 和数据库目录可写；
+6. `run/attachments`、`run/manuals`、`run/job-cards`、`run/exports`、`run/platform-backups`、`run/case-authoring` 和数据库目录可写；
 7. 最近一次数据库备份及 `.sha256` 同时存在；
 8. 浏览器刷新后关键 SQLite 状态仍存在。
 9. `LA_AUTH_MODE=enforced` 时管理员可以登录，未登录业务请求返回 401；
 10. 图谱当前版本存在，手册检索能返回页码证据，PDF 下载通过摘要校验。
 11. `python -m backend.operations_cli integrity` 返回 `passed` 或已确认的 warning；
 12. 批量入库时 `la-knowledge-ingestion-worker` 处于 active。
+13. 案例发布中心 active registry 中的包可以通过 CasePackageRegistry 加载。
 
 ## 3. 告警分级
 
@@ -102,3 +103,17 @@ la_http_request_duration_seconds_total
 - 若作业卡摘要失败：保留数据库和文件现场，不覆盖原 PDF，按审计记录定位外部修改；
 - 若发现未知数据库写入：保存数据库一致性备份、日志和提交号，不先覆盖现场；
 - 仓库、作品包、日志和截图中不得出现真实 API Key。
+
+## 9. 案例发布恢复
+
+案例 release 不可原地修改。新版本导致路由或 Agent 内容异常时，在页面选择上一
+版本执行“激活”，或使用管理 API 激活历史 release。该操作重建
+`run/case-authoring/active`，不会删除故障版本和审核记录。
+
+维护命令：
+
+```bash
+backend/.venv/bin/python -m backend.case_authoring_cli validate <draftId>
+backend/.venv/bin/python -m backend.case_authoring_cli rebuild-registry
+backend/.venv/bin/python -m backend.case_authoring_cli export-release <releaseId> ./exports
+```

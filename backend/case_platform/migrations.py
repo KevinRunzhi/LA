@@ -520,11 +520,129 @@ PLATFORM_OPERATIONS_MIGRATION = Migration(
     ),
 )
 
+CASE_AUTHORING_MIGRATION = Migration(
+    version="005",
+    name="case authoring review and immutable releases",
+    statements=(
+        """
+        CREATE TABLE case_authoring_drafts (
+            draft_id TEXT PRIMARY KEY,
+            case_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN
+                ('draft','ready_for_review','approved','rejected','published')),
+            base_case_id TEXT,
+            base_release_id TEXT,
+            revision INTEGER NOT NULL DEFAULT 1 CHECK(revision >= 1),
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            submitted_at TEXT,
+            published_at TEXT
+        )
+        """,
+        """
+        CREATE TABLE case_authoring_modules (
+            draft_id TEXT NOT NULL,
+            module_name TEXT NOT NULL,
+            content_json TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY(draft_id,module_name),
+            FOREIGN KEY(draft_id) REFERENCES case_authoring_drafts(draft_id)
+                ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE TABLE case_validation_runs (
+            validation_id TEXT PRIMARY KEY,
+            draft_id TEXT NOT NULL,
+            revision INTEGER NOT NULL,
+            content_sha256 TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('passed','failed')),
+            errors_json TEXT NOT NULL,
+            warnings_json TEXT NOT NULL,
+            package_sha256 TEXT,
+            validated_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(draft_id) REFERENCES case_authoring_drafts(draft_id)
+                ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE TABLE case_review_records (
+            review_id TEXT PRIMARY KEY,
+            draft_id TEXT NOT NULL,
+            revision INTEGER NOT NULL,
+            decision TEXT NOT NULL CHECK(decision IN ('approved','rejected')),
+            notes TEXT NOT NULL,
+            reviewed_by TEXT NOT NULL,
+            content_sha256 TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(draft_id) REFERENCES case_authoring_drafts(draft_id)
+                ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE TABLE case_releases (
+            release_id TEXT PRIMARY KEY,
+            case_id TEXT NOT NULL,
+            version TEXT NOT NULL,
+            package_sha256 TEXT NOT NULL,
+            storage_key TEXT NOT NULL UNIQUE,
+            registry_item_json TEXT NOT NULL,
+            manifest_json TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('active','superseded','disabled')),
+            source_draft_id TEXT NOT NULL,
+            published_by TEXT NOT NULL,
+            published_at TEXT NOT NULL,
+            activated_at TEXT NOT NULL,
+            UNIQUE(case_id,version),
+            FOREIGN KEY(source_draft_id) REFERENCES case_authoring_drafts(draft_id)
+                ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE case_authoring_events (
+            event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            draft_id TEXT,
+            release_id TEXT,
+            event_type TEXT NOT NULL,
+            actor_id TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE case_agent_suggestions (
+            suggestion_id TEXT PRIMARY KEY,
+            draft_id TEXT NOT NULL,
+            target_module TEXT NOT NULL,
+            query TEXT NOT NULL,
+            suggestion_json TEXT NOT NULL,
+            evidence_json TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('proposed','accepted','rejected')),
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            decided_by TEXT,
+            decided_at TEXT,
+            FOREIGN KEY(draft_id) REFERENCES case_authoring_drafts(draft_id)
+                ON DELETE CASCADE
+        )
+        """,
+        "CREATE INDEX idx_case_drafts_status ON case_authoring_drafts(status,updated_at DESC)",
+        "CREATE INDEX idx_case_validations_draft ON case_validation_runs(draft_id,created_at DESC)",
+        "CREATE INDEX idx_case_reviews_draft ON case_review_records(draft_id,created_at DESC)",
+        "CREATE INDEX idx_case_releases_active ON case_releases(case_id,status,published_at DESC)",
+        "CREATE INDEX idx_case_authoring_events_draft ON case_authoring_events(draft_id,created_at)",
+    ),
+)
+
 DEFAULT_MIGRATIONS = (
     CASE_PLATFORM_MIGRATION,
     ENGINEER_SNAPSHOT_HISTORY_MIGRATION,
     CORE_BUSINESS_MIGRATION,
     PLATFORM_OPERATIONS_MIGRATION,
+    CASE_AUTHORING_MIGRATION,
 )
 
 
@@ -684,6 +802,15 @@ class MigrationRunner:
             "data_integrity_findings",
             "audit_exports",
         }
+        authoring_required = {
+            "case_authoring_drafts",
+            "case_authoring_modules",
+            "case_validation_runs",
+            "case_review_records",
+            "case_releases",
+            "case_authoring_events",
+            "case_agent_suggestions",
+        }
         tables = {
             row[0]
             for row in connection.execute(
@@ -694,6 +821,8 @@ class MigrationRunner:
             required.update(core_required)
         if tables & operations_required:
             required.update(operations_required)
+        if tables & authoring_required:
+            required.update(authoring_required)
         missing = sorted(required - tables)
         if missing:
             raise PlatformError(

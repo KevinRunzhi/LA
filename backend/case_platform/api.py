@@ -70,7 +70,7 @@ def create_platform_blueprint(
     def platform_capabilities():
         return _ok(
             {
-                "apiVersion": "1.2.0",
+                "apiVersion": "1.3.0",
                 "registryVersion": registry.registry_version,
                 "runnableCaseCount": len(registry.runnable_items()),
                 "providers": {
@@ -109,6 +109,15 @@ def create_platform_blueprint(
                     "dataIntegrityRuns": True,
                     "auditExports": ["csv", "jsonl"],
                     "assetBackupCli": True,
+                },
+                "caseAuthoring": {
+                    "draftModules": True,
+                    "schemaAndReferenceValidation": True,
+                    "expertReview": True,
+                    "immutableReleases": True,
+                    "runtimeRegistryRefresh": True,
+                    "historicalActivation": True,
+                    "agentEvidenceSuggestions": True,
                 },
             }
         )

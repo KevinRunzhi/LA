@@ -26,6 +26,7 @@
 │   ├── job-cards/
 │   ├── exports/
 │   ├── platform-backups/
+│   ├── case-authoring/
 │   └── backups/
 └── logs/
 ```
@@ -81,6 +82,7 @@ curl -fsS http://127.0.0.1:8080/api/metrics
 | `LA_JOB_CARD_STORAGE_ROOT` | `run/job-cards` | 不可变 PDF 作业卡目录 |
 | `LA_EXPORT_STORAGE_ROOT` | `run/exports` | 经过滤和去敏的审计导出目录 |
 | `LA_PLATFORM_BACKUP_ROOT` | `run/platform-backups` | SQLite 与运行资产整包备份目录 |
+| `LA_CASE_AUTHORING_ROOT` | `run/case-authoring` | 不可变案例 release 和运行时 active registry |
 | `FRONTEND_DIST_PATH` | `frontend/dist` | React 构建目录 |
 | `READINESS_REQUIRES_FRONTEND` | 生产为 `true` | ready 是否要求首页存在 |
 | `TRUST_PROXY_HEADERS` | `false` | 只在可信 Nginx 前置时启用 |

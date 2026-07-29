@@ -90,6 +90,13 @@ def run_preflight(
                 "data_integrity_runs",
                 "data_integrity_findings",
                 "audit_exports",
+                "case_authoring_drafts",
+                "case_authoring_modules",
+                "case_validation_runs",
+                "case_review_records",
+                "case_releases",
+                "case_authoring_events",
+                "case_agent_suggestions",
             }
             missing_core_tables = sorted(required_core_tables - tables)
             fts5 = "ENABLE_FTS5" in {
@@ -137,6 +144,7 @@ def run_preflight(
         ("jobCards", settings.job_card_storage_root),
         ("exports", settings.export_storage_root),
         ("platformBackups", settings.platform_backup_root),
+        ("caseAuthoring", settings.case_authoring_root),
     ):
         try:
             root.mkdir(parents=True, exist_ok=True)

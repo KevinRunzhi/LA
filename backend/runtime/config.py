@@ -94,6 +94,7 @@ class RuntimeSettings:
     job_card_storage_root: Path
     export_storage_root: Path
     platform_backup_root: Path
+    case_authoring_root: Path
     service_name: str = "la-industrial-case-platform"
 
     @classmethod
@@ -259,6 +260,10 @@ class RuntimeSettings:
                 root,
                 values.get("LA_PLATFORM_BACKUP_ROOT", "run/platform-backups"),
             ),
+            case_authoring_root=_path(
+                root,
+                values.get("LA_CASE_AUTHORING_ROOT", "run/case-authoring"),
+            ),
         )
 
     def with_database(self, database_path: Path) -> "RuntimeSettings":
@@ -271,6 +276,7 @@ class RuntimeSettings:
             job_card_storage_root=database.parent / "job-cards",
             export_storage_root=database.parent / "exports",
             platform_backup_root=database.parent / "platform-backups",
+            case_authoring_root=database.parent / "case-authoring",
             environment="test",
             readiness_requires_frontend=False,
         )
@@ -299,5 +305,6 @@ class RuntimeSettings:
             "jobCardStorageRoot": str(self.job_card_storage_root),
             "exportStorageRoot": str(self.export_storage_root),
             "platformBackupRoot": str(self.platform_backup_root),
+            "caseAuthoringRoot": str(self.case_authoring_root),
             "bootstrapAdminConfigured": bool(self.bootstrap_admin_account),
         }
