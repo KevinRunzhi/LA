@@ -83,6 +83,15 @@ class RuntimeSettings:
     remote_model_name: str
     remote_model_api_key: str
     telemetry_provider: str
+    auth_mode: str
+    session_ttl_seconds: int
+    login_max_failures: int
+    login_lock_seconds: int
+    bootstrap_admin_account: str
+    bootstrap_admin_password: str
+    manual_storage_root: Path
+    manual_max_bytes: int
+    job_card_storage_root: Path
     service_name: str = "la-industrial-case-platform"
 
     @classmethod
@@ -125,6 +134,21 @@ class RuntimeSettings:
         if telemetry_provider != "submitted-facts":
             raise ConfigurationError(
                 "当前部署只支持 TELEMETRY_PROVIDER=submitted-facts"
+            )
+        auth_mode = values.get("LA_AUTH_MODE", "compat").strip().lower()
+        if auth_mode not in {"compat", "enforced"}:
+            raise ConfigurationError("LA_AUTH_MODE 必须是 compat 或 enforced")
+        bootstrap_account = values.get(
+            "LA_BOOTSTRAP_ADMIN_ACCOUNT",
+            "",
+        ).strip()
+        bootstrap_password = values.get(
+            "LA_BOOTSTRAP_ADMIN_PASSWORD",
+            "",
+        )
+        if bool(bootstrap_account) != bool(bootstrap_password):
+            raise ConfigurationError(
+                "LA_BOOTSTRAP_ADMIN_ACCOUNT 和 LA_BOOTSTRAP_ADMIN_PASSWORD 必须同时配置"
             )
         cors_default = "*" if deployment_environment == "development" else ""
         cors_allowed_origins = tuple(
@@ -186,6 +210,45 @@ class RuntimeSettings:
             remote_model_name=remote_model_name,
             remote_model_api_key=remote_model_api_key,
             telemetry_provider=telemetry_provider,
+            auth_mode=auth_mode,
+            session_ttl_seconds=_integer(
+                values,
+                "LA_SESSION_TTL_SECONDS",
+                28_800,
+                minimum=300,
+                maximum=30 * 24 * 60 * 60,
+            ),
+            login_max_failures=_integer(
+                values,
+                "LA_LOGIN_MAX_FAILURES",
+                5,
+                minimum=2,
+                maximum=20,
+            ),
+            login_lock_seconds=_integer(
+                values,
+                "LA_LOGIN_LOCK_SECONDS",
+                900,
+                minimum=60,
+                maximum=24 * 60 * 60,
+            ),
+            bootstrap_admin_account=bootstrap_account,
+            bootstrap_admin_password=bootstrap_password,
+            manual_storage_root=_path(
+                root,
+                values.get("LA_MANUAL_STORAGE_ROOT", "run/manuals"),
+            ),
+            manual_max_bytes=_integer(
+                values,
+                "LA_MANUAL_MAX_BYTES",
+                50 * 1024 * 1024,
+                minimum=1024,
+                maximum=1024 * 1024 * 1024,
+            ),
+            job_card_storage_root=_path(
+                root,
+                values.get("LA_JOB_CARD_STORAGE_ROOT", "run/job-cards"),
+            ),
         )
 
     def with_database(self, database_path: Path) -> "RuntimeSettings":
@@ -194,6 +257,8 @@ class RuntimeSettings:
             self,
             database_path=database,
             attachment_root=database.parent / "attachments",
+            manual_storage_root=database.parent / "manuals",
+            job_card_storage_root=database.parent / "job-cards",
             environment="test",
             readiness_requires_frontend=False,
         )
@@ -215,4 +280,10 @@ class RuntimeSettings:
             "corsAllowedOrigins": list(self.cors_allowed_origins),
             "diagnosisProvider": self.diagnosis_provider,
             "telemetryProvider": self.telemetry_provider,
+            "authMode": self.auth_mode,
+            "sessionTtlSeconds": self.session_ttl_seconds,
+            "manualStorageRoot": str(self.manual_storage_root),
+            "manualMaxBytes": self.manual_max_bytes,
+            "jobCardStorageRoot": str(self.job_card_storage_root),
+            "bootstrapAdminConfigured": bool(self.bootstrap_admin_account),
         }

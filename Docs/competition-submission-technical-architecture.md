@@ -148,6 +148,19 @@ created
 | expert review | run + revision | 保存审核人、决定和可信等级 |
 | knowledge publication | knowledge + version | 保存知识正文和图谱增量 |
 
+### 5.5 核心业务服务
+
+`backend/core_business/` 将平台能力从 CaseRun 扩展到四个可独立测试的领域：
+
+| 服务 | 权威数据 | 关键约束 |
+| --- | --- | --- |
+| IdentityService | users、sessions | 密码哈希、token 摘要、锁定、撤销和角色 |
+| ManualKnowledgeService | documents、chunks、FTS5 | PDF hash 去重、页码证据和中文回退 |
+| GovernedGraphService | change sets、items、versions | 审核状态机、base 冲突和全量不可变快照 |
+| WorkOrderService | work orders、job cards | revision、内容幂等、PDF 摘要和历史版本 |
+
+所有新业务接口使用 Bearer 会话。旧 CaseRun 接口在 `compat` 模式保持已录制页面兼容，切换为 `enforced` 后由同一会话服务强制保护并校验请求 actor。
+
 ## 6. 数据架构
 
 ```text
@@ -161,6 +174,22 @@ case_runs
   ├── case_knowledge_versions
   │     └── case_graph_version_deltas
   └── engineer_case_sync
+
+platform_users
+  └── auth_sessions
+
+audit_events
+
+manual_documents
+  ├── manual_chunks
+  └── manual_chunks_fts
+
+graph_change_sets
+  └── graph_change_items
+graph_versions
+
+maintenance_work_orders
+  └── job_card_documents
 ```
 
 SQLite 的选择符合当前比赛单机、断网、轻依赖和龙芯部署边界。应用使用显式事务、外键、唯一约束、revision 和 `BEGIN IMMEDIATE` 控制一致性。
@@ -222,6 +251,10 @@ AttachmentStore
 - 专家审核与返工；
 - 知识发布与工程师同步；
 - live、ready 和 metrics。
+- 身份、会话、用户管理和审计；
+- PDF 手册入库与页码级证据检索；
+- 图谱变更集、审核、发布、局部子图和版本差异；
+- 工单、作业卡快照和服务端 PDF。
 
 合同以 `backend/openapi/case-platform.openapi.yaml` 为阅读入口。成功响应使用 `{ok,data}`，失败响应使用稳定错误码、消息和 details。
 

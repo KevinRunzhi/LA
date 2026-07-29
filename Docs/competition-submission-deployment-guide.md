@@ -22,6 +22,8 @@
 │   ├── platform.env
 │   ├── data/presentation.db
 │   ├── attachments/
+│   ├── manuals/
+│   ├── job-cards/
 │   └── backups/
 └── logs/
 ```
@@ -66,6 +68,15 @@ curl -fsS http://127.0.0.1:8080/api/metrics
 | `PRESENTATION_DATABASE_PATH` | `backend/data/presentation/presentation.db` | SQLite 数据库 |
 | `ATTACHMENT_STORAGE_ROOT` | `run/attachments` | 附件根目录 |
 | `ATTACHMENT_MAX_BYTES` | `20971520` | 单附件上限 |
+| `LA_AUTH_MODE` | `compat` | `compat` 保留旧 actor 合同；`enforced` 强制 Bearer 会话 |
+| `LA_SESSION_TTL_SECONDS` | `28800` | 登录会话有效期 |
+| `LA_LOGIN_MAX_FAILURES` | `5` | 触发临时锁定的连续失败次数 |
+| `LA_LOGIN_LOCK_SECONDS` | `900` | 临时锁定秒数 |
+| `LA_BOOTSTRAP_ADMIN_ACCOUNT` | 空 | 首次启动管理员账号 |
+| `LA_BOOTSTRAP_ADMIN_PASSWORD` | 空 | 首次启动管理员口令，不得提交真实值 |
+| `LA_MANUAL_STORAGE_ROOT` | `run/manuals` | 原始 PDF 手册目录 |
+| `LA_MANUAL_MAX_BYTES` | `52428800` | 单手册上限 |
+| `LA_JOB_CARD_STORAGE_ROOT` | `run/job-cards` | 不可变 PDF 作业卡目录 |
 | `FRONTEND_DIST_PATH` | `frontend/dist` | React 构建目录 |
 | `READINESS_REQUIRES_FRONTEND` | 生产为 `true` | ready 是否要求首页存在 |
 | `TRUST_PROXY_HEADERS` | `false` | 只在可信 Nginx 前置时启用 |
@@ -78,6 +89,8 @@ curl -fsS http://127.0.0.1:8080/api/metrics
 | `GUNICORN_MAX_REQUESTS` | `2000` | worker 周期性重启阈值 |
 
 数据库和附件路径相对仓库根目录解析。非法端口、布尔值、环境名和日志等级会在应用启动前失败。
+
+首次生产部署先在 `/etc/la-case-platform/platform.env` 临时配置 bootstrap 管理员。登录并创建正式管理员后，删除这两个环境变量并重启服务。应用只保存密码哈希，preflight 和日志不会输出口令。
 
 ## 5. 为什么默认单 worker
 
@@ -175,9 +188,12 @@ bash deploy/loongarch/scripts/start.sh
 | 现象 | 检查 |
 | --- | --- |
 | live 失败 | Gunicorn master、日志、端口 |
-| live 成功但 ready 503 | ready JSON 中 database/caseRegistry/frontend/attachmentStorage |
+| live 成功但 ready 503 | ready JSON 中 database/caseRegistry/frontend/storage |
 | 页面 404 | `frontend/dist/index.html` 与 `FRONTEND_DIST_PATH` |
-| 上传 413 | Nginx `client_max_body_size` 和 `ATTACHMENT_MAX_BYTES` |
+| 上传 413 | Nginx `client_max_body_size`、附件或手册大小配置 |
+| 管理 API 返回 401 | Bearer token 是否过期/撤销，`LA_AUTH_MODE` 是否为 enforced |
+| 手册检索无结果 | `manual_chunks_fts`、PDF 是否有文本层、reindex 接口 |
+| PDF 下载校验失败 | `run/job-cards` 文件是否被外部修改、数据库保存的 SHA-256 |
 | SQLite locked | 是否误设多个 worker、是否存在长事务 |
 | systemd 无写权限 | `ReadWritePaths`、run/logs 所有者 |
 | 案例不出现在目录 | registry、Schema、引用和 `loadErrors` |

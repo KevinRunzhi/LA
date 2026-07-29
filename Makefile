@@ -52,6 +52,8 @@ preflight:
 	LA_ENV=production \
 	PRESENTATION_DATABASE_PATH=run/preflight/presentation.db \
 	ATTACHMENT_STORAGE_ROOT=run/preflight/attachments \
+	LA_MANUAL_STORAGE_ROOT=run/preflight/manuals \
+	LA_JOB_CARD_STORAGE_ROOT=run/preflight/job-cards \
 	$(VENV_PYTHON) -m backend.runtime.preflight
 
 check: check-python check-shell test-backend build preflight

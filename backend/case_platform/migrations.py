@@ -215,9 +215,207 @@ ENGINEER_SNAPSHOT_HISTORY_MIGRATION = Migration(
     ),
 )
 
+CORE_BUSINESS_MIGRATION = Migration(
+    version="003",
+    name="identity manuals governed graph and work orders",
+    statements=(
+        """
+        CREATE TABLE platform_users (
+            user_id TEXT PRIMARY KEY,
+            account TEXT NOT NULL UNIQUE COLLATE NOCASE,
+            display_name TEXT NOT NULL,
+            role TEXT NOT NULL CHECK(role IN ('engineer','expert','admin')),
+            profile_json TEXT NOT NULL DEFAULT '{}',
+            password_hash TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'active'
+                CHECK(status IN ('active','disabled','locked')),
+            failed_login_count INTEGER NOT NULL DEFAULT 0,
+            locked_until TEXT,
+            token_version INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE auth_sessions (
+            session_id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            token_hash TEXT NOT NULL UNIQUE,
+            token_version INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            last_seen_at TEXT NOT NULL,
+            revoked_at TEXT,
+            client_ip TEXT,
+            user_agent_hash TEXT,
+            FOREIGN KEY(user_id) REFERENCES platform_users(user_id)
+                ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE audit_events (
+            audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_id TEXT,
+            actor_id TEXT,
+            actor_role TEXT,
+            action TEXT NOT NULL,
+            resource_type TEXT NOT NULL,
+            resource_id TEXT,
+            outcome TEXT NOT NULL
+                CHECK(outcome IN ('success','denied','failed')),
+            metadata_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE manual_documents (
+            document_id TEXT PRIMARY KEY,
+            source_id TEXT,
+            title TEXT NOT NULL,
+            vendor TEXT,
+            equipment_type TEXT,
+            fault_domains_json TEXT NOT NULL DEFAULT '[]',
+            document_version TEXT,
+            original_filename TEXT NOT NULL,
+            file_sha256 TEXT NOT NULL UNIQUE,
+            storage_key TEXT NOT NULL UNIQUE,
+            page_count INTEGER NOT NULL CHECK(page_count >= 1),
+            status TEXT NOT NULL DEFAULT 'active'
+                CHECK(status IN ('active','archived')),
+            imported_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE manual_chunks (
+            chunk_id TEXT PRIMARY KEY,
+            document_id TEXT NOT NULL,
+            page_number INTEGER NOT NULL CHECK(page_number >= 1),
+            ordinal INTEGER NOT NULL CHECK(ordinal >= 0),
+            content TEXT NOT NULL,
+            normalized_content TEXT NOT NULL,
+            char_count INTEGER NOT NULL CHECK(char_count > 0),
+            content_sha256 TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(document_id, page_number, ordinal),
+            FOREIGN KEY(document_id) REFERENCES manual_documents(document_id)
+                ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE VIRTUAL TABLE manual_chunks_fts USING fts5(
+            chunk_id UNINDEXED,
+            content,
+            tokenize='unicode61'
+        )
+        """,
+        """
+        CREATE TABLE graph_change_sets (
+            change_set_id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL
+                CHECK(status IN ('draft','submitted','approved','rejected','published')),
+            base_version_id TEXT,
+            case_run_id TEXT,
+            created_by TEXT NOT NULL,
+            reviewed_by TEXT,
+            review_notes TEXT,
+            published_version_id TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(case_run_id) REFERENCES case_runs(run_id)
+                ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE graph_change_items (
+            item_id TEXT PRIMARY KEY,
+            change_set_id TEXT NOT NULL,
+            operation TEXT NOT NULL CHECK(operation IN ('upsert','delete')),
+            entity_type TEXT NOT NULL CHECK(entity_type IN ('node','edge')),
+            entity_id TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(change_set_id, entity_type, entity_id),
+            FOREIGN KEY(change_set_id) REFERENCES graph_change_sets(change_set_id)
+                ON DELETE CASCADE
+        )
+        """,
+        """
+        CREATE TABLE graph_versions (
+            version_id TEXT PRIMARY KEY,
+            sequence INTEGER NOT NULL UNIQUE,
+            parent_version_id TEXT,
+            change_set_id TEXT UNIQUE,
+            snapshot_json TEXT NOT NULL,
+            content_sha256 TEXT NOT NULL,
+            published_by TEXT NOT NULL,
+            published_at TEXT NOT NULL,
+            FOREIGN KEY(change_set_id) REFERENCES graph_change_sets(change_set_id)
+                ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE maintenance_work_orders (
+            order_id TEXT PRIMARY KEY,
+            order_number TEXT NOT NULL UNIQUE,
+            run_id TEXT NOT NULL UNIQUE,
+            title TEXT NOT NULL,
+            summary TEXT NOT NULL DEFAULT '',
+            priority TEXT NOT NULL CHECK(priority IN ('low','normal','high','urgent')),
+            status TEXT NOT NULL
+                CHECK(status IN ('draft','assigned','in_progress','completed','archived')),
+            revision INTEGER NOT NULL CHECK(revision >= 1),
+            assigned_to TEXT,
+            due_at TEXT,
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(run_id) REFERENCES case_runs(run_id)
+                ON DELETE RESTRICT
+        )
+        """,
+        """
+        CREATE TABLE job_card_documents (
+            document_id TEXT PRIMARY KEY,
+            order_id TEXT NOT NULL,
+            run_id TEXT NOT NULL,
+            document_version INTEGER NOT NULL CHECK(document_version >= 1),
+            run_revision INTEGER NOT NULL CHECK(run_revision >= 1),
+            template_version TEXT NOT NULL,
+            content_sha256 TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            storage_key TEXT NOT NULL UNIQUE,
+            pdf_sha256 TEXT NOT NULL,
+            page_count INTEGER NOT NULL CHECK(page_count >= 1),
+            byte_count INTEGER NOT NULL CHECK(byte_count > 0),
+            generated_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(order_id, document_version),
+            UNIQUE(order_id, content_sha256),
+            FOREIGN KEY(order_id) REFERENCES maintenance_work_orders(order_id)
+                ON DELETE RESTRICT,
+            FOREIGN KEY(run_id) REFERENCES case_runs(run_id)
+                ON DELETE RESTRICT
+        )
+        """,
+        "CREATE INDEX idx_sessions_user_active ON auth_sessions(user_id, revoked_at, expires_at)",
+        "CREATE INDEX idx_audit_actor_created ON audit_events(actor_id, created_at)",
+        "CREATE INDEX idx_audit_resource ON audit_events(resource_type, resource_id, created_at)",
+        "CREATE INDEX idx_manual_chunks_document ON manual_chunks(document_id, page_number)",
+        "CREATE INDEX idx_graph_change_status ON graph_change_sets(status, updated_at)",
+        "CREATE INDEX idx_graph_versions_sequence ON graph_versions(sequence DESC)",
+        "CREATE INDEX idx_work_orders_status ON maintenance_work_orders(status, updated_at)",
+        "CREATE INDEX idx_job_cards_order ON job_card_documents(order_id, document_version DESC)",
+    ),
+)
+
 DEFAULT_MIGRATIONS = (
     CASE_PLATFORM_MIGRATION,
     ENGINEER_SNAPSHOT_HISTORY_MIGRATION,
+    CORE_BUSINESS_MIGRATION,
 )
 
 
@@ -356,12 +554,27 @@ class MigrationRunner:
             "case_graph_version_deltas",
             "engineer_case_sync",
         }
+        core_required = {
+            "platform_users",
+            "auth_sessions",
+            "audit_events",
+            "manual_documents",
+            "manual_chunks",
+            "manual_chunks_fts",
+            "graph_change_sets",
+            "graph_change_items",
+            "graph_versions",
+            "maintenance_work_orders",
+            "job_card_documents",
+        }
         tables = {
             row[0]
             for row in connection.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'"
             )
         }
+        if tables & core_required:
+            required.update(core_required)
         missing = sorted(required - tables)
         if missing:
             raise PlatformError(

@@ -89,6 +89,8 @@ jobs:
           LA_ENV: production
           PRESENTATION_DATABASE_PATH: run/ci/presentation.db
           ATTACHMENT_STORAGE_ROOT: run/ci/attachments
+          LA_MANUAL_STORAGE_ROOT: run/ci/manuals
+          LA_JOB_CARD_STORAGE_ROOT: run/ci/job-cards
           FRONTEND_DIST_PATH: frontend/dist
         run: python -m backend.runtime.preflight
       - name: Check repository whitespace

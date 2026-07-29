@@ -11,6 +11,7 @@
 - 后端平台接口前缀：`/api/platform`。
 - 首页输入、CaseRun 创建和诊断入口已连接平台 API。
 - 本地规则诊断、提交事实遥测、步骤知识检索和本地附件存储可运行；远程诊断客户端、工业协议网关和对象存储可通过稳定适配接口替换。
+- 用户会话、角色权限、审计、PDF 手册入库检索、图谱审核版本、检修工单和服务端 PDF 作业卡均由 SQLite 业务服务实现。
 
 完整文档从 [`Docs/README.md`](./Docs/README.md) 开始阅读。不要使用旧状态文档判断当前进度。
 
@@ -36,6 +37,8 @@ Python 3.10+
 - [`backend/case_platform/migrations.py`](./backend/case_platform/migrations.py)：SQLite 有序迁移；
 - [`backend/case_platform/api.py`](./backend/case_platform/api.py)：Flask Blueprint；
 - [`backend/case_platform/providers.py`](./backend/case_platform/providers.py)：外部能力适配接口；
+- [`backend/core_business/`](./backend/core_business/)：身份、审计、手册、图谱治理、工单和 PDF；
+- [`backend/test_core_business.py`](./backend/test_core_business.py)：核心业务完整验收场景；
 - [`frontend/src/api/casePlatformClient.js`](./frontend/src/api/casePlatformClient.js)：Web 端平台 API 与 CaseRun 会话；
 - [`backend/openapi/case-platform.openapi.yaml`](./backend/openapi/case-platform.openapi.yaml)：OpenAPI 合同；
 - [`Docs/competition-submission-architecture.md`](./Docs/competition-submission-architecture.md)：架构和数据流。
@@ -43,6 +46,7 @@ Python 3.10+
 - [`deploy/`](./deploy/)：Gunicorn、systemd、Nginx 和龙芯部署脚本；
 - [`Docs/competition-submission-deployment-guide.md`](./Docs/competition-submission-deployment-guide.md)：生产部署、备份、升级和回滚。
 - [`Docs/competition-submission-technical-architecture.md`](./Docs/competition-submission-technical-architecture.md)：前端、后端、数据、知识闭环和运行拓扑详解。
+- [`Docs/competition-submission-core-business-enhancement-spec.md`](./Docs/competition-submission-core-business-enhancement-spec.md)：本轮核心业务增强规格与验收标准。
 
 ## WSL 开发启动
 

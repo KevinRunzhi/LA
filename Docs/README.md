@@ -13,6 +13,7 @@
 - [`competition-submission-deployment-guide.md`](./competition-submission-deployment-guide.md)
 - [`competition-submission-operations-runbook.md`](./competition-submission-operations-runbook.md)
 - [`competition-submission-technical-architecture.md`](./competition-submission-technical-architecture.md)
+- [`competition-submission-core-business-enhancement-spec.md`](./competition-submission-core-business-enhancement-spec.md)
 
 新开启的 Codex 对话或临时接手开发时，先完整阅读 [`CODEX-HANDOFF-2026-07-17.md`](./CODEX-HANDOFF-2026-07-17.md)。该文档记录了当前 WSL 仓库、Git 工作区、三角色演示流程、SQLite 状态、未提交修改、运行命令和已知限制；随后再按本页索引阅读任务对应的 Spec。
 

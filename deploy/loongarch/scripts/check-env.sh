@@ -26,6 +26,18 @@ fi
 [[ -f "$APP_ROOT/backend/wsgi.py" && -f "$APP_ROOT/deploy/gunicorn.conf.py" ]] && ok "WSGI 与 Gunicorn 配置完整" || fail "生产服务配置不完整"
 [[ -d "$APP_ROOT/backend/data/presentation" ]] && ok "演示数据目录存在" || fail "缺少演示数据目录"
 [[ -f "$APP_ROOT/backend/data/cases/case_registry.json" ]] && ok "案例注册表存在" || fail "缺少案例注册表"
+if command -v python3 >/dev/null 2>&1; then
+  if python3 - <<'PY'
+import sqlite3
+db = sqlite3.connect(":memory:")
+db.execute("CREATE VIRTUAL TABLE probe USING fts5(value)")
+PY
+  then
+    ok "SQLite FTS5 可用"
+  else
+    fail "SQLite 缺少 FTS5，无法启用手册全文索引"
+  fi
+fi
 
 available_kb="$(df -Pk "$APP_ROOT" | awk 'NR==2 {print $4}')"
 if [[ "$available_kb" =~ ^[0-9]+$ ]] && (( available_kb >= 262144 )); then

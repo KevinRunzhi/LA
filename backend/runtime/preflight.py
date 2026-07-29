@@ -55,6 +55,7 @@ def run_preflight(
     }
     ready = ready and bool(runnable)
 
+    user_count = 0
     try:
         if apply_migrations:
             applied = MigrationRunner(settings.database_path).migrate()
@@ -65,30 +66,102 @@ def run_preflight(
             migration_count = connection.execute(
                 "SELECT count(*) FROM schema_migrations"
             ).fetchone()[0]
+            tables = {
+                row[0]
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type IN ('table','view')"
+                )
+            }
+            required_core_tables = {
+                "platform_users",
+                "auth_sessions",
+                "audit_events",
+                "manual_documents",
+                "manual_chunks",
+                "manual_chunks_fts",
+                "graph_change_sets",
+                "graph_change_items",
+                "graph_versions",
+                "maintenance_work_orders",
+                "job_card_documents",
+            }
+            missing_core_tables = sorted(required_core_tables - tables)
+            fts5 = "ENABLE_FTS5" in {
+                row[0]
+                for row in connection.execute("PRAGMA compile_options")
+            }
+            if not fts5:
+                try:
+                    connection.execute(
+                        "CREATE VIRTUAL TABLE temp.fts5_probe USING fts5(value)"
+                    )
+                    fts5 = True
+                except sqlite3.OperationalError:
+                    fts5 = False
+            user_count = connection.execute(
+                "SELECT count(*) FROM platform_users WHERE status='active'"
+            ).fetchone()[0]
         checks["database"] = {
-            "status": "ok" if integrity == "ok" else "error",
+            "status": (
+                "ok"
+                if integrity == "ok" and not missing_core_tables and fts5
+                else "error"
+            ),
             "path": str(settings.database_path),
             "integrity": integrity,
             "migrationCount": migration_count,
             "appliedMigrations": applied,
+            "missingCoreTables": missing_core_tables,
+            "fts5": fts5,
         }
-        ready = ready and integrity == "ok"
+        ready = (
+            ready
+            and integrity == "ok"
+            and not missing_core_tables
+            and fts5
+        )
     except (OSError, sqlite3.Error) as exc:
         ready = False
         checks["database"] = {"status": "error", "reason": str(exc)}
 
-    try:
-        settings.attachment_root.mkdir(parents=True, exist_ok=True)
-        probe = settings.attachment_root / ".preflight-write-probe"
-        probe.write_bytes(b"preflight")
-        probe.unlink()
-        checks["attachmentStorage"] = {
-            "status": "ok",
-            "path": str(settings.attachment_root),
-        }
-    except OSError as exc:
+    storage_checks = {}
+    for name, root in (
+        ("attachments", settings.attachment_root),
+        ("manuals", settings.manual_storage_root),
+        ("jobCards", settings.job_card_storage_root),
+    ):
+        try:
+            root.mkdir(parents=True, exist_ok=True)
+            probe = root / ".preflight-write-probe"
+            probe.write_bytes(b"preflight")
+            probe.unlink()
+            storage_checks[name] = {"status": "ok", "path": str(root)}
+        except OSError as exc:
+            ready = False
+            storage_checks[name] = {"status": "error", "reason": str(exc)}
+    checks["storage"] = storage_checks
+    checks["attachmentStorage"] = storage_checks["attachments"]
+    checks["identity"] = {
+        "status": (
+            "ok"
+            if (
+                settings.auth_mode == "compat"
+                or user_count > 0
+                or bool(settings.bootstrap_admin_account)
+            )
+            else "error"
+        ),
+        "authMode": settings.auth_mode,
+        "activeUserCount": user_count,
+        "bootstrapAdminConfigured": bool(settings.bootstrap_admin_account),
+        "bootstrapRecommendation": (
+            None
+            if settings.bootstrap_admin_account
+            else "首次生产部署前配置 bootstrap 管理员，创建正式管理员后移除配置"
+        ),
+    }
+    if checks["identity"]["status"] == "error":
         ready = False
-        checks["attachmentStorage"] = {"status": "error", "reason": str(exc)}
 
     frontend_exists = (settings.frontend_dist / "index.html").is_file()
     checks["frontend"] = {

@@ -7,12 +7,13 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_file, send_from_directory
+from flask import Flask, g, jsonify, request, send_file, send_from_directory
 from werkzeug.middleware.proxy_fix import ProxyFix
 try:
     from .case_package import CasePackageRegistry
     from .case_platform.api import create_platform_blueprint
     from .case_platform.case_runs import CaseRunStore
+    from .case_platform.errors import PlatformError
     from .case_platform.migrations import MigrationRunner
     from .case_platform.knowledge import KnowledgeLifecycleService
     from .case_platform.providers import (
@@ -26,11 +27,18 @@ try:
         build_diagnosis_provider,
         build_telemetry_provider,
     )
+    from .core_business.api import create_core_business_blueprint
+    from .core_business.audit import AuditService
+    from .core_business.auth import IdentityService
+    from .core_business.graph import GovernedGraphService
+    from .core_business.manuals import ManualKnowledgeService
+    from .core_business.work_orders import WorkOrderService
     from .presentation_store import PresentationStore
 except ImportError:
     from case_package import CasePackageRegistry
     from case_platform.api import create_platform_blueprint
     from case_platform.case_runs import CaseRunStore
+    from case_platform.errors import PlatformError
     from case_platform.migrations import MigrationRunner
     from case_platform.knowledge import KnowledgeLifecycleService
     from case_platform.providers import (
@@ -44,6 +52,12 @@ except ImportError:
         build_diagnosis_provider,
         build_telemetry_provider,
     )
+    from core_business.api import create_core_business_blueprint
+    from core_business.audit import AuditService
+    from core_business.auth import IdentityService
+    from core_business.graph import GovernedGraphService
+    from core_business.manuals import ManualKnowledgeService
+    from core_business.work_orders import WorkOrderService
     from presentation_store import PresentationStore
 
 
@@ -132,15 +146,101 @@ def create_app(
             ),
         )
     )
+    audit_service = AuditService(active_database_path)
+    identity_service = IdentityService(
+        active_database_path,
+        audit_service,
+        session_ttl_seconds=settings.session_ttl_seconds,
+        max_failures=settings.login_max_failures,
+        lock_seconds=settings.login_lock_seconds,
+    )
+    if settings.bootstrap_admin_account:
+        identity_service.bootstrap_admin(
+            settings.bootstrap_admin_account,
+            settings.bootstrap_admin_password,
+        )
+    graph_service = GovernedGraphService(active_database_path, audit_service)
+    graph_service.initialize_seed(industrial_computer_graph)
+    manual_service = ManualKnowledgeService(
+        active_database_path,
+        settings.manual_storage_root,
+        audit_service,
+        max_bytes=settings.manual_max_bytes,
+    )
+    work_order_service = WorkOrderService(
+        active_database_path,
+        settings.job_card_storage_root,
+        audit_service,
+    )
+    app.register_blueprint(
+        create_core_business_blueprint(
+            identity_service,
+            audit_service,
+            manual_service,
+            graph_service,
+            work_order_service,
+        )
+    )
+
+    @app.before_request
+    def enforce_platform_identity():
+        if request.blueprint != "case_platform":
+            return None
+        if request.endpoint in {
+            "case_platform.list_cases",
+            "case_platform.platform_capabilities",
+            "case_platform.route_case",
+        }:
+            return None
+        header = request.headers.get("Authorization", "")
+        token = header[7:].strip() if header.lower().startswith("bearer ") else ""
+        if not token:
+            if settings.auth_mode == "enforced":
+                raise PlatformError(
+                    "authentication_required",
+                    "当前部署要求登录后访问业务接口",
+                    401,
+                )
+            return None
+        actor = identity_service.authenticate_token(token)
+        g.platform_actor = actor
+        supplied_id = None
+        supplied_role = None
+        if request.is_json:
+            body = request.get_json(silent=True) or {}
+            supplied = body.get("actor") if isinstance(body, dict) else None
+            if isinstance(supplied, dict):
+                supplied_id = supplied.get("id")
+                supplied_role = supplied.get("role")
+        elif request.form:
+            supplied_id = request.form.get("actorId")
+            supplied_role = request.form.get("actorRole")
+        if supplied_id and supplied_id != actor["id"]:
+            raise PlatformError(
+                "actor_mismatch",
+                "请求 actor 与登录会话不一致",
+                403,
+            )
+        if supplied_role and supplied_role != actor["role"]:
+            raise PlatformError(
+                "actor_mismatch",
+                "请求角色与登录会话不一致",
+                403,
+            )
+        return None
 
     def readiness_check():
         checks: dict[str, object] = {}
         ready = True
+        active_user_count = 0
         try:
             with sqlite3.connect(active_database_path) as connection:
                 connection.execute("SELECT 1").fetchone()
                 migration_count = connection.execute(
                     "SELECT count(*) FROM schema_migrations"
+                ).fetchone()[0]
+                active_user_count = connection.execute(
+                    "SELECT count(*) FROM platform_users WHERE status='active'"
                 ).fetchone()[0]
             checks["database"] = {
                 "status": "ok",
@@ -156,21 +256,34 @@ def create_app(
             "loadErrors": len(case_registry.load_errors),
         }
         ready = ready and runnable_cases > 0
+        identity_ready = settings.auth_mode == "compat" or active_user_count > 0
+        checks["identity"] = {
+            "status": "ok" if identity_ready else "error",
+            "authMode": settings.auth_mode,
+            "activeUserCount": active_user_count,
+        }
+        ready = ready and identity_ready
         try:
-            settings.attachment_root.mkdir(parents=True, exist_ok=True)
-            probe = (
-                settings.attachment_root
-                / f".write-probe-{uuid.uuid4().hex}"
-            )
-            probe.write_bytes(b"ready")
-            probe.unlink()
-            checks["attachmentStorage"] = {"status": "ok"}
+            storage_checks = {}
+            for name, root in (
+                ("attachments", settings.attachment_root),
+                ("manuals", settings.manual_storage_root),
+                ("jobCards", settings.job_card_storage_root),
+            ):
+                root.mkdir(parents=True, exist_ok=True)
+                probe = root / f".write-probe-{uuid.uuid4().hex}"
+                probe.write_bytes(b"ready")
+                probe.unlink()
+                storage_checks[name] = {"status": "ok", "path": str(root)}
+            checks["storage"] = storage_checks
+            checks["attachmentStorage"] = storage_checks["attachments"]
         except OSError as exc:
             ready = False
-            checks["attachmentStorage"] = {
+            checks["storage"] = {
                 "status": "error",
                 "reason": str(exc),
             }
+            checks["attachmentStorage"] = checks["storage"]
         frontend_exists = (settings.frontend_dist / "index.html").is_file()
         checks["frontend"] = {
             "status": "ok" if frontend_exists else "missing",
@@ -204,9 +317,11 @@ def create_app(
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers.add("Vary", "Origin")
         response.headers["Access-Control-Allow-Headers"] = (
-            "Content-Type, X-Request-ID"
+            "Authorization, Content-Type, X-Request-ID"
         )
-        response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
+        response.headers["Access-Control-Allow-Methods"] = (
+            "GET,POST,PATCH,DELETE,OPTIONS"
+        )
         return response
 
     @app.route("/api/health", methods=["GET"])

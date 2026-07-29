@@ -29,6 +29,15 @@
 | 案例 claim 检索 | `implemented` | `assistant/search` API、`CatalogKnowledgeSearchProvider` | 按当前步骤允许 claim 裁剪并返回证据引用 |
 | 本地附件存储 | `implemented` | `attachments` API、`LocalAttachmentStore`、`case_run_attachments` | multipart 上传、20 MiB 限制、SHA-256、失败补偿删除和事件登记 |
 | Web 端平台会话 | `implemented` | `frontend/src/api/casePlatformClient.js`、`App.jsx` | 首页输入真实路由并创建 CaseRun，诊断入口推进 intake 与 diagnosis |
+| 用户与会话 | `implemented` | `backend/core_business/auth.py`、`identityClient.js` | 密码哈希、令牌摘要、过期、撤销、锁定和 token version |
+| 角色权限 | `implemented` | `core_business/api.py`、`LA_AUTH_MODE` | 新业务 API 强制鉴权，旧链路支持 compat/enforced 切换 |
+| 业务审计 | `implemented` | `backend/core_business/audit.py` | 操作、资源、结果和 request ID 可查询，秘密字段递归去敏 |
+| PDF 手册入库 | `implemented` | `backend/core_business/manuals.py` | 文件校验、SHA-256 去重、按页提取、分块和失败补偿 |
+| 手册证据检索 | `implemented` | `manual_chunks_fts`、`manualKnowledgeClient.js` | SQLite FTS5 与中文规范化回退，返回页码和证据引用 |
+| 图谱变更治理 | `implemented` | `backend/core_business/graph.py` | 草稿、提交、审核、驳回、批准、发布和 base version 冲突 |
+| 全量图谱版本 | `implemented` | `graph_versions` | 不可变快照、SHA-256、局部子图和版本 diff |
+| 检修工单 | `implemented` | `backend/core_business/work_orders.py` | CaseRun 绑定、唯一编号、状态机和 revision 乐观锁 |
+| 服务端 PDF 作业卡 | `implemented` | `backend/core_business/pdf.py` | 固化 CaseRun 数据、中文 PDF、多版本、hash 校验和下载 |
 | 远程诊断客户端 | `adapter_ready` | `JsonHttpDiagnosisClient`、`RemoteModelDiagnosisProvider` | 环境变量可切换真实 HTTP JSON 调用并校验结果合同；未配置时启动失败 |
 | 工业协议网关 | `adapter_ready` | `TelemetryProvider` Protocol | 需要部署侧具体实现 |
 | 向量知识检索 | `adapter_ready` | `KnowledgeSearchProvider` Protocol | 当前使用结构化 claim 检索 |
@@ -60,3 +69,5 @@
 8. `backend/runtime/`；
 9. `deploy/`；
 10. `.github/workflows/competition-platform-ci.yml`。
+11. `backend/core_business/`；
+12. `backend/test_core_business.py`。

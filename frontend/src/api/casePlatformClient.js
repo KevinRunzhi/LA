@@ -1,4 +1,5 @@
 const PLATFORM_BASE = "/api/platform";
+const PLATFORM_SESSION_KEY = "la.platform.session.v1";
 
 export class CasePlatformError extends Error {
   constructor(message, { code = "request_failed", status = 0, details = {} } = {}) {
@@ -16,15 +17,24 @@ function idempotencyKey() {
 }
 
 async function platformRequest(path, options = {}) {
+  let token = "";
+  try {
+    token = JSON.parse(
+      globalThis.localStorage?.getItem(PLATFORM_SESSION_KEY) || "null",
+    )?.accessToken || "";
+  } catch {
+    token = "";
+  }
   const response = await fetch(`${PLATFORM_BASE}${path}`, {
+    ...options,
     headers: {
       Accept: "application/json",
       ...(options.body instanceof FormData
         ? {}
         : { "Content-Type": "application/json" }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
-    ...options,
   });
   const envelope = await response.json().catch(() => null);
   if (!response.ok || !envelope?.ok) {

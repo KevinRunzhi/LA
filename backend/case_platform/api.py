@@ -70,7 +70,7 @@ def create_platform_blueprint(
     def platform_capabilities():
         return _ok(
             {
-                "apiVersion": "1.0.0",
+                "apiVersion": "1.1.0",
                 "registryVersion": registry.registry_version,
                 "runnableCaseCount": len(registry.runnable_items()),
                 "providers": {
@@ -91,6 +91,16 @@ def create_platform_blueprint(
                     "versionedKnowledge": True,
                     "graphVersionDelta": True,
                     "engineerSync": True,
+                },
+                "coreBusiness": {
+                    "identitySessions": True,
+                    "roleAuthorization": True,
+                    "auditTrail": True,
+                    "manualPdfIngestion": True,
+                    "fullTextEvidenceSearch": True,
+                    "governedGraphVersions": True,
+                    "workOrders": True,
+                    "serverSideJobCardPdf": True,
                 },
             }
         )

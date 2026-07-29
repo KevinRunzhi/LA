@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: LA Industrial Computer Case Platform API
-  version: 1.0.0
-  description: Multi-case routing, CaseRun execution, expert review and knowledge lifecycle API.
+  version: 1.1.0
+  description: Multi-case execution, identity, indexed manuals, governed graph and work-order API.
 servers:
   - url: http://127.0.0.1:8080
 paths:
@@ -407,7 +407,339 @@ paths:
           description: Target run returned to created
         "409":
           $ref: "#/components/responses/Conflict"
+  /api/platform/auth/login:
+    post:
+      tags: [Identity]
+      summary: Authenticate a platform user and issue an opaque session token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [account, password]
+              properties:
+                account: {type: string}
+                password: {type: string, format: password, writeOnly: true}
+      responses:
+        "200":
+          description: Session token returned once; only its digest is persisted
+        "401":
+          description: Invalid credentials
+        "423":
+          description: Account temporarily locked
+  /api/platform/auth/me:
+    get:
+      tags: [Identity]
+      summary: Resolve the current Bearer session
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Current user and session projection}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+  /api/platform/auth/logout:
+    post:
+      tags: [Identity]
+      summary: Revoke the current session
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Session revoked}
+  /api/platform/admin/users:
+    get:
+      tags: [Identity]
+      summary: Page and filter platform users
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: User page without password or token hashes}
+        "403": {$ref: "#/components/responses/Forbidden"}
+    post:
+      tags: [Identity]
+      summary: Create an engineer, expert or administrator
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUser"
+      responses:
+        "201": {description: Created public user projection}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /api/platform/admin/users/{userId}:
+    patch:
+      tags: [Identity]
+      summary: Update role, status, display name or profile
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/UserId"}
+      responses:
+        "200": {description: Updated user}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /api/platform/admin/users/{userId}/password:
+    post:
+      tags: [Identity]
+      summary: Reset password and revoke all existing sessions
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/UserId"}
+      responses:
+        "200": {description: Password changed and sessions revoked}
+  /api/platform/admin/audit-events:
+    get:
+      tags: [Audit]
+      summary: Page immutable, redacted business audit events
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Filtered audit event page}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /api/platform/manuals:
+    get:
+      tags: [ManualKnowledge]
+      summary: List indexed maintenance manuals
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Manual document page}
+  /api/platform/manuals/import:
+    post:
+      tags: [ManualKnowledge]
+      summary: Persist, extract, chunk and index one PDF manual
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, metadata]
+              properties:
+                file: {type: string, format: binary}
+                metadata: {type: string, description: JSON object}
+      responses:
+        "201": {description: Indexed manual and import report}
+        "409": {description: Content hash already imported}
+        "413": {description: File exceeds configured limit}
+        "415": {description: File is not a PDF}
+        "422": {description: PDF is encrypted, invalid or has no text}
+  /api/platform/manuals/{documentId}:
+    get:
+      tags: [ManualKnowledge]
+      summary: Read indexed manual metadata
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/DocumentId"}
+      responses:
+        "200": {description: Manual metadata and chunk count}
+    delete:
+      tags: [ManualKnowledge]
+      summary: Remove manual metadata, chunks, FTS rows and stored file
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/DocumentId"}
+      responses:
+        "200": {description: Manual removed}
+  /api/platform/manuals/search:
+    post:
+      tags: [ManualKnowledge]
+      summary: Search page-level manual evidence with FTS5 and normalized fallback
+      security: [{BearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualSearch"
+      responses:
+        "200": {description: Ranked evidence with document hash and page reference}
+  /api/platform/manuals/{documentId}/reindex:
+    post:
+      tags: [ManualKnowledge]
+      summary: Rebuild extracted chunks and FTS index from the stored PDF
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/DocumentId"}
+      responses:
+        "200": {description: Reindex report}
+  /api/platform/graph:
+    get:
+      tags: [GovernedGraph]
+      summary: Read the current immutable global graph snapshot
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Current version, nodes and edges}
+  /api/platform/graph/subgraph:
+    get:
+      tags: [GovernedGraph]
+      summary: Expand a bounded local graph around one center node
+      security: [{BearerAuth: []}]
+      parameters:
+        - {in: query, name: centerId, required: true, schema: {type: string}}
+        - {in: query, name: depth, schema: {type: integer, minimum: 0, maximum: 4, default: 1}}
+        - {in: query, name: nodeTypes, schema: {type: string}}
+      responses:
+        "200": {description: Filtered node and edge set}
+  /api/platform/graph/versions:
+    get:
+      tags: [GovernedGraph]
+      summary: List immutable graph versions
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Graph version metadata}
+  /api/platform/graph/versions/{versionId}:
+    get:
+      tags: [GovernedGraph]
+      summary: Read one immutable graph snapshot
+      security: [{BearerAuth: []}]
+      parameters:
+        - {in: path, name: versionId, required: true, schema: {type: string}}
+      responses:
+        "200": {description: Version metadata and snapshot}
+  /api/platform/graph/diff:
+    get:
+      tags: [GovernedGraph]
+      summary: Compare added, updated and removed graph entities
+      security: [{BearerAuth: []}]
+      parameters:
+        - {in: query, name: fromVersionId, required: true, schema: {type: string}}
+        - {in: query, name: toVersionId, schema: {type: string}}
+      responses:
+        "200": {description: Node and edge version difference}
+  /api/platform/graph/change-sets:
+    get:
+      tags: [GovernedGraph]
+      summary: List governed graph change sets
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Role-filtered change sets}
+    post:
+      tags: [GovernedGraph]
+      summary: Create a draft based on the current graph version
+      security: [{BearerAuth: []}]
+      responses:
+        "201": {description: Draft change set}
+  /api/platform/graph/change-sets/{changeSetId}:
+    get:
+      tags: [GovernedGraph]
+      summary: Read a change set and its entity operations
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/ChangeSetId"}
+      responses:
+        "200": {description: Change set with items and review state}
+  /api/platform/graph/change-sets/{changeSetId}/items:
+    post:
+      tags: [GovernedGraph]
+      summary: Upsert one node or edge operation in a draft
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/ChangeSetId"}
+      responses:
+        "200": {description: Updated draft}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /api/platform/graph/change-sets/{changeSetId}/submit:
+    post:
+      tags: [GovernedGraph]
+      summary: Validate and submit a non-empty draft
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/ChangeSetId"}
+      responses:
+        "200": {description: Submitted change set}
+  /api/platform/graph/change-sets/{changeSetId}/review:
+    post:
+      tags: [GovernedGraph]
+      summary: Approve or reject a submitted change set
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/ChangeSetId"}
+      responses:
+        "200": {description: Reviewed change set}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /api/platform/graph/change-sets/{changeSetId}/publish:
+    post:
+      tags: [GovernedGraph]
+      summary: Publish an approved change as a new immutable full snapshot
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/ChangeSetId"}
+      responses:
+        "200": {description: New graph version}
+        "409": {description: State or base-version conflict}
+  /api/platform/work-orders:
+    get:
+      tags: [WorkOrders]
+      summary: Page work orders with role filtering
+      security: [{BearerAuth: []}]
+      responses:
+        "200": {description: Work order page}
+    post:
+      tags: [WorkOrders]
+      summary: Create one work order for an existing CaseRun
+      security: [{BearerAuth: []}]
+      responses:
+        "201": {description: Versioned work order}
+        "409": {description: CaseRun already has a work order}
+  /api/platform/work-orders/{orderId}:
+    get:
+      tags: [WorkOrders]
+      summary: Read one work order
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/OrderId"}
+      responses:
+        "200": {description: Work order}
+    patch:
+      tags: [WorkOrders]
+      summary: Update a work order with optimistic revision control
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/OrderId"}
+      responses:
+        "200": {description: Updated work order}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /api/platform/work-orders/{orderId}/job-cards:
+    get:
+      tags: [WorkOrders]
+      summary: List immutable job-card document versions
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/OrderId"}
+      responses:
+        "200": {description: Job-card metadata versions}
+    post:
+      tags: [WorkOrders]
+      summary: Snapshot current CaseRun data and render a server-side PDF
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/OrderId"}
+      responses:
+        "201": {description: New or idempotently reused job-card version}
+  /api/platform/job-cards/{documentId}:
+    get:
+      tags: [WorkOrders]
+      summary: Read immutable job-card metadata and source snapshot
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/JobCardDocumentId"}
+      responses:
+        "200": {description: Job-card document}
+  /api/platform/job-cards/{documentId}/download:
+    get:
+      tags: [WorkOrders]
+      summary: Verify SHA-256 and download an archived PDF
+      security: [{BearerAuth: []}]
+      parameters:
+        - {$ref: "#/components/parameters/JobCardDocumentId"}
+      responses:
+        "200":
+          description: Verified PDF document
+          content:
+            application/pdf:
+              schema: {type: string, format: binary}
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Opaque
   parameters:
     RunId:
       in: path
@@ -416,6 +748,31 @@ components:
       schema:
         type: string
         pattern: "^RUN-[A-F0-9]{32}$"
+    UserId:
+      in: path
+      name: userId
+      required: true
+      schema: {type: string}
+    DocumentId:
+      in: path
+      name: documentId
+      required: true
+      schema: {type: string}
+    ChangeSetId:
+      in: path
+      name: changeSetId
+      required: true
+      schema: {type: string}
+    OrderId:
+      in: path
+      name: orderId
+      required: true
+      schema: {type: string}
+    JobCardDocumentId:
+      in: path
+      name: documentId
+      required: true
+      schema: {type: string}
   requestBodies:
     RevisionWrite:
       required: true
@@ -424,6 +781,12 @@ components:
           schema:
             $ref: "#/components/schemas/RevisionWrite"
   responses:
+    Unauthorized:
+      description: Missing, expired, revoked or invalid Bearer session
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
     ValidationError:
       description: Invalid request
       content:
@@ -449,6 +812,46 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
   schemas:
+    CreateUser:
+      type: object
+      additionalProperties: false
+      required: [account, displayName, role, password]
+      properties:
+        account:
+          type: string
+          pattern: "^[a-zA-Z][a-zA-Z0-9_.-]{2,31}$"
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        role:
+          $ref: "#/components/schemas/UserRole"
+        password:
+          type: string
+          format: password
+          minLength: 10
+          maxLength: 128
+          writeOnly: true
+        profile:
+          type: object
+          additionalProperties: true
+    ManualSearch:
+      type: object
+      additionalProperties: false
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 200
+        documentId: {type: string}
+        vendor: {type: string}
+        equipmentType: {type: string}
+        faultDomain: {type: string}
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
     UserRole:
       type: string
       enum: [engineer, expert, admin]
