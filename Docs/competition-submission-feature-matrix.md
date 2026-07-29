@@ -52,6 +52,14 @@
 | Agent 动态案例源 | `implemented` | `case_authoring/registry.py` | 内置案例与运行时发布包合并，运行时同 ID 版本优先 |
 | 案例发布管理页面 | `implemented` | `frontend/src/admin/case-authoring/` | 克隆、八模块编辑、校验、提交、审核、发布、回滚和证据建议 |
 | Agent 编制证据建议 | `implemented` | `case_agent_suggestions`、统一证据检索 | 保存建议和 EvidenceItem，不绕过专家审核自动发布 |
+| 资料驱动案例生成 | `implemented` | `backend/case_generation/` | 从手册、现有案例、图谱和现场数据快照生成候选内容，不直接发布 |
+| 多 Agent 编排与恢复 | `implemented` | `CaseGenerationService`、`case_generation_worker.py` | 文档理解、证据提取、领域分类、大纲、八模块、审查和定向修复均持久化 |
+| 故障领域模板库 | `implemented` | `backend/data/case-generation-templates/` | 散热、供电、存储、通信、监控、粉尘滤网和凝露模板可版本化扩展 |
+| 生成证据血缘 | `implemented` | `case_generation_evidence_links` | EvidenceItem 关联候选模块 JSON Pointer、置信度与审核状态 |
+| 生成内容专家闸门 | `implemented` | outline 与 patch API、案例发布中心 | 大纲先确认，八模块逐项接受/拒绝，应用时执行模块 hash 冲突保护 |
+| 生成过程可审计 | `implemented` | agent runs、artifacts、evaluations、audit events | 保存 provider、Agent 版本、输入输出 artifact、hash、耗时和失败信息 |
+| 案例生成工作台 | `implemented` | `CaseGenerationWizard.jsx` | 选择资料、查看动态进度、确认大纲、检查执行轨迹并选择性应用模块 |
+| 外部生成模型 | `adapter_ready` | `CaseGenerationProvider` Protocol | 默认结构化本地提供方保证离线可重复；外部提供方需遵循相同 JSON 合同 |
 | 远程诊断客户端 | `adapter_ready` | `JsonHttpDiagnosisClient`、`RemoteModelDiagnosisProvider` | 环境变量可切换真实 HTTP JSON 调用并校验结果合同；未配置时启动失败 |
 | 工业协议网关 | `adapter_ready` | `TelemetryProvider` Protocol | 需要部署侧具体实现 |
 | 向量知识检索 | `adapter_ready` | `KnowledgeSearchProvider` Protocol | 当前使用结构化 claim 检索 |
@@ -89,3 +97,6 @@
 14. `backend/test_platform_ops.py`。
 15. `backend/case_authoring/`；
 16. `backend/test_case_authoring.py`。
+17. `backend/case_generation/`；
+18. `backend/data/case-generation-templates/`；
+19. `backend/test_case_generation.py`。

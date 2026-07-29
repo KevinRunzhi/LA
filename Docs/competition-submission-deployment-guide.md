@@ -122,11 +122,14 @@ sudo mkdir -p /opt/la-case-platform/run /opt/la-case-platform/logs
 sudo chown -R la-platform:la-platform /opt/la-case-platform/run /opt/la-case-platform/logs
 sudo cp deploy/systemd/la-case-platform.service /etc/systemd/system/
 sudo cp deploy/systemd/la-knowledge-ingestion-worker.service /etc/systemd/system/
+sudo cp deploy/systemd/la-case-generation-worker.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now la-case-platform
 sudo systemctl enable --now la-knowledge-ingestion-worker
+sudo systemctl enable --now la-case-generation-worker
 sudo systemctl status la-case-platform
 sudo systemctl status la-knowledge-ingestion-worker
+sudo systemctl status la-case-generation-worker
 ```
 
 unit 使用 `NoNewPrivileges`、`ProtectSystem=strict`、`PrivateTmp` 等限制，并只授权写入 `run/` 和 `logs/`。

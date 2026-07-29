@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { caseAuthoringApi } from "../../api/caseAuthoringClient";
 import { loadPlatformSession } from "../../api/platformTransport";
+import CaseGenerationWizard from "./CaseGenerationWizard";
 import "./case-authoring-center.css";
 
 const MODULES = ["registry", "manifest", "intake", "diagnosis", "guide", "assistant", "output", "feedbackAndGraph"];
@@ -151,6 +152,7 @@ export default function CaseAuthoringCenter() {
             <button disabled={busy || draft.status !== "approved"} onClick={() => action("publish", () => caseAuthoringApi.publish(draft.id, version), "案例已发布，运行时 Agent 注册表已刷新")}><Play/>发布</button>
           </footer>
           {suggestion && <section className="case-suggestion"><h3><Sparkles/>Agent 编制建议</h3><strong>{suggestion.suggestion.summary}</strong><p>{suggestion.suggestion.recommendedAction}</p><span>关联证据 {suggestion.evidence.length} 条：{suggestion.suggestion.evidenceIds.join("、") || "当前无匹配证据"}</span></section>}
+          <CaseGenerationWizard draft={draft} onDraftChanged={() => openDraft(draft.id, moduleName)}/>
         </section>}
       </div>
       {busy && <div className="case-authoring-busy"><Loader2 className="spin"/>正在执行 {busy}…</div>}

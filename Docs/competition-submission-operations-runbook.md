@@ -27,6 +27,8 @@ ready 检查数据库迁移与 FTS5、案例注册表、附件/手册/作业卡�
 11. `python -m backend.operations_cli integrity` 返回 `passed` 或已确认的 warning；
 12. 批量入库时 `la-knowledge-ingestion-worker` 处于 active。
 13. 案例发布中心 active registry 中的包可以通过 CasePackageRegistry 加载。
+14. `la-case-generation-worker` 处于 active，最近的案例生成任务没有长期停留在 running；
+15. 生成候选模块必须经过大纲确认与 Patch 接受，不得把候选 artifact 当作已发布案例。
 
 ## 3. 告警分级
 
@@ -117,3 +119,36 @@ backend/.venv/bin/python -m backend.case_authoring_cli validate <draftId>
 backend/.venv/bin/python -m backend.case_authoring_cli rebuild-registry
 backend/.venv/bin/python -m backend.case_authoring_cli export-release <releaseId> ./exports
 ```
+
+## 10. 资料驱动的案例生成
+
+案例生成任务和普通资料入库使用不同 worker：
+
+```bash
+systemctl status la-case-generation-worker
+journalctl -u la-case-generation-worker -n 100 --no-pager
+backend/.venv/bin/python -m backend.case_generation_worker --once
+```
+
+任务分为两个明确的人机边界：
+
+1. worker 固化来源、解析资料、提取证据、识别领域并生成大纲，随后停在 `awaiting_outline_review`；
+2. 专家确认大纲后，worker 生成八个模块、执行跨模块审查和生产级确定性校验，随后停在 `awaiting_patch_review`。
+
+候选模块不会自动覆盖草稿。专家可逐项拒绝，或先接受再应用；应用时系统比较生成前
+模块 SHA-256，若专家已手工修改该模块则返回 `revision_conflict`，Patch 标记为
+`conflicted`。全部 Patch 被应用或拒绝后任务进入 `completed`，案例仍需执行原有的
+校验、提交审核和发布流程。
+
+排障查询：
+
+```bash
+sqlite3 run/data/presentation.db \
+  "select job_id,status,current_stage,progress,failure_code,updated_at from case_generation_jobs order by created_at desc limit 20;"
+sqlite3 run/data/presentation.db \
+  "select agent_type,status,duration_ms,error_code from case_generation_agent_runs where job_id='<job-id>' order by started_at;"
+```
+
+不要手工删除 generation 表中的单条记录：source、run、artifact、evidence link、
+evaluation 和 patch 共同构成审计链。需要停止任务时使用 cancel API；需要修改内容时
+拒绝 Patch、回到草稿编辑或创建新任务。
