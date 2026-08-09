@@ -11,9 +11,13 @@ build/
 Thumbs.db
 *:Zone.Identifier
 *.log
+*.inspect.ndjson
 backend/data/presentation/*.db
 backend/data/presentation/backups/
 run/
+output/case-platform-baseline/
+output/pdf/
+output/submission/
 release/LA-stable-demo-*.tar.gz
 release/LA-stable-demo-*.tar.gz.sha256
 release/LA-formal-demo-*.tar.gz
