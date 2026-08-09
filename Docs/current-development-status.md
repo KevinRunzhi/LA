@@ -1,5 +1,9 @@
 # LA 当前开发状态
 
+> **历史快照说明（2026-08-09）**
+>
+> 本文记录的是 2026-07-26 前后的开发状态，已经不再是项目归档后的唯一事实来源。项目最终状态请阅读 [`project-final-stage-summary.md`](./project-final-stage-summary.md) 和 [`competition-submission-feature-matrix.md`](./competition-submission-feature-matrix.md)。本文正文继续保留，用于追溯 R0、R2、多故障迁移和早期演示阶段的决策。
+
 更新时间：2026-07-26
 
 > 本文件是项目进度的唯一事实来源。旧状态文档、旧 PRD 或旧开发计划中的“已完成/下一步”描述不再生效。

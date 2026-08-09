@@ -1,5 +1,18 @@
 # LA 项目文档入口
 
+> **归档提示（2026-08-09）**
+>
+> 项目已进入阶段性归档状态。本页后半部分保留的是开发期间的详细导航和历史优先级，不再作为“当前唯一执行基线”。以后重新使用项目时，首先阅读：
+>
+> 1. [`project-final-stage-summary.md`](./project-final-stage-summary.md)：项目最终阶段总结；
+> 2. [`project-closure-and-github-archive-spec.md`](./project-closure-and-github-archive-spec.md)：归档范围和验收方式；
+> 3. [`competition-submission-feature-matrix.md`](./competition-submission-feature-matrix.md)：当前源码能力矩阵；
+> 4. [`competition-submission-architecture.md`](./competition-submission-architecture.md)：最终代码架构；
+> 5. [`competition-submission-deployment-guide.md`](./competition-submission-deployment-guide.md)：恢复运行和部署；
+> 6. [`competition/README.md`](./competition/README.md)：比赛正式文档与视频材料索引。
+>
+> 下文“当前阶段”“唯一执行基线”等表述是 2026 年 7 月开发过程的历史快照，保留用于追溯。
+
 更新时间：2026-07-26
 
 本文件是项目文档的唯一入口。阅读顺序和冲突处理规则以这里为准，旧文档不能再单独作为开发依据。
