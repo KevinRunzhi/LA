@@ -1,58 +1,39 @@
-# LA 工业设备智能接诊系统
+# 站控慧眼：工控设备智能检修助手
 
-当前项目是面向油气场站工控设备检修的演示型 MVP。
+本分支交接 **2026 年 7 月 18 日的前端演示版**，业务代码基线为 `ce36b01`。本轮仅整理文档，保留动态接诊、检修方案、图文向导、作业卡、专家审核、知识图谱及同步的原有演示闭环。
 
-## 当前开发状态
+## 交接阅读入口
 
-- 当前阶段：`R0 / P0`，进行中。
-- 当前目标：接诊思考过渡、照片与台账匹配、详细信息动态补充。
-- 当前主案例：研华 ACP-4000 / IPC-610 散热异常。
-- 当前能力以案例 JSON 和前端模拟为主，不接真实大模型或真实多模态识别。
+1. [项目交接说明](Docs/handoff/README.md)：版本、功能边界、代码入口、角色、演示流程和验收清单。
+2. [安装部署与故障排查](Docs/handoff/deployment.md)：Linux / WSL、Windows 原生、龙芯部署、启停、备份和重置。
 
-完整文档从 [`Docs/README.md`](./Docs/README.md) 开始阅读。不要使用旧状态文档判断当前进度。
-
-## 固定环境
-
-```text
-Node.js 20.19.4
-npm 10.8.2
-Python 3.10+
-```
-
-唯一开发目录：
+## 获取本版
 
 ```bash
-/home/kevin/projects/LA
+git clone --depth 1 --single-branch --branch codex/handoff-demo-20260718 https://github.com/KevinRunzhi/LA.git LA-demo
+cd LA-demo
 ```
 
-## WSL 开发启动
+[交接分支](https://github.com/KevinRunzhi/LA/tree/codex/handoff-demo-20260718) · [下载源码 ZIP](https://github.com/KevinRunzhi/LA/archive/refs/heads/codex/handoff-demo-20260718.zip)
 
-前端：
+当前 `main` 是后续完整竞赛归档，请向接手人分享交接分支链接。源码 ZIP 需要安装依赖并构建前端，不是预构建运行包。
+
+## 最短启动路径（Linux / WSL）
+
+先准备 Node.js **20.19.4**、npm **10.8.2** 和 Python **3.10+**，再从项目根目录执行：
 
 ```bash
-cd ~/projects/LA/frontend
-npm install
-npm run dev
+python3 -m venv backend/.venv
+backend/.venv/bin/python -m pip install -r backend/requirements.txt
+cd frontend
+npm ci
+npm run build
+cd ..
+backend/.venv/bin/python backend/app.py
 ```
 
-后端：
+浏览器打开 **http://127.0.0.1:8080**。其他启动方式及问题处理见上面的部署文档。
 
-```bash
-cd ~/projects/LA/backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python app.py
-```
+本版实际技术栈为 React + Vite、Flask、SQLite。Agent、语音、多模态等包含预置内容及演示交互；没有真实大模型或生产账号认证。专家审核、知识发布与同步需要后端，不能仅保留前端完成全部演示。
 
-健康检查：
-
-```bash
-curl http://127.0.0.1:8080/api/health
-```
-
-## 龙芯开发原则
-
-龙芯同样使用 Node.js `20.19.4` 开发态启动前端。每完成一个 R/P 模块就同步到龙芯验证，不等待全部功能完成后再适配。
-
-具体步骤见 [`Docs/loongarch-mvp-deployment-and-startup-guide.md`](./Docs/loongarch-mvp-deployment-and-startup-guide.md)。
+`Docs/` 原有设计和状态文档继续保留作历史参考；本轮交接与部署以 `Docs/handoff/` 为入口。
