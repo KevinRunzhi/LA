@@ -1,96 +1,24 @@
 from __future__ import annotations
 
 import json
-import sqlite3
-import uuid
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 
-from flask import Flask, g, jsonify, request, send_file, send_from_directory
-from werkzeug.middleware.proxy_fix import ProxyFix
+from flask import Flask, jsonify, request, send_file, send_from_directory
 try:
-    from .case_package import CasePackageRegistry
-    from .case_authoring.api import create_case_authoring_blueprint
-    from .case_authoring.registry import CompositeCasePackageRegistry
-    from .case_authoring.service import CaseAuthoringService
-    from .case_generation.api import create_case_generation_blueprint
-    from .case_generation.orchestrator import CaseGenerationService
-    from .case_generation.providers import build_case_generation_provider
-    from .case_generation.templates import CaseGenerationTemplateRegistry
-    from .case_platform.api import create_platform_blueprint
-    from .case_platform.case_runs import CaseRunStore
-    from .case_platform.errors import PlatformError
-    from .case_platform.migrations import MigrationRunner
-    from .case_platform.knowledge import KnowledgeLifecycleService
-    from .case_platform.providers import (
-        CatalogKnowledgeSearchProvider,
-        LocalAttachmentStore,
-    )
-    from .case_platform.routing import DeterministicCaseRouter
-    from .runtime.config import RuntimeSettings
-    from .runtime.observability import install_observability
-    from .runtime.provider_factory import (
-        build_diagnosis_provider,
-        build_telemetry_provider,
-    )
-    from .core_business.api import create_core_business_blueprint
-    from .core_business.audit import AuditService
-    from .core_business.auth import IdentityService
-    from .core_business.graph import GovernedGraphService
-    from .core_business.manuals import ManualKnowledgeService
-    from .core_business.work_orders import WorkOrderService
-    from .platform_ops.api import create_platform_operations_blueprint
-    from .platform_ops.ingestion import IngestionService
-    from .platform_ops.operations import PlatformOperationsService
-    from .platform_ops.search import UnifiedKnowledgeSearchService
     from .presentation_store import PresentationStore
 except ImportError:
-    from case_package import CasePackageRegistry
-    from case_authoring.api import create_case_authoring_blueprint
-    from case_authoring.registry import CompositeCasePackageRegistry
-    from case_authoring.service import CaseAuthoringService
-    from case_generation.api import create_case_generation_blueprint
-    from case_generation.orchestrator import CaseGenerationService
-    from case_generation.providers import build_case_generation_provider
-    from case_generation.templates import CaseGenerationTemplateRegistry
-    from case_platform.api import create_platform_blueprint
-    from case_platform.case_runs import CaseRunStore
-    from case_platform.errors import PlatformError
-    from case_platform.migrations import MigrationRunner
-    from case_platform.knowledge import KnowledgeLifecycleService
-    from case_platform.providers import (
-        CatalogKnowledgeSearchProvider,
-        LocalAttachmentStore,
-    )
-    from case_platform.routing import DeterministicCaseRouter
-    from runtime.config import RuntimeSettings
-    from runtime.observability import install_observability
-    from runtime.provider_factory import (
-        build_diagnosis_provider,
-        build_telemetry_provider,
-    )
-    from core_business.api import create_core_business_blueprint
-    from core_business.audit import AuditService
-    from core_business.auth import IdentityService
-    from core_business.graph import GovernedGraphService
-    from core_business.manuals import ManualKnowledgeService
-    from core_business.work_orders import WorkOrderService
-    from platform_ops.api import create_platform_operations_blueprint
-    from platform_ops.ingestion import IngestionService
-    from platform_ops.operations import PlatformOperationsService
-    from platform_ops.search import UnifiedKnowledgeSearchService
     from presentation_store import PresentationStore
 
 
 BASE_DIR = Path(__file__).resolve().parent
 REPOSITORY_DIR = BASE_DIR.parent
 DATA_DIR = BASE_DIR / "data"
+FRONTEND_DIST = REPOSITORY_DIR / "frontend" / "dist"
 PRESENTATION_DIR = DATA_DIR / "presentation"
 PRESENTATION_INITIAL_STATE_FILE = PRESENTATION_DIR / "initial_state.json"
 PRESENTATION_DB_FILE = PRESENTATION_DIR / "presentation.db"
-CASES_DIR = DATA_DIR / "cases"
-CASE_GENERATION_TEMPLATES_DIR = DATA_DIR / "case-generation-templates"
 
 
 def load_json(name: str):
@@ -111,34 +39,9 @@ def api_error(error: str, message: str, status=400):
     return jsonify({"ok": False, "error": error, "message": message}), status
 
 
-def create_app(
-    database_path: Path | None = None,
-    runtime_settings: RuntimeSettings | None = None,
-) -> Flask:
+def create_app() -> Flask:
     app = Flask(__name__)
-    settings = runtime_settings or RuntimeSettings.from_environment(REPOSITORY_DIR)
-    if database_path is not None:
-        settings = settings.with_database(database_path)
-    app.config["RUNTIME_SETTINGS"] = settings
-    app.config["MAX_CONTENT_LENGTH"] = settings.attachment_max_bytes + 1024 * 1024
-    if settings.trust_proxy_headers:
-        app.wsgi_app = ProxyFix(
-            app.wsgi_app,
-            x_for=1,
-            x_proto=1,
-            x_host=1,
-        )
 
-    bundled_case_registry = CasePackageRegistry(
-        CASES_DIR,
-        PRESENTATION_DIR / "manual_sources.json",
-    ).load()
-    case_registry = CompositeCasePackageRegistry(
-        bundled_case_registry,
-        settings.case_authoring_root / "active",
-        shared_sources_file=PRESENTATION_DIR / "manual_sources.json",
-        schemas_dir=CASES_DIR / "schemas",
-    ).load()
     scenario = load_json("demo_scenario.json")
     guide_steps = load_json("guide_steps.json")
     knowledge_items = load_json("knowledge_items.json")
@@ -152,265 +55,9 @@ def create_app(
     presentation_graph = load_path(PRESENTATION_DIR / "graph_seed.json")
     industrial_computer_graph = load_path(PRESENTATION_DIR / "industrial_computer_graph.json")
     verification_scenario = load_path(PRESENTATION_DIR / "verification_scenario.json")
-    active_database_path = settings.database_path
-    store = PresentationStore(active_database_path)
+    store = PresentationStore(PRESENTATION_DB_FILE)
     initial_state = load_path(PRESENTATION_INITIAL_STATE_FILE)
     store.initialize(initial_state, presentation_case, presentation_knowledge, industrial_computer_graph)
-    MigrationRunner(active_database_path).migrate()
-    case_run_store = CaseRunStore(active_database_path)
-    knowledge_service = KnowledgeLifecycleService(active_database_path)
-    case_router = DeterministicCaseRouter(case_registry)
-    app.register_blueprint(
-        create_platform_blueprint(
-            case_registry,
-            case_run_store,
-            case_router,
-            build_diagnosis_provider(settings),
-            knowledge_service,
-            build_telemetry_provider(settings),
-            CatalogKnowledgeSearchProvider(),
-            LocalAttachmentStore(
-                settings.attachment_root,
-                max_bytes=settings.attachment_max_bytes,
-            ),
-        )
-    )
-    audit_service = AuditService(active_database_path)
-    identity_service = IdentityService(
-        active_database_path,
-        audit_service,
-        session_ttl_seconds=settings.session_ttl_seconds,
-        max_failures=settings.login_max_failures,
-        lock_seconds=settings.login_lock_seconds,
-    )
-    if settings.bootstrap_admin_account:
-        identity_service.bootstrap_admin(
-            settings.bootstrap_admin_account,
-            settings.bootstrap_admin_password,
-        )
-    graph_service = GovernedGraphService(active_database_path, audit_service)
-    graph_service.initialize_seed(industrial_computer_graph)
-    manual_service = ManualKnowledgeService(
-        active_database_path,
-        settings.manual_storage_root,
-        audit_service,
-        max_bytes=settings.manual_max_bytes,
-    )
-    work_order_service = WorkOrderService(
-        active_database_path,
-        settings.job_card_storage_root,
-        audit_service,
-    )
-    app.register_blueprint(
-        create_core_business_blueprint(
-            identity_service,
-            audit_service,
-            manual_service,
-            graph_service,
-            work_order_service,
-        )
-    )
-    ingestion_service = IngestionService(
-        active_database_path,
-        [REPOSITORY_DIR / "Info"],
-        manual_service,
-        audit_service,
-    )
-    unified_search_service = UnifiedKnowledgeSearchService(
-        active_database_path,
-        manual_service,
-        graph_service,
-        case_registry,
-    )
-    operations_service = PlatformOperationsService(
-        active_database_path,
-        attachment_root=settings.attachment_root,
-        manual_root=settings.manual_storage_root,
-        job_card_root=settings.job_card_storage_root,
-        export_root=settings.export_storage_root,
-        backup_root=settings.platform_backup_root,
-        audit=audit_service,
-    )
-    operations_service.asset_roots["case-authoring"] = settings.case_authoring_root
-    app.register_blueprint(
-        create_platform_operations_blueprint(
-            identity_service,
-            ingestion_service,
-            unified_search_service,
-            operations_service,
-        )
-    )
-    case_authoring_service = CaseAuthoringService(
-        active_database_path,
-        bundled_registry=bundled_case_registry,
-        composite_registry=case_registry,
-        shared_sources_file=PRESENTATION_DIR / "manual_sources.json",
-        schemas_dir=CASES_DIR / "schemas",
-        release_root=settings.case_authoring_root / "releases",
-        active_root=settings.case_authoring_root / "active",
-        audit=audit_service,
-        search_service=unified_search_service,
-    )
-    app.register_blueprint(
-        create_case_authoring_blueprint(
-            identity_service,
-            case_authoring_service,
-        )
-    )
-    generation_templates = CaseGenerationTemplateRegistry(
-        CASE_GENERATION_TEMPLATES_DIR
-    ).load()
-    case_generation_service = CaseGenerationService(
-        active_database_path,
-        authoring=case_authoring_service,
-        manuals=manual_service,
-        graph=graph_service,
-        templates=generation_templates,
-        audit=audit_service,
-        provider=build_case_generation_provider(settings),
-        search_service=unified_search_service,
-    )
-    app.register_blueprint(
-        create_case_generation_blueprint(
-            identity_service,
-            case_generation_service,
-            generation_templates,
-        )
-    )
-    app.extensions["la_services"] = {
-        "identity": identity_service,
-        "manuals": manual_service,
-        "graph": graph_service,
-        "workOrders": work_order_service,
-        "ingestion": ingestion_service,
-        "search": unified_search_service,
-        "operations": operations_service,
-        "caseAuthoring": case_authoring_service,
-        "caseGeneration": case_generation_service,
-    }
-
-    @app.before_request
-    def enforce_platform_identity():
-        if request.blueprint != "case_platform":
-            return None
-        if request.endpoint in {
-            "case_platform.list_cases",
-            "case_platform.platform_capabilities",
-            "case_platform.route_case",
-        }:
-            return None
-        header = request.headers.get("Authorization", "")
-        token = header[7:].strip() if header.lower().startswith("bearer ") else ""
-        if not token:
-            if settings.auth_mode == "enforced":
-                raise PlatformError(
-                    "authentication_required",
-                    "当前部署要求登录后访问业务接口",
-                    401,
-                )
-            return None
-        actor = identity_service.authenticate_token(token)
-        g.platform_actor = actor
-        supplied_id = None
-        supplied_role = None
-        if request.is_json:
-            body = request.get_json(silent=True) or {}
-            supplied = body.get("actor") if isinstance(body, dict) else None
-            if isinstance(supplied, dict):
-                supplied_id = supplied.get("id")
-                supplied_role = supplied.get("role")
-        elif request.form:
-            supplied_id = request.form.get("actorId")
-            supplied_role = request.form.get("actorRole")
-        if supplied_id and supplied_id != actor["id"]:
-            raise PlatformError(
-                "actor_mismatch",
-                "请求 actor 与登录会话不一致",
-                403,
-            )
-        if supplied_role and supplied_role != actor["role"]:
-            raise PlatformError(
-                "actor_mismatch",
-                "请求角色与登录会话不一致",
-                403,
-            )
-        return None
-
-    def readiness_check():
-        checks: dict[str, object] = {}
-        ready = True
-        active_user_count = 0
-        try:
-            with sqlite3.connect(active_database_path) as connection:
-                connection.execute("SELECT 1").fetchone()
-                migration_count = connection.execute(
-                    "SELECT count(*) FROM schema_migrations"
-                ).fetchone()[0]
-                active_user_count = connection.execute(
-                    "SELECT count(*) FROM platform_users WHERE status='active'"
-                ).fetchone()[0]
-            checks["database"] = {
-                "status": "ok",
-                "migrationCount": migration_count,
-            }
-        except (OSError, sqlite3.Error) as exc:
-            ready = False
-            checks["database"] = {"status": "error", "reason": str(exc)}
-        runnable_cases = len(case_registry.runnable_items())
-        checks["caseRegistry"] = {
-            "status": "ok" if runnable_cases else "error",
-            "runnableCases": runnable_cases,
-            "loadErrors": len(case_registry.load_errors),
-        }
-        ready = ready and runnable_cases > 0
-        identity_ready = settings.auth_mode == "compat" or active_user_count > 0
-        checks["identity"] = {
-            "status": "ok" if identity_ready else "error",
-            "authMode": settings.auth_mode,
-            "activeUserCount": active_user_count,
-        }
-        ready = ready and identity_ready
-        try:
-            storage_checks = {}
-            for name, root in (
-                ("attachments", settings.attachment_root),
-                ("manuals", settings.manual_storage_root),
-                ("jobCards", settings.job_card_storage_root),
-                ("exports", settings.export_storage_root),
-                ("platformBackups", settings.platform_backup_root),
-                ("caseAuthoring", settings.case_authoring_root),
-            ):
-                root.mkdir(parents=True, exist_ok=True)
-                probe = root / f".write-probe-{uuid.uuid4().hex}"
-                probe.write_bytes(b"ready")
-                probe.unlink()
-                storage_checks[name] = {"status": "ok", "path": str(root)}
-            checks["storage"] = storage_checks
-            checks["attachmentStorage"] = storage_checks["attachments"]
-        except OSError as exc:
-            ready = False
-            checks["storage"] = {
-                "status": "error",
-                "reason": str(exc),
-            }
-            checks["attachmentStorage"] = checks["storage"]
-        frontend_exists = (settings.frontend_dist / "index.html").is_file()
-        checks["frontend"] = {
-            "status": "ok" if frontend_exists else "missing",
-            "required": settings.readiness_requires_frontend,
-        }
-        if settings.readiness_requires_frontend and not frontend_exists:
-            ready = False
-        return ready, checks
-
-    install_observability(
-        app,
-        service_name=settings.service_name,
-        log_level=settings.log_level,
-        json_access_log=settings.json_access_log,
-        readiness_check=readiness_check,
-        additional_metrics=case_generation_service.render_metrics,
-    )
 
     def load_presentation_state():
         return store.load_state()
@@ -420,30 +67,14 @@ def create_app(
 
     @app.after_request
     def add_cors_headers(response):
-        origin = request.headers.get("Origin", "")
-        allowed = settings.cors_allowed_origins
-        if "*" in allowed:
-            response.headers["Access-Control-Allow-Origin"] = "*"
-        elif origin and origin in allowed:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers.add("Vary", "Origin")
-        response.headers["Access-Control-Allow-Headers"] = (
-            "Authorization, Content-Type, X-Request-ID"
-        )
-        response.headers["Access-Control-Allow-Methods"] = (
-            "GET,POST,PATCH,DELETE,OPTIONS"
-        )
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
         return response
 
     @app.route("/api/health", methods=["GET"])
     def health():
-        return jsonify(
-            {
-                "status": "ok",
-                "service": settings.service_name,
-                "environment": settings.environment,
-            }
-        )
+        return jsonify({"status": "ok", "service": "la-mvp-backend"})
 
     @app.route("/api/demo/scenario", methods=["GET"])
     def demo_scenario():
@@ -899,7 +530,7 @@ def create_app(
     @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")
     def serve_frontend(path: str):
-        if not settings.frontend_dist.exists():
+        if not FRONTEND_DIST.exists():
             return jsonify(
                 {
                     "error": "frontend dist not found",
@@ -907,10 +538,10 @@ def create_app(
                 }
             ), 404
 
-        requested = settings.frontend_dist / path
+        requested = FRONTEND_DIST / path
         if path and requested.is_file():
-            return send_from_directory(settings.frontend_dist, path)
-        return send_from_directory(settings.frontend_dist, "index.html")
+            return send_from_directory(FRONTEND_DIST, path)
+        return send_from_directory(FRONTEND_DIST, "index.html")
 
     return app
 
@@ -919,9 +550,4 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    active_settings = app.config["RUNTIME_SETTINGS"]
-    app.run(
-        host=active_settings.host,
-        port=active_settings.port,
-        debug=False,
-    )
+    app.run(host="0.0.0.0", port=8080, debug=False)

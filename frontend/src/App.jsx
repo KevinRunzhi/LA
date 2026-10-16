@@ -44,7 +44,6 @@ import {
   Zap,
 } from "lucide-react";
 import { api } from "./api/client";
-import { CasePlatformSession } from "./api/casePlatformClient";
 import AdminShell from "./admin/AdminShell";
 import IndustrialKnowledgeGraphPage from "./admin/knowledge-graph/IndustrialKnowledgeGraphPage";
 import { presentationApi } from "./admin/presentationApi";
@@ -1280,8 +1279,6 @@ export default function App() {
   const [equipmentTraceCount, setEquipmentTraceCount] = useState(0);
   const [equipmentFieldSources, setEquipmentFieldSources] = useState({});
   const [planRevisionEvents, setPlanRevisionEvents] = useState([]);
-  const [platformSession, setPlatformSession] = useState(null);
-  const [platformConnectionError, setPlatformConnectionError] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -1408,33 +1405,6 @@ export default function App() {
     setActiveTransition(null);
     setTriageAgentStatus("idle");
     try {
-      if (platformSession?.active && platformSession.run.status === "created") {
-        const intakeFacts = platformSession.run.caseId === "CASE-ACP4000-001"
-          ? {
-              "field-equipment-model": intakeSelections["设备型号"] || "ACP-4000 / IPC-610",
-              "field-temp-fan-alarm": true,
-              "field-fan-speed": Number(thresholdValues["风扇转速"] || 420),
-            }
-          : {
-              "field-power-equipment-model": intakeSelections["设备型号"] || "Rockwell 6300B",
-              "field-power-led": "OFF",
-              "field-power-upstream-voltage": 24,
-              "field-power-device-voltage": 11.6,
-            };
-        await platformSession.confirmIntake(intakeFacts);
-        await platformSession.diagnose();
-        setPlatformSession(platformSession);
-        setPlatformConnectionError("");
-      }
-      const result = await api.startDiagnosis(input || defaultInput);
-      setDiagnosis(result);
-      setSteps(await api.steps());
-      setActivePage("workbench");
-      setStage("analysis");
-      setActiveStep(0);
-      setActiveDiagnosisTask(0);
-    } catch (error) {
-      setPlatformConnectionError(error.message || "案例平台连接失败");
       const result = await api.startDiagnosis(input || defaultInput);
       setDiagnosis(result);
       setSteps(await api.steps());
@@ -1695,7 +1665,7 @@ export default function App() {
     }
   }
 
-  async function enterIntakeFromHome(value = homeDraft) {
+  function enterIntakeFromHome(value = homeDraft) {
     const nextInput = value.trim() || defaultInput;
     setInput(nextInput);
     setActivePage("workbench");
@@ -1715,19 +1685,6 @@ export default function App() {
       duration: "约 10 分钟",
       recurrence: "首次发现",
     });
-    try {
-      const actor = { id: currentUser.account, role: "engineer" };
-      const session = await CasePlatformSession.begin(nextInput, actor);
-      setPlatformSession(session);
-      setPlatformConnectionError("");
-      window.sessionStorage.setItem(
-        "la.casePlatformSession",
-        JSON.stringify(session.snapshot()),
-      );
-    } catch (error) {
-      setPlatformSession(null);
-      setPlatformConnectionError(error.message || "案例平台连接失败");
-    }
   }
 
   function jumpToPhase(phaseIndex) {
@@ -1758,9 +1715,6 @@ export default function App() {
     setFeedbackUploadError("");
     setSelectedReferences([]);
     setReferencePickerOpen(false);
-    setPlatformSession(null);
-    setPlatformConnectionError("");
-    window.sessionStorage.removeItem("la.casePlatformSession");
     clearIntakeMaterials();
   }
 
@@ -4827,7 +4781,7 @@ function getAssistantContext(stage, activeIntakeStep, analysisSubStep, currentSt
   if (stage === "analysis") {
     return {
       label: "分析诊断 · 多 Agent 会诊",
-      suggestion: "分析诊断 Agent、操作合规 Agent 和知识检索 Agent 正在汇总当前异常的判断依据。",
+      suggestion: "当前正在模拟分析诊断 Agent、操作合规 Agent 和知识检索 Agent 的运行过程。",
     };
   }
 
@@ -4873,13 +4827,13 @@ function getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep
     if (activeIntakeStep === 0) return "请先确认异常首次发现时间、持续时长和发生频次。确认后系统会结合报障描述识别故障地点。";
     if (activeIntakeStep === 1) return "当前先确认位置匹配结果：山东德州分输站、控制中心、站控柜 A01。位置确认后系统再读取该机柜的设备台账。";
     if (activeIntakeStep === 2) return "本步建议确认设备型号为 ACP-4000 / IPC-610，再补充工控机角色和 TEMP/FAN 关联告警。";
-    if (activeIntakeStep === 3) return "请核对当前运行值与判据：风扇 <500 rpm、系统温度 >55°C、CPU 温度 >70°C，并以现场设备数据为准。";
+    if (activeIntakeStep === 3) return "阈值可以先按演示值填写：风扇 <500 rpm、系统温度 >55°C、CPU 温度 >70°C。后续接 API 后可由设备数据自动带入。";
     if (activeIntakeStep === 4) return "请核对依据标准和操作手册。它们用于解释系统为什么形成当前判断，确认后会生成异常事件全景。";
     return "接入信息已经足够触发诊断。建议点击触发诊断，让系统进入多 Agent 会诊并生成诊断结论。";
   }
 
   if (stage === "analysis") {
-    return "分析诊断 Agent 判断故障方向，操作合规 Agent 校验安全要求，知识检索 Agent 匹配维修知识条目。";
+    return "当前是模拟会诊流程：分析诊断 Agent 判断故障方向，操作合规 Agent 校验安全要求，知识检索 Agent 匹配维修知识条目。";
   }
 
   if (stage === "diagnosis") {
@@ -4900,11 +4854,11 @@ function getAssistantReply(stage, activeIntakeStep, analysisSubStep, currentStep
     return "本步先完成外观和状态确认，不进行拆检。记录 TEMP/FAN、蜂鸣器、风扇 rpm、温度和站控柜位置。";
   }
 
-  if (stage === "record") return "检修记录会沉淀本次故障、步骤完成情况、处理结论和专家审核状态，并用于作业卡导出与知识回流。";
+  if (stage === "record") return "检修记录会沉淀本次故障、步骤完成情况、处理结论和专家审核状态，后续可以接导出或知识回流 API。";
 
   return text.includes("API")
-    ? "我会结合当前阶段、检修步骤和相关维修知识回答你的问题。"
-    : "我会根据当前步骤和相关维修知识给出辅助建议。";
+    ? "后续这里可以替换为真实大模型 API：把当前阶段、步骤、用户问题和维修知识作为上下文传给后端。"
+    : "我会根据当前步骤给出辅助建议。当前版本是本地模拟回复，用于演示交互效果。";
 }
 
 function AgentConsultationStream({ agents, activeAgentIndex, tick }) {
@@ -5341,6 +5295,8 @@ function AssistantChat({
             {planRevisionEvents.map((event, index) => <p key={`${event}-${index}`}>{event}</p>)}
           </section>
         )}
+        <div className="assistant-api-note">当前为本地模拟回复，后续接入大模型 API 后替换此逻辑。</div>
+
         <div className="assistant-message-list">
           {messages.map((message) => (
             <div className={classNames("assistant-message", message.role)} key={message.id}>

@@ -1,35 +1,14 @@
 # LA 项目文档入口
 
-> **归档提示（2026-08-09）**
+> **交接入口更新（2026-10-16）**
 >
-> 项目已进入阶段性归档状态。本页后半部分保留的是开发期间的详细导航和历史优先级，不再作为“当前唯一执行基线”。以后重新使用项目时，首先阅读：
+> 当前默认分支 main 的业务代码固定为 7 月 18 日 `ce36b01`，后期扩建已移出当前代码。接手时先阅读 [项目交接说明](handoff/README.md) 和 [安装部署文档](handoff/deployment.md)。
 >
-> 1. [`project-final-stage-summary.md`](./project-final-stage-summary.md)：项目最终阶段总结；
-> 2. [`project-closure-and-github-archive-spec.md`](./project-closure-and-github-archive-spec.md)：归档范围和验收方式；
-> 3. [`competition-submission-feature-matrix.md`](./competition-submission-feature-matrix.md)：当前源码能力矩阵；
-> 4. [`competition-submission-architecture.md`](./competition-submission-architecture.md)：最终代码架构；
-> 5. [`competition-submission-deployment-guide.md`](./competition-submission-deployment-guide.md)：恢复运行和部署；
-> 6. [`competition/README.md`](./competition/README.md)：比赛正式文档与视频材料索引。
->
-> 下文“当前阶段”“唯一执行基线”等表述是 2026 年 7 月开发过程的历史快照，保留用于追溯。
+> 下文保留 7 月开发期间的历史导航。“当前阶段”“唯一执行基线”、个人开发目录、运行状态及未提交内容描述不再作为本轮交接事实；实现范围和安装方式以 `handoff/` 为准。
 
-更新时间：2026-07-26
+更新时间：2026-07-17
 
 本文件是项目文档的唯一入口。阅读顺序和冲突处理规则以这里为准，旧文档不能再单独作为开发依据。
-
-竞赛提交源码增强分支优先阅读：
-
-- [`competition-submission-codebase-spec.md`](./competition-submission-codebase-spec.md)
-- [`competition-submission-architecture.md`](./competition-submission-architecture.md)
-- [`competition-submission-feature-matrix.md`](./competition-submission-feature-matrix.md)
-- [`competition-submission-deployment-engineering-spec.md`](./competition-submission-deployment-engineering-spec.md)
-- [`competition-submission-deployment-guide.md`](./competition-submission-deployment-guide.md)
-- [`competition-submission-operations-runbook.md`](./competition-submission-operations-runbook.md)
-- [`competition-submission-technical-architecture.md`](./competition-submission-technical-architecture.md)
-- [`competition-submission-core-business-enhancement-spec.md`](./competition-submission-core-business-enhancement-spec.md)
-- [`competition-submission-platform-operations-and-knowledge-engineering-spec.md`](./competition-submission-platform-operations-and-knowledge-engineering-spec.md)
-- [`competition-submission-case-authoring-and-release-center-spec.md`](./competition-submission-case-authoring-and-release-center-spec.md)
-- [`competition-submission-document-driven-multi-agent-case-generation-spec.md`](./competition-submission-document-driven-multi-agent-case-generation-spec.md)
 
 新开启的 Codex 对话或临时接手开发时，先完整阅读 [`CODEX-HANDOFF-2026-07-17.md`](./CODEX-HANDOFF-2026-07-17.md)。该文档记录了当前 WSL 仓库、Git 工作区、三角色演示流程、SQLite 状态、未提交修改、运行命令和已知限制；随后再按本页索引阅读任务对应的 Spec。
 
@@ -63,8 +42,6 @@
 24. [`software-cup-a1-competition-requirements.md`](./software-cup-a1-competition-requirements.md)：赛事原始要求；用于验收覆盖，不直接代替当前开发计划。
 25. [`expert-profile-settings-spec.md`](./expert-profile-settings-spec.md)：专家账号左侧设置入口、简要资料字段、本地保存边界和验收标准。
 26. [`maintenance-reference-picker-spec.md`](./maintenance-reference-picker-spec.md)：首页检修资料编组台、案例/知识/手册选择、异常接入持续引用和演示验收规格。
-27. [`industrial-computer-power-fault-development-spec.md`](./industrial-computer-power-fault-development-spec.md)：工控机多故障案例、供电案例、CaseRun、路由、数据血缘和知识闭环的上位开发规格。
-28. [`power-fault-development/README.md`](./power-fault-development/README.md)：多故障案例 A～F 分阶段执行计划及各阶段详细 Spec 的唯一入口。
 
 ## 2. 当前阶段
 
